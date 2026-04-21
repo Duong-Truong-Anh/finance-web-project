@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FINANCE DASHBOARD</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <link rel="stylesheet" href="css/main.css" />
+</head>
+<body>
+
+  <!-- Row 1: header spans cols 1–2, right slot is reserved -->
+  <header>
+    <h1>■ FINANCE DASHBOARD</h1>
+    <span>V1 — STATIC DATA / LIVE CHART</span>
+  </header>
+  <div class="header-right">
+    <span class="header-right-label">Dashboard Mode</span>
+    <span class="header-right-slot">— RESERVED —</span>
+  </div>
+
+  <!-- Row 2: three-column bento -->
+
+  <!-- LEFT: CASHFLOW LEDGER -->
+  <div class="panel">
+    <div class="panel-header">Cashflow Ledger <span class="pill">MONTHLY</span></div>
+    <div class="panel-body">
+      <div>
+        <div class="entry-group-label">▲ Income</div>
+        <div class="entry-row"><div class="dot income-dot"></div><div class="label">Salary (net)</div><div class="amount income">+$4,200</div></div>
+        <div class="entry-row"><div class="dot income-dot"></div><div class="label">Freelance</div><div class="amount income">+$850</div></div>
+        <div class="entry-row"><div class="dot income-dot"></div><div class="label">Dividends</div><div class="amount income">+$120</div></div>
+        <div class="entry-row"><div class="dot income-dot"></div><div class="label">Rental Income</div><div class="amount income">+$600</div></div>
+      </div>
+      <div>
+        <div class="entry-group-label">▼ Expenses</div>
+        <div class="entry-row"><div class="dot expense-dot"></div><div class="label">Rent/Mortgage</div><div class="amount expense">-$1,400</div></div>
+        <div class="entry-row"><div class="dot expense-dot"></div><div class="label">Groceries</div><div class="amount expense">-$380</div></div>
+        <div class="entry-row"><div class="dot expense-dot"></div><div class="label">Utilities</div><div class="amount expense">-$140</div></div>
+        <div class="entry-row"><div class="dot expense-dot"></div><div class="label">Transport</div><div class="amount expense">-$210</div></div>
+        <div class="entry-row"><div class="dot expense-dot"></div><div class="label">Subscriptions</div><div class="amount expense">-$95</div></div>
+        <div class="entry-row"><div class="dot expense-dot"></div><div class="label">Insurance</div><div class="amount expense">-$220</div></div>
+        <div class="entry-row"><div class="dot expense-dot"></div><div class="label">Entertainment</div><div class="amount expense">-$180</div></div>
+      </div>
+      <div class="totals-row">
+        <span style="color:var(--muted)">NET / MO</span>
+        <span class="positive" style="font-size:15px">+$3,145</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- CENTER -->
+  <div class="center-col">
+    <div class="net-card panel">
+      <div class="panel-header">Net Cash Summary</div>
+      <div class="metrics-grid">
+        <div class="net-metric">
+          <div class="metric-label">Monthly Net</div>
+          <div class="metric-value positive">$3,145</div>
+          <div class="metric-sub">after all expenses</div>
+        </div>
+        <div class="net-metric">
+          <div class="metric-label">Annual Net</div>
+          <div class="metric-value positive">$37,740</div>
+          <div class="metric-sub">projected run-rate</div>
+        </div>
+        <div class="net-metric">
+          <div class="metric-label">Invest. Pool</div>
+          <div class="metric-value neutral" id="monthly-invest-display">$1,258</div>
+          <div class="metric-sub"><span id="ratio-pct-display">40</span>% allocated</div>
+        </div>
+        <div class="net-metric">
+          <div class="metric-label">Savings Pool</div>
+          <div class="metric-value" id="monthly-save-display" style="color:#999">$1,887</div>
+          <div class="metric-sub">liquid / held</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="slider-panel panel">
+      <div class="panel-header">Invest. Allocation <span class="pill">LIVE</span></div>
+      <div class="slider-body">
+        <div class="slider-row">
+          <label>INVEST. RATIO <span><span id="slider-val">40</span>%</span></label>
+          <input type="range" id="invest-ratio" min="30" max="50" value="40" step="1" />
+          <div class="range-labels"><span>30% MIN</span><span>50% MAX</span></div>
+        </div>
+
+        <div class="alloc-visual">
+          <div class="alloc-invest" id="alloc-invest-bar" style="width:40%"></div>
+          <div class="alloc-save"></div>
+        </div>
+        <div class="alloc-legend">
+          <span><span class="legend-sq" style="background:var(--accent)"></span>INVESTED</span>
+          <span><span class="legend-sq" style="background:#333"></span>SAVED / LIQUID</span>
+        </div>
+
+        <div class="stocks-section">
+          <div class="stocks-label">Portfolio — Equal Allocation</div>
+          <div id="stock-rows"></div>
+        </div>
+
+        <div class="assumptions">
+          <strong>MODEL ASSUMPTIONS</strong><br />
+          Monthly net: $3,145 | Invest. horizon: 5 yrs<br />
+          After yr 5: compounding only, no new deposits<br />
+          Growth band: 15%–20% annual | Window: 30 years
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: TABBED PANEL -->
+  <div class="panel">
+    <div class="tab-bar">
+      <button class="tab-btn active" data-tab="projection">Projection — 30yr</button>
+      <button class="tab-btn" data-tab="cashflow">Monthly Flow</button>
+      <span class="tab-pill">D3.JS</span>
+    </div>
+
+    <div class="tab-content" id="tab-projection">
+      <div id="chart-container"></div>
+      <div id="milestone-breakdown"></div>
+    </div>
+
+    <div class="tab-content hidden" id="tab-cashflow">
+      <div id="cashflow-chart-container"></div>
+      <div id="cashflow-table"></div>
+    </div>
+  </div>
+
+  <div class="chart-tooltip" id="chart-tooltip"></div>
+  <script src="js/main.js"></script>
+</body>
+</html>
