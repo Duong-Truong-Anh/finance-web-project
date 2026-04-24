@@ -1,0 +1,48 @@
+---
+import '../styles/global.css';
+
+interface Props {
+  title?: string;
+}
+
+const { title = 'Flowstate' } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="generator" content={Astro.generator} />
+    <title>{title} — Flowstate</title>
+
+    <!-- Theme detection: runs synchronously before paint to prevent flash.
+         Sets data-theme="light" (the only mode in MVP) or "dark" for post-MVP. -->
+    <script is:inline>
+      (function () {
+        const stored = localStorage.getItem('flowstate:settings');
+        let theme = 'system';
+        if (stored) {
+          try { theme = JSON.parse(stored)?.theme ?? 'system'; } catch {}
+        }
+        const resolved = theme === 'system'
+          ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+          : theme;
+        document.documentElement.setAttribute('data-theme', resolved);
+      })();
+    </script>
+
+    <!-- Fonts: Fraunces (serif, variable opsz+wght), Outfit (sans), JetBrains Mono -->
+    <!-- Vietnamese subset included for both Fraunces and Outfit (VND user base). -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,100..900;1,9..144,100..900&family=Outfit:wght@300..700&family=JetBrains+Mono:wght@400;500&display=swap&subset=vietnamese,latin"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <slot />
+  </body>
+</html>

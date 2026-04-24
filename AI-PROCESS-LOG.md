@@ -172,3 +172,48 @@ After hitting context limits, I decided to use the `agent-handoff` skill install
 - Why `animated.cashflow = true` is set at the *start* of entrance (not end) — prevents `drawCashflow` from re-collapsing bars if ResizeObserver fires during animation
 - How the ClipPath SVG pattern enables a "wipe left-to-right" reveal on the projection chart
 - Why `requestAnimationFrame` is needed before drawing when switching tabs (tab must be visible so container has correct clientWidth/Height)
+
+---
+
+## Session 3 — Project Renovation: V1 Retired, Flowstate Initiated (2026-04-23)
+
+**What I asked the AI to do:**
+- Retire the V1 direction (vanilla HTML/CSS/JS bento dashboard)
+- Archive the original brief (`finance project.md` → `archive/finance-project-v1.md`)
+- Scaffold a new project from scratch under the Flowstate product spec
+
+**Why the direction changed:**
+
+The V1 implementation (bento dashboard, GSAP animations, Finnhub live API, dual-band chart) was a valid interpretation of the assignment brief but lacked a coherent product identity. After writing a full product spec — a narrative vision, PRD, and feature spec across three documents — the project was reoriented around **Flowstate**: a personal cash flow and long-term investment simulator with a deliberate design posture, a keyboard-first interaction model, and an architecture built for a post-MVP backend swap.
+
+Key differences from V1:
+
+| Dimension | V1 | Flowstate |
+|---|---|---|
+| Stack | Vanilla HTML/CSS/JS + Bun server | Astro 5 + React islands + TypeScript |
+| Styling | Vanilla Extract | CSS modules + Tailwind (layout utilities only) |
+| Data viz | D3 + GSAP | D3 (Sankey, line) + Recharts (area, bar) |
+| Stock data | Finnhub live API | Parameterized lognormal return model (seeded) |
+| Design posture | Bento dashboard, animated | Anti-AI: no gradients, serif/sans hierarchy, editorial layout |
+| Architecture | Single-file state | Repository pattern, modular lib layer |
+
+**What was archived:**
+- `finance project.md` → `archive/finance-project-v1.md` (original assignment brief and V1 notes)
+- `src/` (V1 HTML/CSS/JS) — deleted as part of scaffold swap
+- `README.md` (V1) — replaced
+
+**New documents added:**
+- `new-project-doc/narrative-vision.md` — product vision and design posture
+- `new-project-doc/prd.md` — full PRD with architecture, data model, performance budgets
+- `new-project-doc/feature-spec.md` — JTBD-framed feature spec for all 8 jobs
+
+**Scaffold swap performed:**
+- Initialized Astro 5 project with Bun, React integration, TypeScript, Tailwind
+- Established base folder structure per PRD module boundaries (`/src/lib`, `/src/features`, `/src/components`, `/src/styles`)
+
+**What I understand and can explain:**
+- Why Astro's islands architecture was chosen over Next.js (minimal JS by default, fits Cloudflare Pages, discourages monolithic JS bundles)
+- Why Tailwind is used for layout utilities only — full Tailwind-by-default is a strong AI-slop signal; component styling lives in CSS modules
+- Why shadcn/ui was rejected despite being excellent — its default aesthetic is the exact aesthetic Flowstate rejects
+- Why the projection engine must be a pure TypeScript function with no UI dependencies — it needs to run in 50ms on input change, be testable in isolation, and be extensible to Monte Carlo without a rewrite
+- Why the data layer uses a Repository interface from day one — the LocalStorage → Cloudflare D1 swap must be a single implementation swap, not a rewrite
