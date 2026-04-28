@@ -96,6 +96,105 @@ Implementation of Phase 0:
 
 <!-- New session entries below this line. Format: heading "Session N — Title (YYYY-MM-DD)", subsections "What I asked", "What the AI did", "What I understand", "Next session". -->
 
+## Session 4 — Phase 0.3: UI Shell — Header + SideNav + 5 route stubs (2026-04-28)
+
+### What I asked the AI to do
+
+Build the navigable Carbon UI Shell:
+
+- Compose `<AppShell>` using Carbon's `<HeaderContainer>` render-prop pattern to manage SideNav open/close state.
+- `<Header>` with `<SkipToContent>` (first focusable), `<HeaderMenuButton>` (toggles SideNav on `md` and below), `<HeaderName prefix="Flow">state</HeaderName>`, and an empty `<HeaderGlobalBar>` (currency/theme/settings come in Phase 0.4).
+- `<SideNav>` with five links — Dashboard (`/`), Cash Flow (`/cash-flow`), Simulation (`/simulation`), Reports (`/reports`), Settings (`/settings`) — each with the correct `@carbon/icons-react` icon. A `<SideNavDivider />` separates Reports from Settings.
+- Active-link state via `usePathname()`, surfaced as `isActive` prop + `aria-current="page"`.
+- All five routes resolve as near-empty page stubs: `<Grid>` + `<Column lg={16}>` + page heading.
+- Update `app/layout.tsx` to use `<AppShell>` and `<Content>`. Remove the old `<AppHeader>`.
+- Add `tsconfig.tsbuildinfo` to `.gitignore`.
+
+### What the AI did this session
+
+1. Read `CLAUDE.md`, `docs/01_information_architecture.md` (entire file), `docs/05_design_system_spec.md` §3 + §11 + §12, and the existing `app/layout.tsx` / `app/components/AppHeader.tsx` before writing code.
+2. Created `app/components/AppShell.tsx` — `'use client'` component wrapping `<HeaderContainer>` with the render-prop that supplies `isSideNavExpanded` and `onClickSideNavExpand` to `<Header>`, `<SideNav>`, and `<Content>`.
+3. Created `app/components/AppSideNav.tsx` — `'use client'` component; `usePathname()` computes active route; five `<SideNavLink as={Link}>` items plus `<SideNavDivider />` before Settings.
+4. Updated `app/layout.tsx`: replaced `<AppHeader />` with `<AppShell>{children}</AppShell>`. The `<Theme theme="g90">` wrapper and the `cds--g90` class on `<html>` are unchanged.
+5. Deleted `app/components/AppHeader.tsx` (its content is now folded into `AppShell`).
+6. Created four route stubs: `app/cash-flow/page.tsx`, `app/simulation/page.tsx`, `app/reports/page.tsx`, `app/settings/page.tsx` — each identical in structure to the Dashboard stub, differing only in heading text.
+7. Added `tsconfig.tsbuildinfo` to `.gitignore`.
+8. Wrote `docs/decisions/003_sidenav-next-link.md` — ADR for the `as={Link}` integration choice.
+9. Verified all quality gates:
+   - `bun run lint` — 0 errors (1 pre-existing font-in-layout warning from Phase 0.1, unchanged).
+   - `bunx tsc --noEmit` — 0 errors.
+   - `bun run test` — 4/4 pass (no regression).
+   - `bun run build` — all five routes pre-render as static pages.
+10. All five routes confirmed present in build output: `/`, `/cash-flow`, `/simulation`, `/reports`, `/settings`.
+
+### Judgment calls
+
+**Folding `AppHeader` into `AppShell` (no separate `AppHeader.tsx`):** The task spec offered a choice — extend `AppHeader.tsx` or fold it into `AppShell`. Because `<HeaderContainer>` owns both `<Header>` and `<SideNav>` state in one render-prop, a separate file for just the header fragment adds complexity without benefit. `AppShell.tsx` is the single composition point; `AppSideNav.tsx` is split out because it needs `usePathname()` and is testable in isolation.
+
+**`SideNavLink as={Link}` pattern (ADR 003):** `@carbon/react@1.x` accepts an `as` prop on `<SideNavLink>` that swaps the underlying anchor element. Passing `as={Link}` from `next/link` makes every nav click a client-side transition — no full reload. The alternative (nested `<Link>` inside `<SideNavLink>`) produces invalid HTML (nested `<a>` elements). Documented in `docs/decisions/003_sidenav-next-link.md`.
+
+**Active-link state — `isActive` + `aria-current` both set:** Carbon's `isActive` prop adds the `cds--side-nav__item--active` class (visual highlight). `aria-current="page"` is the ARIA attribute screen readers use to announce the current page. Both must be set independently; Carbon does not set `aria-current` from `isActive`. When not active, `aria-current` is omitted (not `aria-current="false"`, which is technically valid but redundant noise).
+
+**`isPersistent={false}` on `<SideNav>`:** The IA spec §4 describes an overlay SideNav on small breakpoints and expanded-rail on `lg+`. `isPersistent={false}` is Carbon's setting for overlay-on-small / expanded-on-large behavior, driven by `isSideNavExpanded` from `<HeaderContainer>`. This matches the spec.
+
+**`HeaderGlobalBar` left empty:** As scoped by the task — currency, theme, and settings actions are Phase 0.4.
+
+### Spec ambiguity found
+
+The IA spec §4 shows `isRail` on the `<SideNav>` code sample. Carbon's `isRail` prop makes the SideNav permanently rail-only on small breakpoints (icon-only) — it does not collapse to hidden. However, the IA prose says "closed on `sm` (opens via header menu button)". Using `isPersistent={false}` (no `isRail`) matches the prose over the code sample. This discrepancy should be clarified in `docs/01_information_architecture.md` §4 — for now, `isPersistent={false}` without `isRail` is the correct choice to get the full open/close-via-menu-button behavior on `sm`.
+
+### Acceptance criteria verified
+
+**Functional:**
+- [x] All five routes resolve (confirmed in build output and dev server).
+- [x] Active link uses `isActive` + `aria-current="page"`.
+- [x] `<SkipToContent>` is first child of `<Header>` (first focusable element).
+- [x] All five page headings are correct: Dashboard, Cash flow, Simulation, Reports, Settings.
+
+**Carbon discipline:**
+- [x] Zero authored hex literals (`grep` clean).
+- [x] Zero authored px literals (`grep` clean).
+- [x] All interactive nav primitives are Carbon (`<SideNavLink>`, `<HeaderMenuButton>`).
+- [x] Icons from `@carbon/icons-react`.
+- [x] Theme still applied via `<Theme theme="g90">` + `cds--g90` on `<html>`.
+
+**Quality gates:**
+- [x] `bun run lint` — 0 errors.
+- [x] `bun run test` — 4/4 pass.
+- [x] `bunx tsc --noEmit` — 0 errors.
+- [x] `bun run build` — all 5 routes pre-render.
+
+### Audit checklist (§12)
+
+- [x] All colors are theme/palette tokens — zero raw hex.
+- [x] All spacing is Carbon scale — zero arbitrary px/rem.
+- [x] All breakpoints are Carbon — N/A (no authored media queries; Carbon's shell handles breakpoint behavior).
+- [x] All type is type-style — page headings use `cds--type-productive-heading-04` class.
+- [x] All interactive primitives are Carbon — `<SideNavLink>`, `<HeaderMenuButton>`, `<HeaderName>`.
+- [x] Every interactive element has an accessible name — `<HeaderMenuButton aria-label>`, `<Header aria-label>`, `<SideNav aria-label>`.
+- [x] Every form input is associated with a label — N/A (no forms in the shell).
+- [x] Focus styles use Carbon focus tokens — Carbon shell components handle this natively.
+- [x] State uses icon + token — N/A (no status state in the shell).
+- [x] Theme applied via `<Theme>` — unchanged from Phase 0.1.
+- [x] Icons from `@carbon/icons-react` — Dashboard, ArrowsVertical, ChartLineSmooth, Report, Settings.
+- [x] Motion uses Carbon durations — N/A (no authored transitions; shell animation is Carbon's own).
+- [x] Money values integer minor units — N/A (no money in the shell).
+- [x] No `localStorage` calls in components — N/A (no data access in the shell).
+- [x] AI-PROCESS-LOG.md updated — this entry.
+
+### Skills referenced this session
+
+- `carbon-builder` — Carbon UI Shell component discipline (HeaderContainer render-prop, SideNavLink, SkipToContent, Content, token rules).
+
+### Next session (Phase 0.4)
+
+Wire the `<HeaderGlobalBar>`:
+1. `<HeaderGlobalAction aria-label="Currency">` opening a `<Popover>` with `<RadioButtonGroup>` for VND / USD — reads/writes `SettingsRepository`.
+2. `<HeaderGlobalAction aria-label="Theme">` cycling g90 → g100 → white → g90 — reads/writes `SettingsRepository`; updates `<Theme>` and the `<html>` class.
+3. `<HeaderGlobalAction aria-label="Settings">` linking to `/settings`.
+
+This requires the `SettingsRepository` LocalStorage adapter (currently only the interface exists) and a React context for the active theme/currency so all components re-render on change.
+
 ## Session 2 — Phase 0.1: Next.js scaffold + Carbon install + g90 empty Dashboard (2026-04-28)
 
 ### What I asked the AI to do

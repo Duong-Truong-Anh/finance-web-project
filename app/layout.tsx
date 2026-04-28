@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { Theme } from '@carbon/react';
-import AppHeader from './components/AppHeader';
+import AppShell from './components/AppShell';
 // Carbon base styles: imported as pre-compiled CSS to work around Turbopack's
 // inability to resolve relative @forward paths in @carbon/styles/index.scss.
 // See docs/decisions/002_carbon-sass-turbopack.md
@@ -30,8 +30,7 @@ export default function RootLayout({
       </head>
       <body>
         <Theme theme="g90">
-          <AppHeader />
-          {children}
+          <AppShell>{children}</AppShell>
         </Theme>
       </body>
     </html>

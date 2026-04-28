@@ -28,6 +28,7 @@ pnpm-debug.log*
 
 # editor and tooling
 .vscode/
+tsconfig.tsbuildinfo
 
 # claude code
 .agents/
