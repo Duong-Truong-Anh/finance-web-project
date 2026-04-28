@@ -155,3 +155,85 @@ Phase 0.2:
 2. Vitest configuration; one passing test for the (future) projection engine stub.
 3. Optionally: begin `src/lib/` data model stubs (Repository interface, Zod schemas, money type).
 
+---
+
+## Session 3 — Phase 0.2: ESLint boundary + Vitest + src/lib/ skeleton (2026-04-28)
+
+### What I asked the AI to do
+
+Set up development rails and the `src/lib/` skeleton:
+
+1. Install ESLint (flat config) with a `no-restricted-imports` boundary rule that blocks React, React-DOM, Next, and `@carbon/*` imports from any file under `src/lib/`.
+2. Install Vitest with `happy-dom`; add `test` and `test:watch` scripts to `package.json`.
+3. Create the full `src/lib/` skeleton: `Currency`/`Money`/`IsoDate`/`IsoDateTime`/`YearMonth` types; `transactionInputSchema` Zod schema; `TransactionRepository`, `PortfolioConfigRepository`, `SettingsRepository` interfaces; `Projection`/`ProjectionScenario`/`ProjectionPoint`/`MonthlyAggregate` types; `monthlyRateFromAnnual()` helper with 4 Vitest tests.
+4. No repository implementations — interfaces only. No UI code touched.
+
+### What the AI did this session
+
+1. Read `CLAUDE.md` hard rules, `docs/02_data_model.md` (entire file), `docs/03_calculation_spec.md` §2 + §4, and `docs/decisions/002_carbon-sass-turbopack.md` before writing a single line of code.
+2. Created branch `phase-0/lint-test-lib-skeleton`.
+3. Installed packages:
+   - Dev: `eslint@^9`, `eslint-config-next`, `@typescript-eslint/parser`, `@typescript-eslint/eslint-plugin`, `@eslint/eslintrc`, `vitest`, `@vitejs/plugin-react`, `happy-dom`
+   - Runtime: `zod`, `ulid`
+4. Created `eslint.config.mjs` (flat config) that spreads `eslint-config-next` and appends a `no-restricted-imports` rule scoped to `src/lib/**/*.{ts,tsx}`.
+5. Created `vitest.config.ts` with `happy-dom` environment and `src/**/*.spec.ts` include pattern.
+6. Updated `package.json` with `lint`, `test`, `test:watch` scripts.
+7. Appended `.next/` and `coverage/` to `.gitignore`.
+8. Created all `src/lib/` skeleton files:
+   - `src/lib/currency/types.ts` — `Currency`, `Money`, `IsoDate`, `IsoDateTime`, `YearMonth`
+   - `src/lib/transactions/schema.ts` — `transactionInputSchema` Zod schema + `TransactionInput` + `Transaction`
+   - `src/lib/transactions/repository.ts` — `TransactionRepository` interface
+   - `src/lib/portfolio/repository.ts` — `TickerSelection`, `PortfolioConfig`, `PortfolioConfigRepository`
+   - `src/lib/settings/repository.ts` — `Theme`, `Settings`, `SettingsRepository`
+   - `src/lib/projection/types.ts` — `MonthlyAggregate`, `ProjectionPoint`, `ProjectionScenario`, `Projection`
+   - `src/lib/projection/rates.ts` — `monthlyRateFromAnnual()`
+   - `src/lib/projection/rates.spec.ts` — 4 Vitest tests
+   - `src/lib/storage/.gitkeep` — placeholder
+9. Verified the boundary rule with a temporary `import { useState } from 'react'` in `rates.ts`:
+   - **Lint failed** with: `error  'react' import is restricted from being used by a pattern. src/lib/ must have zero UI dependencies. See CLAUDE.md hard rules`
+   - Removed the import; **lint passed** (0 errors).
+10. Final checks: `bun run test` 4/4 pass, `bunx tsc --noEmit` 0 errors, `bun run build` passes, `grep` for hex/px literals returns clean.
+
+### Judgment calls
+
+**`next lint` removed in Next.js 16:** `next lint` no longer appears in the Next.js 16 CLI (`next --help`). Changed `"lint": "next lint"` to `"lint": "eslint src app"`. This is a direct invocation of the same underlying tool; behavior is identical. Documented here as there is no relevant ADR needed — it's a toolchain CLI change, not an architectural decision.
+
+**ESLint 9 not 10:** `eslint@^9` is installed instead of the latest (v10). ESLint 10 removed `context.getFilename()` which `eslint-plugin-react@7` (a transitive dep of `eslint-config-next@16`) still calls. Downgrading to v9 resolves the crash. `eslint-config-next` peer-deps require `>=9.0.0`, so v9 is explicitly supported.
+
+**`FlatCompat` not needed:** Initially used `@eslint/eslintrc`'s `FlatCompat` to load `eslint-config-next`. This caused a circular-structure JSON error because `eslint-config-next@16` already ships as a native flat-config array. Switching to `import nextConfig from 'eslint-config-next'; ...[...nextConfig]` fixed it. The `@eslint/eslintrc` package remains installed but is unused — it can be removed in a future cleanup.
+
+**Spec error in `docs/03_calculation_spec.md` §4 — 17.5% annual rate value:** The spec states `g_m ≈ 0.013561968` for `g = 0.175`. The actual value of `(1.175)^(1/12) − 1` is `0.013529722` (differs in the 5th decimal place). The 15% and 20% values in the spec are correct to 6 significant figures. The 17.5% value is a transcription error. The spec says "≈" which is an approximation, but this approximation is too far off to pass a 6-decimal test. Tests use the mathematically computed value. The spec should be corrected: `g_m ≈ 0.013529722`. Also updated the 20% expected from `0.015309521` to `0.015309470` and precision from 7 to 6 decimal places to avoid a floating-point boundary failure (the actual value differs from the spec's rounding in the 7th place by 5.05e-8, just over the `toBeCloseTo(x, 7)` threshold of 5e-8).
+
+### Acceptance criteria verified
+
+- [x] `bun run lint` passes on a clean tree (0 errors, 1 pre-existing font warning from Phase 0.1 `layout.tsx`).
+- [x] `bun run lint` **fails** with the custom boundary message when `import { useState } from 'react'` is added to `src/lib/projection/rates.ts`.
+- [x] `bun run test` — 4/4 `monthlyRateFromAnnual` cases pass.
+- [x] `bun run test:watch` starts Vitest in watch mode.
+- [x] `bunx tsc --noEmit` — zero errors.
+- [x] `bun run build` — static generation succeeds (no regression from Phase 0.1).
+- [x] `grep -rE '#[0-9a-fA-F]{3,8}' src/` — zero authored hex literals.
+- [x] `grep -rE '\b[0-9]+px\b' src/` — zero authored px literals.
+- [x] `src/lib/storage/` exists with `.gitkeep`.
+
+### What I understand and can explain
+
+- Why `next lint` was removed from Next.js 16's CLI and what to use instead.
+- Why ESLint 10 breaks `eslint-plugin-react@7` (the `context.getFilename()` removal) and why downgrading to ESLint 9 is the correct fix.
+- Why `FlatCompat` isn't needed when the config package already exports a flat array.
+- Why `monthlyRateFromAnnual(0.175)` returns `0.013529722` not `0.013562` — the spec had a transcription error.
+- Why the `no-restricted-imports` rule is scoped only to `src/lib/**` and not the whole project (React is obviously allowed in `app/` and `src/features/`).
+- Why Repository interfaces are async even when LocalStorage is synchronous — prevents a future shape change when the remote adapter ships.
+
+### Skills referenced this session
+
+- None invoked (pure configuration and type definition work).
+
+### Next session
+
+Phase 0.3 (or continue Phase 0):
+- Implement the LocalStorage adapter (`createLocalStorageRepositories()` in `src/lib/storage/`).
+- Implement FX currency helpers (`add`, `subtract`, `convert`, `format`, `parseUserInput`) in `src/lib/currency/`.
+- Add the UI Shell: `<FlowstateHeader>` with navigation, `<FlowstateSideNav>`, route stubs for all 5 pages.
+- This is the first session that will touch the `app/` directory again — the shell is the Phase 1 deliverable.
+

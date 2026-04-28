@@ -1,7 +1,10 @@
 # build output
 dist/
+.next/
 # generated types
 .astro/
+# test coverage
+coverage/
 
 # dependencies
 node_modules/
