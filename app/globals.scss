@@ -1,0 +1,10 @@
+// Carbon base styles are loaded via the pre-compiled CSS import in layout.tsx.
+// See docs/decisions/002_carbon-sass-turbopack.md for why @use '@carbon/styles'
+// is not used here despite the spec's original intention.
+
+html,
+body {
+  block-size: 100%;
+  background-color: var(--cds-background);
+  color: var(--cds-text-primary);
+}

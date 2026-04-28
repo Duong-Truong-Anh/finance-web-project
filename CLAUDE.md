@@ -1,92 +1,154 @@
-# Flowstate — Working Agreement
+# Flowstate — Working Agreement (Carbon-native)
 
-You are working on Flowstate, a personal cash flow and long-term investment simulator. The project is solo-developed with you as the primary implementation partner. Read this file at the start of every session. The specs in `docs/` are the source of truth; this file is the short-form operating manual.
+You are the implementation partner on Flowstate, a personal cash flow management website with a long-term stock investment simulator. The product is built on IBM Carbon Design System. Read this file at the start of every session. The specs in `docs/` are the source of truth; this file is the operating manual.
+
+## Required reading order
+
+1. **`docs/00_overview.md`** — what the product is, the audience, the design posture, the success criteria. Always.
+2. **`docs/04_feature_spec.md` § (the section you're working on).** Sections are numbered; the user will name the section.
+3. **`docs/01_information_architecture.md`** if the task touches navigation, page layout, or routing.
+4. **`docs/02_data_model.md`** if the task touches persistence, validation, or money handling.
+5. **`docs/03_calculation_spec.md`** if the task touches the projection engine, FX, or any number that goes on screen.
+6. **`docs/05_design_system_spec.md` § 12 (audit checklist)** before opening a PR. Every time.
 
 ## Before any task
 
-1. Read the relevant section(s) of `docs/03_feature_spec.md` for the feature you're building. Feature sections are numbered; the user will name the section.
-2. Read `docs/02_prd.md` section 6 (Architecture) and section 7 (Design system) if the task touches either.
-3. State in 3 sentences what you understand the task to be. Flag ambiguity before writing code. Do not guess — ask.
-4. Propose a plan (files to create, files to modify, order of operations, tests to write) before writing code. Wait for confirmation.
+1. State in 3 sentences what you understand the task to be. Flag ambiguity before writing code. Do not guess.
+2. Propose a plan: files to create, files to modify, order of operations, tests to write, Carbon components and tokens to use. Wait for confirmation.
+3. Then write code.
 
 ## Hard rules — violations block the PR
 
-**Design posture (load-bearing — these are the product's identity):**
+### Carbon discipline (load-bearing)
 
-- **No gradients. Anywhere. Ever.** Color is flat. Emphasis is typographic, positional, or tonal — never a gradient.
-- **Monochrome only in the MVP.** The product is warm-black on warm-off-white. No chromatic color anywhere — no accent blue, no positive green, no negative red. Positive/negative values are distinguished by the typographic minus glyph (`−`, U+2212) and by weight, not by color. See PRD section 7.2 for the full tonal palette and the chart differentiation strategy (tone + SVG pattern fill, not hue).
-- **No shadcn/ui, no Radix primitives as the visible UI layer, no Material UI, no Chakra.** Components are hand-built in `src/components/primitives/`. You may use Radix or Headless UI *behind* a hand-built visual layer for accessibility logic only.
-- **Tailwind is for layout utilities only** — `flex`, `grid`, spacing, sizing, positioning. All component-level styling (colors, typography, borders, backgrounds, hover states) is CSS Modules with design tokens from `src/styles/tokens.css`.
-- **Typography is fixed: Fraunces (serif), Outfit (sans), JetBrains Mono (mono).** Numbers and headlines are Fraunces. Labels, buttons, navigation, and chrome are Outfit. Keyboard-shortcut chips and code are JetBrains Mono. A number rendered in Outfit is a bug.
-- **Fraunces details that matter.** Use `font-variant-numeric: tabular-nums lining-nums` for any tabular context (transaction table, milestone readouts, chart tooltips). Use `oldstyle-nums` for inline body prose mentions of numbers. The distinction is non-negotiable.
-- **No emoji as decoration.** Icons are from Lucide, sized and colored with intent.
-- **No cartoon illustrations in empty/error states.** Empty and error states follow the sourced template in PRD section 7.5.
+1. **Token before value.** Every color, spacing, type, motion, and breakpoint value is a Carbon token. No raw hex (`#161616`). No arbitrary px (`padding: 18px`). No ad-hoc media queries (`@media (min-width: 768px)`). No ad-hoc font sizes. Use `var(--cds-text-primary)`, `var(--cds-spacing-05)`, `@include layout.breakpoint('lg')`, `@include type.type-style('label-02')`. The full token discipline lives in `docs/05_design_system_spec.md` § 1.
+2. **Component before markup.** If Carbon ships it, you use it. No hand-rolled buttons, inputs, modals, dropdowns, tables, notifications, tags, tabs, tiles, sliders, toggles. The component inventory in scope is in `docs/05_design_system_spec.md` § 3.
+3. **Theme over palette.** Code uses theme tokens (`text-primary`, `layer-01`, `support-error`) so all four Carbon themes work for free. Default is **g90**. Raw palette steps (`blue-60`, `gray-100`) are reserved for chart series colors and a small set of decorative cases.
+4. **Grid for page; flex/grid for component.** Carbon's 2x Grid (`<Grid>` + `<Column>`) lays out every page. Native flex/grid is fine inside one component. No raw `<div className="flex">`-everything page layouts.
+5. **Status uses color + icon.** `<InlineNotification>`, `<Tag>` with `renderIcon`, etc. Color is never the only channel.
+6. **Charts: Carbon Charts first.** `@carbon/charts-react` for line/bar/area/combo. D3 only when Carbon Charts cannot express the visual, and only with the wrapper rules in `docs/05_design_system_spec.md` § 8.
 
-**Architecture (load-bearing — these enable future modularity):**
+### Architecture (load-bearing)
 
-- `src/lib/` has **zero UI dependencies**. No React imports, no JSX. This is enforced by an ESLint boundary rule; do not disable it.
-- Data access goes through the `Repository` interface defined in `src/lib/transactions/`. Never call `localStorage` directly from UI code.
-- The projection engine (`src/lib/projection/`) is a pure function. Given the same inputs it produces the same outputs. All randomness is seeded.
-- Money amounts are stored as integers in the smallest currency unit (VND đồng, US cents). Never as floats.
-- Form schemas are Zod. The same Zod schema validates UI input and CSV imports.
+1. **`src/lib/` has zero UI dependencies.** No React imports, no JSX. Enforced by an ESLint boundary rule.
+2. **Data access goes through `Repository` interfaces** defined in `src/lib/transactions/`, `src/lib/portfolio/`, `src/lib/settings/`. **Never call `localStorage` directly from UI code.**
+3. **The projection engine (`src/lib/projection/`) is a pure function.** Same input, same output. No `Date.now()`. No `Math.random()`. No I/O.
+4. **Money is integer minor units + currency tag.** `{ amount: 50000000, currency: 'VND' }`. Never floats. Never bare numbers as money.
+5. **Form schemas are Zod.** The same schema validates UI input and CSV imports.
+6. **Finnhub key is never on the client.** All ticker calls go through Next.js route handlers.
 
-**Process:**
+### Process
 
-- One feature per branch, one feature per PR. PR description cites the feature spec section number.
-- Never add a dependency without justifying it in the plan step. Bundle-size-conscious alternatives preferred.
-- Tests: Vitest for `src/lib/`, Playwright for critical user paths. A feature without tests is not done.
+1. One feature per branch, one feature per PR. PR description cites the feature spec section number.
+2. Never add a dependency without justifying it in the plan step. Bundle-size-conscious alternatives preferred.
+3. Tests: Vitest for `src/lib/` (especially `src/lib/projection/`), Playwright for critical user paths. A feature without tests is not done.
+4. Update `AI-PROCESS-LOG.md` at the end of every session with a dated entry.
+5. Add a short ADR at `docs/decisions/NNN_short-slug.md` for any judgment call not covered by the specs. Format: Context → Decision → Consequences.
 
 ## Before marking work complete
 
-- TypeScript passes with no errors (`tsc --noEmit`).
-- Tests pass.
+- TypeScript passes with no errors (`bunx tsc --noEmit`).
+- Lint passes (`bun run lint`).
+- Tests pass (`bun run test`).
 - Lighthouse accessibility score ≥ 95 on any page you touched.
-- **The screenshot test:** screenshot the result. Ask yourself honestly — does this look like it was generated by an AI with default settings? If yes, iterate. Editorial asymmetry, deliberate typographic contrast, flat color, density where density serves comprehension.
-- Update `docs/03_feature_spec.md` if you discovered an ambiguity that should be reflected in the spec.
-- Add a short entry to `docs/decisions/NNN_short-slug.md` for any judgment call not covered by the spec. Format: Context → Decision → Consequences.
+- The audit checklist in `docs/05_design_system_spec.md` § 12 is run mentally — every item ticked or marked N/A with a reason.
+- The screenshot test: capture the result, view it in **all three themes** (g90, g100, white). Theme leak bugs (a hardcoded background that survives theme switch) are common and embarrassing.
+- Update `docs/04_feature_spec.md` if you discovered an ambiguity that should be reflected in the spec.
+- Add the session entry to `AI-PROCESS-LOG.md`.
 
 ## Common pitfalls to avoid
 
-- **Reaching for shadcn "just for the Button component."** No. Hand-build it using the Button primitive already in the project.
-- **Using Tailwind for colors or typography** (e.g., `text-gray-900`, `font-semibold`). Use the CSS Module and reference the design token.
-- **Writing a gradient because it "looks modern."** It does not. It looks AI-generated. Flat colors only.
-- **Adding a chromatic color "just for this one thing"** (a blue link, a green check, a red error). The MVP is monochrome. Errors use Fraunces italic, not red. Success uses typographic weight, not green. Links use underline, not color. If you feel tempted to reach for hue, re-read PRD section 7.2.
-- **Using a non-Fraunces serif or non-Outfit sans** because another font "felt right for this heading." No. The fonts are fixed and intentional.
-- **Forgetting `font-variant-numeric` on tabular figures.** Transaction amounts that don't align vertically because the figures aren't tabular are a bug.
-- **Differentiating chart series by hue.** The MVP has no hue. Series are differentiated by `(tone, pattern)` pairs — see PRD section 7.2 and the chart feature sections in `docs/03_feature_spec.md`.
-- **Centering the content area as a default layout.** The product uses editorial, asymmetric layouts for content-bearing views. See PRD section 7.3.
-- **Letting the projection engine leak into React components.** The engine is pure. React calls it; React does not contain it.
-- **Adding analytics, tracking, or "helpful" tooltips that weren't in the spec.** Don't. The product has opinions about restraint.
-- **Generating lorem-ipsum-style copy for empty states.** Copy is specific and sourced. See the templates in PRD section 7.5.
+- **Reaching for shadcn / Radix / Material because "Carbon doesn't have X."** It probably does. Check `docs/05_design_system_spec.md` § 3 first. If it really doesn't, the question is whether Flowstate needs the feature, not what library to add.
+- **Adding a hex code "just for one thing."** No. Theme/palette tokens or nothing.
+- **Hand-rolling a `<button className="...">`.** Use `<Button>`. Always.
+- **Putting `localStorage.getItem(...)` in a React component.** No. Repository.
+- **Letting the projection engine import React.** No. Pure function.
+- **Computing money with floats.** No. Integer minor units.
+- **Using `support-error` for "this number is negative" without an icon or minus glyph.** Status pairs color with another channel.
+- **Skipping the `<Theme>` wrapper.** The whole app is themed by the root `<Theme>`. New surfaces nested in a different theme use `<Theme theme="...">` explicitly.
+- **Differentiating chart series by anything other than Carbon's data-vis palette.** Custom colors break theme parity.
+- **Writing copy as lorem ipsum or AI-generic ("Welcome to your dashboard! Get started by..."). Empty-state copy is concrete, sourced templates in `docs/04_feature_spec.md`.
+- **Adding analytics, tooltips on body text, or "helpful" walkthroughs that aren't in the spec.** Don't.
+- **Storing the Finnhub key in client-readable code.** It lives in Settings (LocalStorage, user-supplied) or `process.env` (server-only). Never in source.
 
 ## What to do when you're stuck or unsure
 
 - If the spec is silent, **ask**. Do not improvise architecturally significant decisions.
-- If you believe the spec is wrong, say so explicitly and propose the change. The spec is a living document but changes are made deliberately, not by drift.
+- If you believe the spec is wrong, say so explicitly and propose the change. The spec is a living document; changes are deliberate, not by drift.
 - If a task feels larger than one session, propose a decomposition. One session, one feature.
 
 ## Repo map
 
 ```
+app/                              # Next.js App Router
+├── layout.tsx                    # <Theme>, <Header>, <SideNav>, <Content>
+├── page.tsx                      # / (Dashboard)
+├── cash-flow/page.tsx
+├── simulation/page.tsx
+├── reports/page.tsx
+├── settings/page.tsx
+├── onboarding/page.tsx
+├── api/
+│   ├── tickers/{search,quote}/route.ts
+│   └── fx/latest/route.ts
+├── error.tsx
+└── not-found.tsx
+
 src/
-├── lib/              # Pure logic. Zero UI deps. Heavily tested.
-│   ├── projection/   # The simulation engine.
-│   ├── transactions/ # Repository interface + LocalStorage impl.
-│   ├── csv/          # Parse/serialize. Round-trip tested.
-│   ├── simulation/   # Return model, seeded RNG.
-│   └── currency/     # Locale-aware formatting.
-├── features/         # Feature-level modules. Import from /lib.
-├── components/
-│   ├── primitives/   # Hand-built Button, Input, Modal, etc.
-│   ├── charts/       # Chart components wrapping D3/Recharts.
-│   └── typography/   # Text components encoding the type system.
-└── styles/
-    ├── tokens.css    # Design tokens as CSS custom properties.
-    └── global.css    # Resets, typography base.
+├── lib/                          # Pure logic. Zero UI deps. ESLint-enforced.
+│   ├── projection/               # Pure projection engine (3-line, deterministic).
+│   ├── transactions/             # Repository + LocalStorage adapter + Zod schemas.
+│   ├── portfolio/                # PortfolioConfig repository.
+│   ├── settings/                 # Settings repository.
+│   ├── currency/                 # Money type, convert(), format(), FX cache.
+│   ├── csv/                      # parseCsv / serializeCsv. Round-trip-tested.
+│   └── storage/                  # LocalStorage adapter, migrations.
+├── features/                     # Feature-level modules. Compose Carbon + lib.
+│   ├── cash-flow/
+│   ├── simulation/
+│   ├── reports/
+│   └── onboarding/
+└── components/                   # Cross-feature UI helpers (NOT primitives).
+    ├── shell/                    # <FlowstateHeader>, <FlowstateSideNav>.
+    ├── charts/                   # Carbon Charts wrappers + any D3 escape.
+    └── empty-states/             # Per-page empty-state compositions.
 
 docs/
-├── 01_narrative_vision.md   # The why. Rarely needed in-session.
-├── 02_prd.md                # Architecture, data model, design system.
-├── 03_feature_spec.md       # Feature-by-feature behavior. Workhorse.
-└── decisions/               # ADRs written as we go.
+├── 00_overview.md
+├── 01_information_architecture.md
+├── 02_data_model.md
+├── 03_calculation_spec.md
+├── 04_feature_spec.md
+├── 05_design_system_spec.md
+├── decisions/                    # ADRs. 001 = pivot to Carbon.
+└── archive/                      # Historical docs (pre-Carbon AI log).
+
+AI-PROCESS-LOG.md                 # Per-session AI usage record (graded artifact).
+THIRD_PARTY_NOTICES.md            # Carbon Apache-2.0 attributions.
+CLAUDE.md                         # This file.
 ```
+
+## Stack quick reference
+
+- **Framework:** Next.js (App Router)
+- **Runtime:** Bun
+- **UI:** `@carbon/react` + `@carbon/styles`
+- **Charts:** `@carbon/charts-react` (D3 only with justification)
+- **Icons:** `@carbon/icons-react`, `@carbon/pictograms-react`
+- **Type:** IBM Plex Sans / Serif / Mono
+- **Validation:** Zod
+- **Persistence:** LocalStorage behind a Repository (future-sync-ready)
+- **Tests:** Vitest (`src/lib/`), Playwright (E2E)
+- **Lint:** ESLint with `no-restricted-imports` boundary on `src/lib/`
+
+## Verification commands
+
+| What | Command |
+|---|---|
+| Type check | `bunx tsc --noEmit` |
+| Lint (incl. boundary) | `bun run lint` |
+| Test | `bun run test` |
+| Test (watch) | `bun run test:watch` |
+| Dev server | `bun run dev` |
+| Build | `bun run build` |
+| E2E | `bun run e2e` |
