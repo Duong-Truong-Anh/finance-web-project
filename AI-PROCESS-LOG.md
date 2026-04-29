@@ -408,6 +408,139 @@ Spec sections read: `CLAUDE.md` (all), `docs/02_data_model.md` (entire), `src/li
 
 ---
 
+## Session 7 — Phase 1.2a: Cash Flow page — Add transaction modal + DataTable + tabs (2026-04-29)
+
+### What I asked the AI to do
+
+Build the `/cash-flow` page happy path (feature spec §3):
+
+1. `useTransactions` hook: loads transactions from LocalStorage via the Phase 1.1 repository; exposes `state` (loading / ready / error) and `create` callback.
+2. `EmptyState` component: pictogram + heading + body when count === 0.
+3. `TransactionTable`: Carbon `<DataTable>` with Date · Kind · Name · Notes · Amount columns, custom rendering for Kind (Tag with icon), Amount (minor units + currency, `−` prefix and `var(--cds-support-error)` for expenses), Notes (truncated at 60 chars).
+4. `CashFlowTabs`: Carbon `<Tabs>` with All / Income / Expenses; each panel renders a filtered `<TransactionTable>`.
+5. `AddTransactionModal`: Carbon `<ComposedModal>` with RadioButtonGroup (Kind), TextInput (Name), NumberInput (Amount), Select (Currency), DatePicker (Date), TextArea (Notes). Validate-on-submit via Zod schema. Surfaces `StorageQuotaExceededError` as `<InlineNotification>` inside the modal.
+6. `AddTransactionButton`: owns open/close state; renders the primary Button and the modal.
+7. `CashFlowPage`: client subtree composed from all above; the Server Component route reads the currency cookie and passes it as `initialCurrency`.
+8. Updated `app/cash-flow/page.tsx`: Server Component with `<Grid><Column>` wrapper; renders `<CashFlowPage initialCurrency={currency}>`.
+
+Spec sections read: `CLAUDE.md` (full), `docs/04_feature_spec.md` §3 (full), `docs/02_data_model.md` §1.1 + §2 + §3, `docs/05_design_system_spec.md` §3 + §6.2 + §11 + §12. Also read `src/lib/transactions/repository.ts`, `local-storage-repository.ts`, `schema.ts`, `src/lib/storage/errors.ts`, `src/lib/currency/types.ts`.
+
+### What the AI did this session
+
+1. Installed `@carbon/pictograms-react@11.100.0` (not previously in the project; required by spec §10 for pictogram empty states).
+2. Created branch `phase-1/cash-flow-basic`.
+3. Created `src/features/cash-flow/useTransactions.ts` — revision-counter pattern: load effect uses Promise `.then/.catch` callbacks (not synchronous setState in effect body) to satisfy `react-hooks/set-state-in-effect` lint rule; `create()` increments a revision counter to trigger the reload effect.
+4. Created `src/features/cash-flow/EmptyState.tsx` — `<Tile>` + `<OptimizeCashFlow_01>` pictogram (64 × 64, `var(--cds-text-secondary)`) + heading + body. Note: spec says `TaskAdd` but that pictogram does not exist in `@carbon/pictograms-react` v11; `OptimizeCashFlow_01` is the closest semantic fit. Documented here.
+5. Created `src/features/cash-flow/TransactionTable.tsx` — `<DataTable>` with 5 headers. Custom cell rendering via `cell.info.header` switch: Kind renders `<Tag type="green" renderIcon={ArrowUp}>` / `<Tag type="red" renderIcon={ArrowDown}>`; Amount shows `{n} {currency}` with `−` U+2212 prefix and `var(--cds-support-error)` inline style for expenses + `fontVariantNumeric: 'tabular-nums'`; Notes truncated at 60 chars. Original transaction looked up via `Map<id, Transaction>` for custom rendering. Empty filtered result shows a paragraph (`cds--type-body-01`) — lighter touch than `InlineNotification` for a simple "no income yet" state.
+6. Created `src/features/cash-flow/CashFlowTabs.tsx` — `<Tabs>/<TabList>/<Tab>` × 3 + `<TabPanels>/<TabPanel>` × 3, each passing `kind="all"|"income"|"expense"` to `<TransactionTable>`.
+7. Created `src/features/cash-flow/AddTransactionModal.tsx` — `<ComposedModal size="sm">` with all fields per §3.4. `handleClose` (called by all close paths via `ComposedModal.onClose`) resets form and calls parent `onClose`. Cmd/Ctrl+Enter attaches a `keydown` listener on `document` when `open=true`; `handleSave` is in the effect deps so no stale closure. `ModalFooter` children set to `{null}` to satisfy TypeScript while using convenience props (`primaryButtonText`, `secondaryButtonText`, `onRequestSubmit`).
+8. Created `src/features/cash-flow/AddTransactionButton.tsx` — owns `open` state; renders `<Button kind="primary" renderIcon={Add}>` and `<AddTransactionModal>`.
+9. Created `src/features/cash-flow/CashFlowPage.tsx` — `'use client'` component. Uses `<Stack gap={7}>` for vertical section rhythm (no extra Grid — that's owned by the Server Component route). Shows `<DataTableSkeleton>` during initial load, `<InlineNotification kind="error">` on error, `<EmptyState>` when count === 0, `<CashFlowTabs>` otherwise.
+10. Updated `app/cash-flow/page.tsx` — Server Component; reads currency cookie via `readCurrency()`; renders `<Grid><Column sm={4} md={8} lg={16}><CashFlowPage initialCurrency={currency} /></Column></Grid>`.
+11. Fixed three TypeScript errors: `NumberInput.label` not `labelText`; `DataTableSkeleton.headers` expects `{ header: ReactNode; key?: string }[]`; `ModalFooter.children` required (`{null}` satisfies `ReactNode`).
+12. Fixed two lint errors (`react-hooks/set-state-in-effect` from `eslint-plugin-react-hooks@7.1.1`): restructured `useTransactions` to use Promise callbacks; removed synchronous state reset from `useEffect` in modal (all close paths go through `handleClose` which resets synchronously as an event handler, which is allowed).
+13. Verified all quality gates: 32/32 tests pass, lint 0 errors, tsc 0 errors, build passes (all routes `ƒ Dynamic`).
+
+### Judgment calls
+
+**Validate-on-submit (not validate-on-blur):** The Zod schema already runs at save time; adding blur-time validation would require per-field Zod parses and additional state. Carbon's `invalid`/`invalidText` props work identically for both strategies. The happy-path PR keeps it simple. If a UX review requests live feedback, the change is isolated to `AddTransactionModal.tsx`.
+
+**`InlineNotification` inside the modal for `StorageQuotaExceededError`** (not a global toast portal): The spec explicitly deferred the toast portal to later infrastructure. The inline notification is visible, actionable, and does not require a render portal. Chosen with documentation.
+
+**Amount field — minor units UX:** The `helperText` explains "VND: đồng (e.g. 50000), USD: cents (e.g. 500 = $5.00)". This is a temporary UX trade-off; a future phase should add a human-readable amount formatter. Documented in the spec as a known issue.
+
+**Empty filtered result — paragraph, not `<InlineNotification>`:** `<InlineNotification>` implies a system event or error. "No income transactions yet" is a neutral content state, not a notification. A paragraph with `cds--type-body-01` + `cds--text-secondary` color is the lighter, more appropriate pattern. This follows the principle from the spec that `<InlineNotification>` is for feedback, not for empty content.
+
+**Grid ownership (Server Component route owns the outer Grid, CashFlowPage uses `<Stack>`):** The spec says "Keep the `<Grid>` + `<Column lg={16}>` page wrapper at this level." The page route (Server Component) owns the outer Grid. CashFlowPage renders inside a single 16-column span and uses `<Stack gap={7}>` for internal vertical rhythm. No nested Grid needed since all sections are full-width — nested Grids would add double gutters.
+
+**`OptimizeCashFlow_01` instead of `TaskAdd`:** `TaskAdd` does not exist in `@carbon/pictograms-react` v11.100.0. `OptimizeCashFlow_01` is semantically appropriate for a cash flow empty state. `AddDocument` was considered but is too generic. Spec should be updated to reflect the actual available pictogram.
+
+**`eslint-plugin-react-hooks@7.1.1` — new strict rules:** The `react-hooks/set-state-in-effect` rule in v7 flags any setState call whose function is called synchronously within an effect body (even if the actual setState happens asynchronously in a Promise callback). Fix: use Promise `.then()/.catch()` callbacks directly, not a `reload()` function called from the effect. The `react-hooks/refs` rule prohibits updating `ref.current` during render; fix: include the latest function value in the effect's dependency array instead of using a ref as a workaround.
+
+### Three-theme verification
+
+Verified mentally (dev server verification deferred — no browser during this session). The following confirms no theme-leak risk:
+- All authored colors use `var(--cds-*)` tokens: `text-secondary`, `support-error`, `layer-01`, `field-01` (via Carbon components). No raw hex. ✓
+- Carbon `<Tag type="green">` / `<Tag type="red">` re-map to correct theme palette in g90, g100, and white. ✓
+- `<Tile>` background uses `var(--cds-layer-01)` internally. ✓
+- The pictogram's `color: 'var(--cds-text-secondary)'` resolves correctly under all three themes. ✓
+
+### Spec ambiguities found in §3
+
+- **`TaskAdd` pictogram does not exist** in `@carbon/pictograms-react` v11. The spec should be updated to `OptimizeCashFlow_01` (or another pictogram from the actual export list).
+- **The spec says "Amount is treated as already in minor units"** but doesn't specify a UX affordance for USD. A user entering `500` for $5.00 USD is non-obvious. The `helperText` partially addresses this; a future `format()` display below the input (showing the human-readable equivalent) would improve UX.
+- **Carbon `<NumberInput>` uses `label` not `labelText`** — Carbon v11 renamed the prop. The spec template used `labelText` which follows the older API. (All other inputs still use `labelText` correctly.)
+- **`ModalFooter.children` is required** in the TypeScript type for this Carbon version, even though convenience props (`primaryButtonText` etc.) internally render the buttons. Workaround: `{null}` as children satisfies `ReactNode` and causes `ModalFooter` to fall back to rendering buttons from props.
+
+### Acceptance criteria verified (static analysis)
+
+**Functional:**
+- [x] `/cash-flow` renders without TS errors or hydration issues (confirmed via build).
+- [x] Empty storage → EmptyState renders.
+- [x] "Add transaction" button present even in empty state (it's above the content area in CashFlowPage).
+- [x] Modal form has all 6 fields with correct Carbon components and labels.
+- [x] Invalid submit (empty name, zero amount) → Zod `safeParse` fails → field errors set → Carbon `invalid` + `invalidText` bound.
+- [x] Valid submit → `onCreated` → `create()` → repo.create() + revision++ → effect reloads → new row appears.
+- [x] Page reload → data persists (LocalStorage via Phase 1.1 repository).
+- [x] Tabs filter the table: All / Income (kind=income) / Expenses (kind=expense).
+- [x] Income rows: `<Tag type="green" renderIcon={ArrowUp}>Income</Tag>`.
+- [x] Expense rows: `<Tag type="red" renderIcon={ArrowDown}>Expense</Tag>`.
+- [x] Expense amounts: `−` U+2212 prefix + `var(--cds-support-error)` color.
+- [x] Currency switch in header cookie sets `initialCurrency` default in modal Select.
+
+**Carbon discipline:**
+- [x] No raw hex in `src/features/cash-flow/` (`grep` clean). ✓
+- [x] No ad-hoc px values (pictogram `64px` N/A — no Carbon token for pictogram SVG dimensions; spec §10 explicitly says "48 or 64"). ✓
+- [x] Every interactive element has an accessible name (all Carbon form fields use `labelText` or `label`; Tabs use `aria-label`). ✓
+- [x] Status uses Tag (color + icon) — never color alone. ✓
+- [x] Negative amount uses `−` glyph + `support-error` token — not color alone. ✓
+
+**Quality gates:**
+- [x] `bunx tsc --noEmit` — 0 errors.
+- [x] `bun run lint` — 0 errors (1 pre-existing warning).
+- [x] `bun run test` — 32/32 pass (no regression).
+- [x] `bun run build` — all routes build.
+
+### Audit checklist (§12)
+
+- [x] All colors are theme/palette tokens — zero raw hex.
+- [x] All spacing is from the spacing scale — `var(--cds-spacing-05)`, `var(--cds-spacing-07)`, `var(--cds-spacing-09)`. N/A: pictogram SVG 64px (no spacing token for icon dimensions; spec §10 permits).
+- [x] All breakpoints are Carbon — N/A (no authored breakpoints).
+- [x] All type is type-style — `cds--type-productive-heading-04`, `cds--type-productive-heading-03`, `cds--type-body-01`.
+- [x] All interactive primitives are Carbon — `<Button>`, `<ComposedModal>`, `<TextInput>`, `<NumberInput>`, `<Select>`, `<DatePicker>`, `<TextArea>`, `<RadioButtonGroup>`, `<Tabs>`, `<DataTable>`.
+- [x] Every interactive element has an accessible name.
+- [x] Every form input is associated with a label.
+- [x] Focus styles use Carbon focus tokens — handled by Carbon components natively.
+- [x] State (error/warning/success) uses icon + token — Tag with renderIcon; expense amount uses glyph + color.
+- [x] Theme applied via `<Theme>` — root Theme in layout.tsx, unchanged.
+- [x] Icons from `@carbon/icons-react` (ArrowUp, ArrowDown, Add); pictograms from `@carbon/pictograms-react`.
+- [x] Motion uses Carbon durations — N/A (no authored transitions).
+- [x] At most one kind="primary" Button per primary group — one "Add transaction" button per page.
+- [x] Modals use `<ComposedModal>` — ✓.
+- [x] Tables with row actions use `<OverflowMenu>` — N/A (no row actions in this PR; deferred to Phase 1.2b).
+- [x] Empty states use pictogram + heading + body — `OptimizeCashFlow_01` + `cds--type-productive-heading-03` + `cds--type-body-01`.
+- [x] Charts default to `@carbon/charts-react` — N/A (chart deferred to later phase).
+- [x] Money values are integer minor units + currency tag — `Money` type from `src/lib/currency/types.ts` flows through the repository.
+- [x] No `localStorage` calls in components — all data access via `createLocalStorageTransactionRepository()` in the hook.
+- [x] AI-PROCESS-LOG.md updated — this entry.
+
+### Carbon components used in this PR
+
+`Button`, `ComposedModal`, `ModalHeader`, `ModalBody`, `ModalFooter`, `RadioButtonGroup`, `RadioButton`, `TextInput`, `NumberInput`, `Select`, `SelectItem`, `DatePicker`, `DatePickerInput`, `TextArea`, `InlineNotification`, `Stack`, `Tabs`, `TabList`, `Tab`, `TabPanels`, `TabPanel`, `DataTable`, `Table`, `TableHead`, `TableHeader`, `TableBody`, `TableRow`, `TableCell`, `TableContainer`, `Tag`, `Tile`, `DataTableSkeleton`, `Grid`, `Column`.
+
+Icons: `Add`, `ArrowUp`, `ArrowDown` from `@carbon/icons-react`.
+Pictogram: `OptimizeCashFlow_01` from `@carbon/pictograms-react`.
+
+### What I should ask next
+
+**Phase 1.2b — Edit/Delete + OverflowMenu:**
+- Add `<OverflowMenu>` per row in the DataTable with "Edit" and "Delete" actions.
+- "Edit" re-opens `AddTransactionModal` pre-filled with the selected transaction (via `repo.update()`).
+- "Delete" shows a Carbon `<Modal>` confirmation, then calls `repo.remove()`.
+- The `useTransactions` hook is already set up to reload via the revision counter — no hook changes needed.
+
+---
+
 ## Session 2 — Phase 0.1: Next.js scaffold + Carbon install + g90 empty Dashboard (2026-04-28)
 
 ### What I asked the AI to do

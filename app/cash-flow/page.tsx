@@ -1,10 +1,13 @@
 import { Grid, Column } from '@carbon/react';
+import { readCurrency } from '@/app/lib/cookies-server';
+import CashFlowPage from '@/src/features/cash-flow/CashFlowPage';
 
-export default function CashFlowPage() {
+export default async function CashFlowRoute() {
+  const currency = await readCurrency();
   return (
     <Grid>
       <Column sm={4} md={8} lg={16}>
-        <h1 className="cds--type-productive-heading-04">Cash flow</h1>
+        <CashFlowPage initialCurrency={currency} />
       </Column>
     </Grid>
   );
