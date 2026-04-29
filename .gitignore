@@ -30,6 +30,9 @@ pnpm-debug.log*
 .vscode/
 tsconfig.tsbuildinfo
 
+# Next.js auto-generated type reference (regenerates per build; line 3 churns)
+next-env.d.ts
+
 # claude code
 .agents/
 .claude/

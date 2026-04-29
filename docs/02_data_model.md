@@ -74,6 +74,8 @@ type Settings = {
 
 The Finnhub key is user-supplied because the project is a school assignment and the student does not run a billed backend. The Settings page documents the trust posture (key sits in your browser; clear on logout).
 
+**Cookie mirror for SSR-readable fields (added Phase 0.4).** `theme` and `displayCurrency` are additionally mirrored as cookies (`flowstate-theme`, `flowstate-currency`) so Server Components can read them at request time and emit the correct `<html className="cds--{theme}">` class on the very first byte of HTML — preventing a flash of wrong theme on first paint. The cookies are non-`HttpOnly` (the client must write them), `SameSite=Lax`, `Path=/`, `Max-Age=31536000`. The cookie is the source of truth for SSR; the LocalStorage record (when the full `SettingsRepository` LocalStorage adapter ships in a later phase) is the source of truth for the client. The `SettingsRepository.set()` implementation is responsible for keeping both in sync. The other fields (`finnhubKey`, `fxAutoRefresh`, `schemaVersion`) live only in LocalStorage — `finnhubKey` because it must never be sent on every HTTP request, the others because they don't need to be SSR-readable.
+
 ### 1.4 `FxRateSnapshot`
 
 ```ts
@@ -205,11 +207,13 @@ flowstate:v1:fx                // JSON object (FxRateSnapshot)
 flowstate:v1:meta              // { schemaVersion: 1, createdAt: ... }
 ```
 
-Behavior:
+Behavior (the adapter is in `src/lib/`, which has zero UI deps — so it does not render UI; it throws typed errors that the UI layer catches and renders):
 
-- All writes go through a single `safeWrite(key, value)` that catches `QuotaExceededError` and surfaces a Carbon `<ActionableNotification>` ("Browser storage is full. Export your data and reset.").
-- Reads return defaults if the key is missing or unparseable. An unparseable key triggers a backup (renames the bad key to `flowstate:v1:transactions.broken-2026-04-28`) and starts fresh — never throws into the UI.
-- The adapter is a pure module export — `createLocalStorageRepositories()` returns the four repositories. Tests substitute an in-memory adapter implementing the same interfaces.
+- **Writes** detect `QuotaExceededError` (cross-browser: `DOMException` with `name === 'QuotaExceededError'` or legacy code `22`) and throw `StorageQuotaExceededError` (a typed subclass exported from `src/lib/storage/errors.ts`). The UI layer catches this and renders a Carbon `<ActionableNotification>` ("Browser storage is full. Export your data and reset."). Other write errors propagate.
+- **Reads** return the supplied default if the key is missing or unparseable. An unparseable value triggers a backup (renames the bad key to `<key>.broken-YYYY-MM-DD`, e.g. `flowstate:v1:transactions.broken-2026-04-28`) and the read returns the default. Reads never throw into the UI.
+- The adapter exposes `createStorageAdapter(storage?: Storage)` returning a `{ read, write, remove }` object. Storage is injectable for tests (a fake `Storage` implementation backed by a `Map`). Repositories compose on top of the adapter.
+
+> **Spec correction (post-Phase-1.1).** An earlier draft said the adapter "surfaces a Carbon `<ActionableNotification>`" itself. That contradicted the architecture rule that `src/lib/` has zero UI deps. The correct split — adapter throws typed error, UI renders notification — shipped in Phase 1.1 and is reflected above.
 
 ## 6. CSV import / export
 
