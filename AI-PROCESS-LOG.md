@@ -916,3 +916,97 @@ Verified g90 (default), g100, white themes on `/cash-flow`:
 ### Recommendation for next session
 
 **Phase 1.3 — CSV import/export.** The data layer is stable, the table is complete, and the modal architecture is settled. CSV is the next spec section (`§3.3` Import CSV button, `§3.5` FileUploader + interim preview modal). Alternatively, a brief simplification pass on `TransactionModal.tsx` (the `eslint-disable` comment on the effect deps line could be cleaned up with a cleaner deps array) could precede it, but it is not blocking.
+
+---
+
+## Session 12 — Phase 1.2c: UX polish — 3 bug fixes (2026-04-29)
+
+### What I asked the AI to do
+
+Fix three bugs surfaced during manual UI verification of Phase 1.2b (row actions). Strict bug-fix prompt — no feature additions, no test modifications, only `TransactionTable.tsx` and `TransactionModal.tsx` to change. Skills invoked: `carbon-builder`, `karpathy-guidelines`.
+
+### Bug 1 — React key warning in DataTable
+
+**Symptom:** Console warning "Each child in a list should have a unique 'key' prop. Check the render method of `ForwardRef`. It was passed a child from DataTable."
+
+**Diagnosis:** `getHeaderProps({ header })` and `getRowProps({ row })` in Carbon's DataTable both return objects containing a `key` property. In React 19, spreading these objects (`{...getHeaderProps({ header })}`) causes the `key` to appear in the props spread. The existing code already had explicit `key=` props but they were placed *after* the spread. The explicit `key=` props correctly set the JSX key (React 19's new JSX transform extracts the static `key=` attribute at compile time regardless of position), but the `key` from the spread still appears in the props object passed to the component, producing the warning.
+
+**Fix:** Destructure `key` out of both helper results before spreading, and place the explicit `key=` before the spread:
+```jsx
+const { key: _hKey, ...headerProps } = getHeaderProps({ header });
+return <TableHeader key={header.key} {...headerProps}>
+```
+Same pattern for rows. This eliminates the key-in-spread issue entirely.
+
+**`.map()` audit result (3 callsites):**
+1. `headers.map` — `key` was after the spread; `getHeaderProps` returned a `key` in the spread object. **Fixed** (destructured out).
+2. `tableRows.map` — `key` was after the spread; `getRowProps` returned a `key` in the spread object. **Fixed** (destructured out).
+3. `row.cells.map` — all code paths return `<TableCell key={cell.id}>`. `key` was not in any spread. Already correct.
+
+**Why ESLint's `react/jsx-key` didn't catch it:** The warning came from `key` being present inside a spread object, not from a missing `key=` attribute. The ESLint rule `react/jsx-key` only detects elements returned from `.map()` without a `key=` JSX attribute — it does not inspect the contents of spread objects. Static analysis can't see what `getHeaderProps` returns at runtime. The rule was already not firing because explicit `key=` props existed.
+
+### Bug 2 — NumberInput shows "0" in Add mode; no select-on-focus
+
+**Symptom:** Opening the Add modal shows `0` in the Amount field. Clicking into the field does not select the content.
+
+**Diagnosis:**
+- `useState<number>(tx?.amount.amount ?? 0)` forced the initial value to `0` when creating (no `tx`).
+- `value={amount}` passed `0` to NumberInput, which displayed it.
+- No `allowEmpty` prop, so Carbon enforced a non-empty numeric value.
+- No `onFocus` handler.
+
+**Fix:**
+- State changed to `useState<number | undefined>(tx?.amount.amount)` — `undefined` in Add mode (no `?? 0`).
+- `allowEmpty` added to `<NumberInput>` so Carbon accepts an empty field.
+- `value={amount ?? ''}` — passes empty string when `undefined`, which NumberInput treats as empty.
+- `onChange` handler updated: sets `undefined` (not `0`) when the parsed value is NaN or input is empty.
+- `onFocus={(e) => e.currentTarget.select()}` added — Carbon passes `onFocus` through via `rest.onFocus` (confirmed in `NumberInput.js` line 387).
+
+**Carbon prop name:** `allowEmpty` (confirmed in `NumberInput.d.ts` line 40 for `@carbon/react@1.106.x`).
+
+**Edit mode verification:** `tx?.amount.amount` is a number when editing, so state initializes to the existing amount. The `allowEmpty` prop does not affect pre-filled values; the field shows the existing amount correctly. `onFocus` selects it for instant replacement.
+
+**Submit validation:** If the Amount field is left empty, `amount` is `undefined`, so `{ amount: undefined, currency }` fails the Zod `moneySchema` — the error surfaces at `errors.amount` and renders in `<NumberInput invalidText>`. No special handling needed in `handleSave`.
+
+### Bug 3 — "Amount" column header not right-aligned
+
+**Symptom:** Amount cells are right-aligned but the "Amount" header is left-aligned.
+
+**Diagnosis:** The previous code had `style={{ textAlign: 'right' }}` on `<TableHeader>` (the `<th>` element). This inline style is overridden by Carbon's SCSS rule:
+```scss
+.cds--data-table .cds--table-header-label {
+  text-align: start;   /* explicit rule on the inner div */
+}
+```
+The `<th>` has `text-align: right` via inline style. But the inner `.cds--table-header-label` div has an explicit `text-align: start` rule, which overrides the *inherited* value from the `<th>`. This does not happen for `<td>` cells (no inner label div — the text is direct `<td>` content, so the inline style on `<td>` wins directly).
+
+**Fix: Option B (span wrapper)** — no Carbon text-align utility class exists in `@carbon/styles@1.105.x` (checked `node_modules/@carbon/styles/scss/utilities/` — no `_text-align.scss`). Used a block span as the Amount header's children:
+```jsx
+<span style={{ display: 'block', textAlign: 'end' }}>
+  {header.header}
+</span>
+```
+The span's inline style has specificity `(1,0,0)` — higher than `.cds--data-table .cds--table-header-label { text-align: start }` with specificity `(0,2,0)`. `display: block` is required because `text-align` only applies to block-level formatting contexts; an inline span would not override the parent div's text flow. The ineffective `style` on `<TableHeader>` was removed.
+
+### Quality gates
+
+- `bunx tsc --noEmit` — 0 errors
+- `bun run lint` — 0 errors (1 pre-existing font warning in `layout.tsx`, unchanged)
+- `bun run test` — 32/32 pass (tests untouched)
+- `bun run build` — all 6 routes build clean
+
+### Browser console state (manual verification required)
+
+Automated gates pass. Manual steps to verify before merging:
+1. `bun run dev` → `/cash-flow` with ≥1 transactions → console should show 0 warnings (no "missing key", no "key in spread").
+2. Open Add modal → Amount field should be empty, not `0`. Click → empty. Type `50000` → save → row appears.
+3. Open Edit on that row → Amount shows `50000`. Click → all selected (typing replaces, not appends).
+4. "Amount" column header should be right-aligned, flush with numeric values below.
+
+### `.map()` audit summary
+
+3 callsites in `TransactionTable.tsx` audited. 2 fixed (headers, rows — keys were after spread AND Carbon helpers returned `key` in the spread object). 1 already correct (cells — no spread, `key={cell.id}` on every branch).
+
+### Recommendation for next session
+
+Proceed to **Phase 1.3 — CSV import/export**. The modal and table architecture are now stable and clean. Alternatively, wire **Playwright** first (Phase 1.4 E2E test for the Add/Edit/Delete flow) before adding more surface area — the acceptance criteria for 1.2b and 1.2c have not been covered by automated tests, and CSV will add more critical paths. Recommend Playwright before Phase 1.3 if grading criteria weight automated test coverage.
