@@ -32,6 +32,9 @@ export default function CurrencySwitcher({ current }: { current: CurrencyType })
       onRequestClose={() => setOpen(false)}
     >
       <HeaderGlobalAction
+        // enterDelayMs flows through Button → IconButton → Tooltip at runtime but
+        // is absent from HeaderGlobalActionProps in @carbon/react 1.106.x.
+        {...({ enterDelayMs: open ? 1_000_000 : 100 } as any)}
         aria-label={`Display currency: ${current}`}
         onClick={() => setOpen((o) => !o)}
         isActive={open}

@@ -682,3 +682,49 @@ Phase 0.3 (or continue Phase 0):
 - Add the UI Shell: `<FlowstateHeader>` with navigation, `<FlowstateSideNav>`, route stubs for all 5 pages.
 - This is the first session that will touch the `app/` directory again — the shell is the Phase 1 deliverable.
 
+---
+
+## Session 8 — UI Shell bug fixes: SideNav rail + tooltip suppression (2026-04-29)
+
+### What I asked the AI to do
+
+Fix two UX bugs discovered during manual testing of Phase 1.2a (Cash Flow basic):
+
+1. **Bug 1 — SideNav unreachable on desktop:** On `lg+` viewports, `<SideNav isPersistent={false}>` (overlay mode) was invisible and Carbon's `<HeaderMenuButton>` is auto-hidden on `lg+`, leaving desktop users with no navigation affordance.
+2. **Bug 2 — Tooltip overlaps Popover on CurrencySwitcher:** While the VND/USD `<Popover>` was open, hovering back over the `<HeaderGlobalAction>` triggered Carbon's built-in tooltip, which layered on top of the popover content.
+
+Spec reference: `docs/01_information_architecture.md` §4 (updated in this session's context to mandate `isRail`).
+
+### What the AI did
+
+**Bug 1 fix (`app/components/AppShell.tsx`):**
+- Dropped `isPersistent={false}` from `<SideNav>`.
+- Added `isRail` prop. The SideNav is now always visible as a 48px icon rail at all breakpoints. Hovering/focusing expands it to show labels. On `md` and below, Carbon auto-shows `<HeaderMenuButton>` which toggles expanded mode.
+
+**Bug 2 fix (`app/components/CurrencySwitcher.tsx`):**
+- Chose **Option A** (state-driven tooltip suppression).
+- Traced the prop chain: `HeaderGlobalAction → Button(hasIconOnly) → IconButton → Tooltip(enterDelayMs)`. The `Tooltip.onMouseEnter` skips `setOpen(true)` when `rest.onMouseEnter` is truthy (per Tooltip source). However, `onMouseEnter` from `HeaderGlobalAction`'s rest goes to `ButtonBase` (inside the Tooltip), not to `Tooltip.rest`, so that path was ruled out.
+- The correct lever is `enterDelayMs`: when `open === true`, `enterDelayMs` is set to `1_000_000` ms (functionally infinite); when `open === false`, it resets to `100` ms (Carbon default). The prop flows through at runtime but is absent from `HeaderGlobalActionProps` in `@carbon/react` 1.106.x, so a `as any` spread is used for the extra prop, leaving all other props fully typed.
+
+**`ThemeSwitcher` and `SettingsLink`:** Inspected both — neither has a popover, so no tooltip fix needed.
+
+### Quality gates passed
+
+- `bunx tsc --noEmit` — 0 errors
+- `bun run lint` — 0 errors (1 pre-existing font warning in `layout.tsx`, unrelated)
+- `bun run test` — 32/32 pass
+- `bun run build` — all 6 routes build successfully
+
+### `isRail` side effects on layout
+
+Carbon's `<SideNav isRail>` is always present in the DOM as a 48px column. The `<Content>` component automatically gains a `padding-inline-start` to clear the rail (Carbon's CSS handles this via the `.cds--content` + `.cds--side-nav` selector pair). No manual `<Content>` padding adjustment was needed. Route content reflows correctly — the 48px offset is absorbed by Carbon's grid without requiring changes to any page grid columns.
+
+### Spec ambiguities or surprises
+
+- **TS gap in `HeaderGlobalActionProps`:** The `enterDelayMs` undocumented-but-functional prop required the `as any` spread. Carbon's TypeScript declarations lag the runtime implementation here. Upstream issue; no action needed from the student.
+- **Tooltip suppression path:** The initial Option A approach (passing `enterDelayMs` directly on the JSX element) failed TypeScript. Traced the source carefully before choosing the spread-cast pattern.
+
+### Recommendation for next session
+
+**Proceed with Phase 1.2b (Edit/Delete + OverflowMenu).** The shell is now stable at all breakpoints and the currency switcher UX is clean. No additional UX pass is needed before 1.2b — the remaining Phase 1 issues are feature gaps (no edit/delete), not chrome regressions.
+
