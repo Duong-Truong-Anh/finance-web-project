@@ -46,8 +46,8 @@ export default function AppShell({ children, theme, currency }: AppShellProps) {
           </Header>
           <SideNav
             aria-label="Primary navigation"
+            isRail
             expanded={isSideNavExpanded}
-            isPersistent={false}
           >
             <AppSideNav />
           </SideNav>

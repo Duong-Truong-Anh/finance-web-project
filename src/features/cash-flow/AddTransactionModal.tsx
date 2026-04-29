@@ -51,7 +51,9 @@ export default function AddTransactionModal({
   const [storageError, setStorageError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
-  const resetForm = useCallback(() => {
+  // All close paths (X button, Escape, Cancel) flow through ComposedModal.onClose.
+  // Resetting form here covers every scenario without needing a useEffect.
+  const handleClose = useCallback(() => {
     setKind('expense');
     setName('');
     setAmount(0);
@@ -61,14 +63,8 @@ export default function AddTransactionModal({
     setErrors({});
     setStorageError(null);
     setIsSaving(false);
-  }, [initialCurrency]);
-
-  // All close paths (X button, Escape, Cancel) flow through ComposedModal.onClose.
-  // Resetting form here covers every scenario without needing a useEffect.
-  const handleClose = useCallback(() => {
-    resetForm();
     onClose();
-  }, [resetForm, onClose]);
+  }, [initialCurrency, onClose]);
 
   const handleSave = useCallback(async () => {
     const input = {
