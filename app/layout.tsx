@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Theme } from '@carbon/react';
 import AppShell from './components/AppShell';
+import { readTheme, readCurrency } from './lib/cookies-server';
 // Carbon base styles: imported as pre-compiled CSS to work around Turbopack's
 // inability to resolve relative @forward paths in @carbon/styles/index.scss.
 // See docs/decisions/002_carbon-sass-turbopack.md
@@ -12,16 +13,20 @@ export const metadata: Metadata = {
   description: 'Personal cash flow and long-term investment simulator',
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const theme = await readTheme();
+  const currency = await readCurrency();
+  // cds--{theme} on <html> sets the correct CSS custom properties at root scope
+  // on the first HTML byte, preventing a flash of wrong theme on page load.
+  // <Theme> inside <body> provides the React context boundary for Carbon components.
+  const themeClass = `cds--${theme}` as const;
+
   return (
-    // cds--g90 on <html> sets g90 CSS custom properties at root scope so
-    // var(--cds-background) resolves correctly on <body> (tokens cascade down).
-    // <Theme theme="g90"> provides the React context boundary for Carbon components.
-    <html lang="en" className="cds--g90">
+    <html lang="en" className={themeClass}>
       <head>
         <link
           rel="stylesheet"
@@ -29,8 +34,10 @@ export default function RootLayout({
         />
       </head>
       <body>
-        <Theme theme="g90">
-          <AppShell>{children}</AppShell>
+        <Theme theme={theme}>
+          <AppShell theme={theme} currency={currency}>
+            {children}
+          </AppShell>
         </Theme>
       </body>
     </html>

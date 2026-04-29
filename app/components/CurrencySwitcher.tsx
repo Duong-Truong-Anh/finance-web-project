@@ -1,0 +1,57 @@
+'use client';
+
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import {
+  HeaderGlobalAction,
+  Popover,
+  PopoverContent,
+  RadioButtonGroup,
+  RadioButton,
+} from '@carbon/react';
+import { Currency } from '@carbon/icons-react';
+import { writeCookie } from '@/app/lib/cookies-client';
+import type { Currency as CurrencyType } from '@/src/lib/currency/types';
+
+export default function CurrencySwitcher({ current }: { current: CurrencyType }) {
+  const [open, setOpen] = useState(false);
+  const router = useRouter();
+
+  function handleChange(value: string | number | undefined) {
+    if (!value) return;
+    writeCookie('flowstate-currency', String(value));
+    setOpen(false);
+    router.refresh();
+  }
+
+  return (
+    <Popover
+      open={open}
+      align="bottom-right"
+      caret={false}
+      onRequestClose={() => setOpen(false)}
+    >
+      <HeaderGlobalAction
+        aria-label={`Display currency: ${current}`}
+        onClick={() => setOpen((o) => !o)}
+        isActive={open}
+      >
+        <span className="cds--label-01" style={{ padding: '0 var(--cds-spacing-02)' }}>
+          {current}
+        </span>
+      </HeaderGlobalAction>
+      <PopoverContent style={{ padding: 'var(--cds-spacing-05)' }}>
+        <RadioButtonGroup
+          legendText="Display currency"
+          name="flowstate-currency"
+          valueSelected={current}
+          onChange={handleChange}
+          orientation="vertical"
+        >
+          <RadioButton labelText="VND – Vietnamese Đồng" value="VND" id="currency-vnd" />
+          <RadioButton labelText="USD – US Dollar" value="USD" id="currency-usd" />
+        </RadioButtonGroup>
+      </PopoverContent>
+    </Popover>
+  );
+}
