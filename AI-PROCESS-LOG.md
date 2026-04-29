@@ -800,3 +800,45 @@ The goal is a smaller, clearer codebase with the same UX, same 32 tests passing,
 
 **Fix the `AmountCell` bug first, then proceed to Phase 1.2b.** The bug (amount renders as `undefined undefined`) is a pre-existing defect that must be corrected before row actions (edit/delete) are built on top of it. The fix is one line in `TransactionTable.tsx`: replace `const money = tx.amount as unknown as Money` with `const money: Money = { amount: tx.amount, currency: tx.currency }`. After that, Phase 1.2b (Edit/Delete + OverflowMenu) is the correct next step — the shell is stable, the data layer is clean, and the simplification pass is complete.
 
+---
+
+## Session 10 — Phase 1.2-bugfix: nest Money end-to-end (2026-04-29)
+
+### What I asked the AI to do
+
+Fix the `AmountCell` bug (amount column renders `−undefined undefined`) by realigning the entire stack to the corrected spec §3: `transactionInputSchema` must nest `Money` at `.amount` rather than storing `amount` and `currency` as flat sibling fields. Four files were in scope: `schema.ts`, `AddTransactionModal.tsx`, `TransactionTable.tsx`, and `local-storage-repository.spec.ts`. No other files were to be touched.
+
+### What the AI did
+
+1. **`src/lib/transactions/schema.ts`** — Added `moneySchema = z.object({ amount, currency }) satisfies z.ZodType<Money>` and replaced the flat `amount: z.number()` + `currency: z.enum()` siblings with `amount: moneySchema`. The `satisfies` clause locks the schema and `Money` type in structural sync. Removed the `currency` top-level field entirely.
+
+2. **`src/features/cash-flow/TransactionTable.tsx`** — Removed the `as unknown as Money` cast and the `Money` import. `AmountCell` now reads `tx.amount.amount` and `tx.amount.currency` directly — both type-check naturally with the updated `Transaction` type.
+
+3. **`src/features/cash-flow/AddTransactionModal.tsx`** — Changed `handleSave` to construct `{ amount: { amount, currency } }` instead of the flat shape. The two visual form controls (`NumberInput` + `Select`) remain unchanged. The nested Zod error path for `amount.amount` violations has `issue.path[0] === 'amount'`, so `errors.amount` maps correctly to `NumberInput`'s `invalidText` — no change to the error-surfacing code.
+
+4. **`src/lib/transactions/local-storage-repository.spec.ts`** — Updated all fixtures (`VALID_INPUT`, `VALID_EXPENSE`, inline round-trip fixture) from flat `{ amount, currency }` to nested `{ amount: { amount, currency } }`. Updated assertions that compared `tx.amount` with `.toBe` (number equality) to `.toEqual` (deep object equality). Changed `tx.currency` references to `tx.amount.currency`. The invalid-amount patch test was updated to `{ amount: { amount: -999, currency: 'VND' } }` to still exercise the nonnegative validation path inside `moneySchema`.
+
+### Nested-error path resolution
+
+The nested-error surfacing worked correctly without any code change beyond the submit shape. `transactionInputSchema.safeParse` with `amount: { amount: -1, currency: 'VND' }` produces `issue.path = ['amount', 'amount']`. The existing `issue.path[0]` extraction yields `'amount'`, which indexes `fieldErrors` and populates `errors.amount`. Carbon's `NumberInput` receives that string via `invalidText` and renders it inline. No regression.
+
+### Casts and `any` removed
+
+- `TransactionTable.tsx`: `const money = tx.amount as unknown as Money` — **removed**. This was the root cause of the `undefined` render. The `import type { Money }` import was also removed (now unused).
+- No `any` or `as` casts were present in the other three changed files.
+
+### Test count delta
+
+32 tests before → **32 tests after**. No tests added, removed, or renamed. The count is identical because only fixture shapes and assertion forms changed, not the number of cases.
+
+### Quality gates
+
+- `bun run lint` — 0 errors (1 pre-existing font warning in `layout.tsx`, unchanged)
+- `bunx tsc --noEmit` — 0 errors
+- `bun run test` — 32/32 pass
+- `bun run build` — all 6 routes build clean
+
+### Recommendation for next session
+
+**Proceed to Phase 1.2b (Edit/Delete + OverflowMenu).** The schema is now structurally correct end-to-end, the amount column renders real values, and all quality gates pass. The `TransactionTable` is the natural extension point: add an `OverflowMenu` per row with Edit and Delete actions, backed by `repo.update` and `repo.remove` (both already implemented in the repository layer).
+
