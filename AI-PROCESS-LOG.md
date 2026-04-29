@@ -333,6 +333,81 @@ Suggested decomposition:
 
 ---
 
+## Session 6 — Phase 1.1: LocalStorage adapter + TransactionRepository impl (2026-04-29)
+
+### What I asked the AI to do
+
+Build the data persistence layer for the Cash Flow feature — no UI, no React, no `next/*` anywhere in scope:
+
+1. A generic typed LocalStorage adapter (`src/lib/storage/`) with JSON serialization, namespace prefixing, `QuotaExceededError` → `StorageQuotaExceededError`, and corrupt-data recovery (renames bad key to `<key>.broken-YYYY-MM-DD`).
+2. Storage key constants in `src/lib/storage/keys.ts` (5 keys, all prefixed `flowstate:v1:`).
+3. A concrete `TransactionRepository` implementation using the adapter, ULID IDs, and Zod validation.
+4. A pure `createTransaction` factory in `src/lib/transactions/factories.ts`.
+5. Comprehensive Vitest tests for both layers.
+
+Spec sections read: `CLAUDE.md` (all), `docs/02_data_model.md` (entire), `src/lib/transactions/repository.ts`, `src/lib/transactions/schema.ts`.
+
+### What the AI did this session
+
+1. Created `src/lib/storage/keys.ts` — `STORAGE_NAMESPACE`, `STORAGE_KEYS` object with 5 keys, `StorageKey` type.
+2. Created `src/lib/storage/errors.ts` — `StorageQuotaExceededError extends Error` with `name` and `cause` wired correctly.
+3. Created `src/lib/storage/adapter.ts` — `createStorageAdapter(storage?)` factory; `read/write/remove` with full contract:
+   - `read`: returns default for missing; renames bad key to `.broken-YYYY-MM-DD` on JSON parse failure; never throws.
+   - `write`: wraps `setItem`; detects `QuotaExceededError` by `DOMException.name` and `.code === 22` (cross-browser); throws `StorageQuotaExceededError`.
+   - `remove`: no-op on missing.
+4. Created `src/lib/storage/adapter.spec.ts` — 8 tests for the adapter using a `FakeStorage implements Storage` class (in-memory Map).
+5. Created `src/lib/transactions/factories.ts` — `createTransaction(input, now?)` pure factory; validates via Zod, generates ULID, stamps `createdAt`/`updatedAt`.
+6. Created `src/lib/transactions/local-storage-repository.ts` — `createLocalStorageTransactionRepository(opts?)` factory accepting optional `storage` and `now` for testability. All methods are async wrapping synchronous localStorage. `bulkCreate` collects all created rows then calls `writeAll` once (single `setItem` call).
+7. Created `src/lib/transactions/local-storage-repository.spec.ts` — 20 tests using the same `FakeStorage` pattern.
+8. Deleted `src/lib/storage/.gitkeep`.
+9. Verified all quality gates: 32/32 tests pass (up from 4), lint 0 errors, tsc 0 errors, build passes.
+
+### Judgment calls
+
+**Clock injection via `now: () => Date` parameter:** The task specifies this seam. The repository and factory both accept `now` so tests can pin a fixed timestamp. This avoids `vi.useFakeTimers()` globally — a simpler, more surgical approach. Tests that need the timestamp to change between `create` and `update` increment a call counter in the closure.
+
+**`bulkCreate` single-write strategy:** Each individual `transactionInputSchema.parse()` runs per input (so invalid inputs in the batch surface early), but `writeAll()` is called exactly once after all rows are built. A spy on `storage.setItem` in the test confirms exactly one write to the transactions key regardless of batch size. The alternative (calling `create()` in a loop) would call `setItem` N times — bad for CSV imports with hundreds of rows.
+
+**`FakeStorage implements Storage` pattern over `localStorage.clear()` in `beforeEach`:** Both approaches work in happy-dom. A local `FakeStorage` class is preferred because: (a) each test gets a completely isolated Map with no bleed risk from test ordering; (b) the class can be subclassed or have individual methods replaced (`vi.spyOn`) without affecting other tests; (c) no dependency on happy-dom's global `localStorage` state, making tests more portable if the environment changes.
+
+**`QuotaExceededError` detection — name + code 22:** The DOMException for storage quota is `'QuotaExceededError'` in modern Chrome/Firefox and `'NS_ERROR_DOM_QUOTA_REACHED'` in older Firefox. `code === 22` is the legacy IE/Safari numeric fallback. All three are caught. Fake storage in tests throws a real `DOMException('QuotaExceededError', 'QuotaExceededError')`, which matches on `.name`.
+
+**ZodError surface at the repository layer (not suppressed):** `transactionInputSchema.parse(input)` throws `ZodError` on bad input. The repository does not catch or wrap it — UI layer is responsible for handling validation errors. This is correct per the spec (§3: "same schema validates UI submits and CSV imports") and means the error carries structured field-level messages the UI can display without re-running validation.
+
+**`factories.ts` as a separate file even though the repo calls Zod+ULID inline too:** The task explicitly requires `factories.ts`. It is used as documentation of the canonical create-shape contract; future code (e.g. test fixtures, CSV importer) can import it without depending on the repository. The repository does the same steps inline rather than calling the factory because it owns the exact array-append logic and the single-write batch guarantee.
+
+### Spec ambiguities found in `docs/02_data_model.md` §5
+
+- **"Carbon `<ActionableNotification>`" referenced from the adapter:** §5 says `safeWrite` should "surface a Carbon `<ActionableNotification>`" on quota error. The adapter is in `src/lib/` which has zero UI deps — it cannot reference Carbon components. The correct design (followed here) is to throw a typed `StorageQuotaExceededError` from the adapter, and let the UI layer catch it and render the notification. The spec prose conflates the adapter behavior with the UI response; this should be clarified in the spec.
+- **Corrupt-data backup key format:** The spec prose says `flowstate:v1:transactions.broken-2026-04-28`. It's ambiguous whether the date is UTC or local. Implemented as `new Date().toISOString().slice(0, 10)` which is UTC date. This is consistent with the ISO timestamp format used for `createdAt`/`updatedAt`.
+- **`createLocalStorageRepositories()` mentioned in §5:** The spec says the adapter returns "four repositories" via `createLocalStorageRepositories()`. For Phase 1.1 scope only the `TransactionRepository` adapter is built; the other three (Portfolio, Settings, FX) ship in later phases. The pattern is established; the umbrella factory can be added when the remaining repos exist.
+
+### Test count change
+
+4 tests → 32 tests (+28: 8 adapter + 20 repository + 4 pre-existing projection).
+
+### Quality gates
+
+- `bun run test` — 32/32 pass
+- `bun run lint` — 0 errors (1 pre-existing Phase 0.1 font warning in `app/layout.tsx`, unchanged)
+- `bunx tsc --noEmit` — 0 errors
+- `bun run build` — all routes build, no regression
+
+### Audit checklist (§12) — items applicable to `src/lib/`
+
+- [x] No `localStorage` calls outside `src/lib/storage/` — repositories use the adapter exclusively.
+- [x] Money values are integer minor units + currency tag — Zod schema enforces `amount: z.number().int().nonnegative()` + `currency: z.enum(['VND', 'USD'])`.
+- [x] No UI imports in `src/lib/` — confirmed by lint boundary rule (0 errors).
+- All other audit items are N/A for this PR (no UI, no colors, no layout, no charts).
+
+### What I should ask next
+
+- **Phase 1.2 — `SettingsRepository` LocalStorage adapter:** Same pattern as `TransactionRepository`, single-record store (get/set). Needed before the Settings page can read/write user prefs from LocalStorage (theme and currency are currently only in cookies).
+- **Phase 1.3 — Cash Flow page:** The `TransactionRepository` adapter is now ready. The page can be built: `<DataTable>` listing transactions, add/edit via `<ComposedModal>`, monthly totals. This is the first real user-facing feature surface.
+- **Phase 1.4 — CSV import/export:** `parseCsv` / `serializeCsv` in `src/lib/csv/` using the existing Zod schema. Hook to the `<DataTable>` with a `<FileUploader>` for import.
+
+---
+
 ## Session 2 — Phase 0.1: Next.js scaffold + Carbon install + g90 empty Dashboard (2026-04-28)
 
 ### What I asked the AI to do
