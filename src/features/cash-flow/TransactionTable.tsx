@@ -13,7 +13,6 @@ import {
 } from '@carbon/react';
 import { ArrowUp, ArrowDown } from '@carbon/icons-react';
 import type { Transaction } from '@/src/lib/transactions/schema';
-import type { Money } from '@/src/lib/currency/types';
 
 const HEADERS = [
   { key: 'occurredOn', header: 'Date' },
@@ -43,7 +42,6 @@ function KindTag({ txKind }: { txKind: 'income' | 'expense' }) {
 }
 
 function AmountCell({ tx }: { tx: Transaction }) {
-  const money = tx.amount as unknown as Money;
   const isExpense = tx.kind === 'expense';
   return (
     <span
@@ -53,7 +51,7 @@ function AmountCell({ tx }: { tx: Transaction }) {
       }}
     >
       {isExpense ? '−' : ''}
-      {money.amount} {money.currency}
+      {tx.amount.amount} {tx.amount.currency}
     </span>
   );
 }

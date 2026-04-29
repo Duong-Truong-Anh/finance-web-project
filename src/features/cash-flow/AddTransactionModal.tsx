@@ -70,8 +70,7 @@ export default function AddTransactionModal({
     const input = {
       kind,
       name,
-      amount,
-      currency,
+      amount: { amount, currency },
       occurredOn: date,
       notes: notes.trim() || null,
     };
