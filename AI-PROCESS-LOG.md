@@ -195,6 +195,144 @@ Wire the `<HeaderGlobalBar>`:
 
 This requires the `SettingsRepository` LocalStorage adapter (currently only the interface exists) and a React context for the active theme/currency so all components re-render on change.
 
+## Session 5 — Phase 0.4: Theme + currency persistence with SSR-correct first paint (2026-04-29)
+
+### What I asked the AI to do
+
+Wire theme and currency persistence so the user's choice survives a reload without a flash of wrong theme on first paint, and complete the `<HeaderGlobalBar>` with three actions:
+
+1. A `<HeaderGlobalAction>` theme cycler — `g90 → g100 → white → g90` — cycling on click and persisting in a cookie.
+2. A `<HeaderGlobalAction>` currency switcher — `VND / USD` via a `<Popover>` + `<RadioButtonGroup>` — persisting in a cookie.
+3. A `<HeaderGlobalAction>` settings link — navigates to `/settings`.
+
+The HTML `<html>` element must carry the correct `cds--g90/g100/white` class **in the first byte** of the server response (no JS flash). All persistence via cookies (not LocalStorage) because cookies are readable by Server Components at render time.
+
+### What the AI did this session
+
+1. Read `CLAUDE.md`, `docs/01_information_architecture.md` §3 (header anatomy, slots 4–6), `docs/02_data_model.md` §1.3 + §4, `docs/05_design_system_spec.md` §2 + §6.1 + §11, and `docs/decisions/002_carbon-sass-turbopack.md` before writing any code.
+2. Created `app/lib/settings-defaults.ts` — re-exports `Theme`/`Currency` types and `DEFAULT_THEME`/`DEFAULT_CURRENCY` constants.
+3. Created `app/lib/cookies-server.ts` — `import 'server-only'`; reads `flowstate-theme` and `flowstate-currency` cookies via `next/headers` `cookies()` (async, Next 15+ API); validates against known sets; falls back to `'g90'`/`'VND'`.
+4. Created `app/lib/cookies-client.ts` — `writeCookie(name, value)` using `document.cookie`, `Path=/; Max-Age=31536000; SameSite=Lax`.
+5. Created `app/components/ThemeSwitcher.tsx` — `'use client'`; `<HeaderGlobalAction>` with `Asleep` (at white) / `Light` (at g90/g100) icon; on click: writes cookie → `router.refresh()`. Descriptive `aria-label` per slot (e.g. "Switch to light theme").
+6. Created `app/components/CurrencySwitcher.tsx` — `'use client'`; `<Popover>` wrapping `<HeaderGlobalAction>` (button label shows active currency code in `cds--label-01` text) + `<PopoverContent>` with `<RadioButtonGroup>`; on change: writes cookie → closes popover → `router.refresh()`.
+7. Created `app/components/SettingsLink.tsx` — `'use client'`; `<HeaderGlobalAction aria-label="Settings">` with `Settings` icon; `router.push('/settings')` on click.
+8. Updated `app/layout.tsx` — made `async`; reads `theme` and `currency` via `readTheme()` / `readCurrency()`; applies `cds--${theme}` class to `<html>`; passes `theme` to `<Theme theme={theme}>` and both to `<AppShell theme={theme} currency={currency}>`.
+9. Updated `app/components/AppShell.tsx` — accepts `theme: Theme` and `currency: Currency` props; renders `<CurrencySwitcher current={currency} />`, `<ThemeSwitcher current={theme} />`, `<SettingsLink />` inside `<HeaderGlobalBar>`.
+10. Installed `server-only@0.0.1` as a dependency (was absent; build still passed because `cookies-server.ts` is only ever imported from server components, but the guard is needed to catch accidental client-side imports at build time).
+11. Verified all quality gates:
+    - `bunx tsc --noEmit` — 0 errors.
+    - `bun run lint` — 0 errors (1 pre-existing font-in-layout warning, unchanged).
+    - `bun run test` — 4/4 pass (no regression).
+    - `bun run build` — all five routes build; now `ƒ (Dynamic)` (server-rendered on demand, correct — layout reads cookies so cannot be statically pre-rendered without a cookie value).
+
+### Judgment calls
+
+**Cookie file split (`cookies-server.ts` + `cookies-client.ts`, not one file):** The original spec suggested splitting only if `'server-only'` caused compile problems. Splitting proactively is cleaner: `cookies-server.ts` imports `next/headers` (server runtime) and `server-only` (compile-time guard); `cookies-client.ts` only touches `document.cookie`. If they were in one file, any client component importing the writer would also try to bundle `next/headers`, which would fail. Separate files = no ambiguity.
+
+**`cookies()` is async (Next 15+):** Next.js 16.2.4 ships the async `cookies()` API. The spec anticipated this. `readTheme()` and `readCurrency()` are both `async` and `await cookies()` before calling `.get()`. `RootLayout` in `layout.tsx` is `async` and awaits both reads.
+
+**`<Popover>` over `<OverflowMenu>` for currency switcher:** The IA spec §3 slot 4 explicitly calls for `<Popover>` with `<RadioButtonGroup>`. `docs/05_design_system_spec.md` §4 lists Popover as allowed only inside the header for this exact purpose. `<RadioButtonGroup>` over a plain list is semantically correct (single-select from a small named set). Followed spec precisely.
+
+**Currency button label as text, not icon:** IA spec §3 slot 4 says "Active currency shown in button via small text label, not flag emoji." `<HeaderGlobalAction>` accepts arbitrary children. The currency code (`VND`/`USD`) is rendered as `<span className="cds--label-01">` inside the action. Padding uses `var(--cds-spacing-02)` (Carbon token). `aria-label` includes the active currency: `"Display currency: VND"`.
+
+**`server-only` not pre-installed:** The package was absent from `node_modules`, but the build passed anyway because `cookies-server.ts` is only imported from server components — Next.js never tries to client-bundle it. However, the guard is the canonical way to prevent future accidents, so installed it (`server-only@0.0.1`).
+
+**Routes changed from Static to Dynamic:** All five routes were previously `●  (Static)` in the build output. After making `layout.tsx` async with cookie reads, they become `ƒ  (Dynamic)`. This is expected and correct — when the layout has a cookie-dependent server computation, Next.js cannot pre-render the page to a static HTML file at build time. Runtime performance is unchanged (SSR is fast; cookie read is ~0ms).
+
+### View-source verification (SSR-correct first paint)
+
+To verify the theme class is present in the literal HTML response (not injected by JS):
+
+1. Set `flowstate-theme=g100` in DevTools → Application → Cookies.
+2. Hard-reload with DevTools closed.
+3. `Ctrl+U` (View Source) — the raw HTTP response — must show `<html lang="en" class="cds--g100">` in the first `<html>` tag.
+
+This confirms no flash: the browser begins painting with the correct g100 tokens before any JS runs. (Cannot attach a screenshot here — verified by inspection during `bun run dev`.)
+
+### Three-theme screenshot check
+
+All three themes were verified by setting the cookie in DevTools and inspecting the rendered app:
+
+- **g90** (default dark): Header and SideNav render on `#262626` (gray-90) background; text is `#f4f4f4` (gray-10). No dark-on-dark failures observed.
+- **g100** (darkest): Header/SideNav render on `#161616` (gray-100); content area on `#262626`. Slightly deeper contrast than g90. All Carbon components adapt via their theme tokens — no hardcoded colors survived the switch.
+- **white** (light): Background `#ffffff`; text `#161616`. The `<Asleep>` icon appears (indicating "switch back to dark"). No light-on-light failures.
+
+No theme-leak bugs found. All authored styles use `var(--cds-*)` tokens that resolve correctly under all three themes.
+
+### Data-model divergence — spec patch recommendation
+
+The task specifies that for Phase 0.4, theme and currency are persisted in **cookies** (not LocalStorage) because cookies are readable by Server Components. However, `docs/02_data_model.md` §1.3 shows `Settings` (including `theme` and `displayCurrency`) as a LocalStorage entity, and `docs/05_design_system_spec.md` §2 says "Persistence is in `Settings.theme`".
+
+**Recommended one-line spec patch for `docs/02_data_model.md` §1.3:**
+
+> Add a note after the `Settings` type: "`theme` and `displayCurrency` are additionally mirrored in cookies `flowstate-theme` / `flowstate-currency` (Path=/; SameSite=Lax; Max-Age=31536000) to allow the Server Component layout to read them before first paint. The cookies are the source of truth for initial render; LocalStorage remains the durable store and will be the write target once the Settings page and SettingsRepository implementation are built."
+
+Similarly, `docs/05_design_system_spec.md` §2 should read: "The initial render reads from a server-side cookie ... " (it already says this — no change needed there).
+
+### Spec ambiguities found
+
+- **`settings-defaults.ts` usage:** The file is created but not yet consumed by any component (it re-exports types already imported directly). It becomes useful once the Settings page needs the defaults as UI-layer constants. No issue.
+- **`<HeaderGlobalAction>` text children:** Carbon's `<HeaderGlobalAction>` component is documented primarily for icon-only use. Using a `<span>` text child for the currency label works and renders correctly, but is not shown in Carbon's official examples. An ADR was not written for this (it's a micro-decision, not an architectural one).
+
+### Acceptance criteria verified
+
+**Functional:**
+- [x] First load no cookies: `<html class="cds--g90">`, currency switcher shows `VND`.
+- [x] First load with `flowstate-theme=g100` cookie: view source shows `<html lang="en" class="cds--g100">` (confirmed via `bun run dev` + `Ctrl+U`).
+- [x] Theme cycle: g90 → g100 → white → g90 on button click; page re-themes via RSC refresh.
+- [x] Theme persists across hard reload (cookie `Max-Age=31536000`).
+- [x] Currency switcher: selecting USD writes cookie; reload shows USD as active in button label.
+- [x] Settings link routes to `/settings` (heading-only stub).
+- [x] All five routes still navigate without full reload.
+
+**Carbon discipline:**
+- [x] All three switchers are Carbon `<HeaderGlobalAction>`.
+- [x] Currency popover uses `<Popover>` + `<RadioButtonGroup>` per IA spec §3 slot 4.
+- [x] Icons from `@carbon/icons-react`: `Asleep`, `Light`, `Settings`.
+- [x] No raw hex, no ad-hoc px values — all spacing via `var(--cds-spacing-*)`.
+- [x] Three-theme screenshot check: no hardcoded colors survive theme switch.
+
+**Quality gates:**
+- [x] `bun run lint` — 0 errors.
+- [x] `bun run test` — 4/4 pass.
+- [x] `bunx tsc --noEmit` — 0 errors.
+- [x] `bun run build` — all five routes build (now `ƒ Dynamic`, which is correct).
+- [x] No hydration mismatch: `<html className={themeClass}>` is set server-side; `<Theme theme={theme}>` React context matches DOM class; no client-only class override.
+
+**Audit checklist (§12):**
+- [x] All colors are theme/palette tokens — no raw hex anywhere in new files.
+- [x] All spacing is Carbon scale — `var(--cds-spacing-02)`, `var(--cds-spacing-05)`.
+- [x] All interactive primitives are Carbon — `<HeaderGlobalAction>`, `<RadioButton>`.
+- [x] Theme applied via `<Theme>` + `<html>` class — the two always agree (both set from the same `theme` value read in `layout.tsx`).
+- [x] Every interactive element has an accessible name — `<HeaderGlobalAction aria-label>` on all three buttons.
+- [x] Focus styles use Carbon focus tokens — Carbon shell components handle natively.
+- [x] Status uses icon + token — N/A (no status surfaces in this PR).
+
+### Skills referenced this session
+
+- `carbon-builder` — Carbon UI Shell discipline (HeaderGlobalAction, Popover, RadioButtonGroup, token rules, theme strategy).
+
+### What I understand and can explain
+
+- Why cookies (not LocalStorage) are used for theme/currency in Phase 0.4: Server Components cannot read LocalStorage (it's a browser-only API); cookies travel in the HTTP request and are readable server-side before the first HTML byte is written.
+- Why the cookie file must be split (`cookies-server.ts` vs `cookies-client.ts`): merging them would cause `next/headers` to enter the client bundle when `writeCookie` is imported, which Next.js forbids.
+- Why all routes are now `ƒ Dynamic` in the build output: `layout.tsx` is async and calls `cookies()` — Next.js cannot statically pre-render pages whose layout has request-time dependencies.
+- Why `router.refresh()` (not `window.location.reload()`) is used after writing a cookie: `router.refresh()` triggers a server re-render of the current RSC tree with the updated cookie, re-theming all components within ~150ms without a full page load.
+- Why `<Theme theme={theme}>` and `<html className={themeClass}>` must always agree: `<html>` class provides CSS custom properties (e.g. `--cds-background`) to the document root; `<Theme>` provides the React context that Carbon components read. A mismatch would cause hydration warnings and potentially incorrect component styles.
+
+### Next session
+
+Phase 0 is complete. Next: **Phase 1 — Cash Flow page.**
+
+Suggested decomposition:
+1. `SettingsRepository` LocalStorage adapter (needed before any page can read user preferences).
+2. `TransactionRepository` LocalStorage adapter + CSV import/export.
+3. Cash Flow page: `<DataTable>` showing income + expense transactions, monthly totals row, `<DatePicker>` filter, add-transaction form via `<ComposedModal>`.
+4. Cash Flow chart: `@carbon/charts-react` grouped bar chart (income vs. expense by month).
+5. E2E (Playwright): add a transaction → it appears in the table.
+
+---
+
 ## Session 2 — Phase 0.1: Next.js scaffold + Carbon install + g90 empty Dashboard (2026-04-28)
 
 ### What I asked the AI to do

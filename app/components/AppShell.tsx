@@ -11,8 +11,19 @@ import {
   SkipToContent,
 } from '@carbon/react';
 import AppSideNav from './AppSideNav';
+import ThemeSwitcher from './ThemeSwitcher';
+import CurrencySwitcher from './CurrencySwitcher';
+import SettingsLink from './SettingsLink';
+import type { Theme } from '@/src/lib/settings/repository';
+import type { Currency } from '@/src/lib/currency/types';
 
-export default function AppShell({ children }: { children: React.ReactNode }) {
+interface AppShellProps {
+  children: React.ReactNode;
+  theme: Theme;
+  currency: Currency;
+}
+
+export default function AppShell({ children, theme, currency }: AppShellProps) {
   return (
     <HeaderContainer
       render={({ isSideNavExpanded, onClickSideNavExpand }) => (
@@ -28,7 +39,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               state
             </HeaderName>
             <HeaderGlobalBar>
-              {/* Currency · Theme · Settings actions wired in Phase 0.4 */}
+              <CurrencySwitcher current={currency} />
+              <ThemeSwitcher current={theme} />
+              <SettingsLink />
             </HeaderGlobalBar>
           </Header>
           <SideNav
