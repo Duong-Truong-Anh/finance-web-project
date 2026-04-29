@@ -728,3 +728,75 @@ Carbon's `<SideNav isRail>` is always present in the DOM as a 48px column. The `
 
 **Proceed with Phase 1.2b (Edit/Delete + OverflowMenu).** The shell is now stable at all breakpoints and the currency switcher UX is clean. No additional UX pass is needed before 1.2b — the remaining Phase 1 issues are feature gaps (no edit/delete), not chrome regressions.
 
+---
+
+## Session 9 — Phase 1.1.1: Code review + simplification pass (2026-04-29)
+
+### What I asked the AI to do
+
+A dedicated simplification pass on all Phase 0 and Phase 1.2a code — no new features, no behavior changes. Read every in-scope file, produce a numbered "Simplification candidates" report before touching code, apply only low-risk candidates (statically verifiable behavioral equivalence), defer medium/high risk with rationale, and document everything in this entry.
+
+### Understanding statement (required pre-work)
+
+The goal is a smaller, clearer codebase with the same UX, same 32 tests passing, and quality gates green. The Karpathy posture applies: surgical changes only, mention unrelated cruft without touching it, and prefer a boring small diff over an ambitious one that might break something.
+
+### Full simplification candidates report
+
+| # | File | What | Risk | Δ lines | Applied? |
+|---|---|---|---|---|---|
+| 1 | `app/lib/settings-defaults.ts` | Entire file — re-exports types + constants with zero consumers anywhere in codebase | LOW | −5 | ✅ YES |
+| 2 | `src/lib/transactions/local-storage-repository.ts` | `Promise.resolve/reject()` wrapping in `async` methods — redundant; `async` functions wrap automatically | LOW | −4 net (8 cleaner expressions) | ✅ YES |
+| 3 | `src/features/cash-flow/AddTransactionModal.tsx` | `resetForm` `useCallback` called only from `handleClose` — single-use abstraction; inline it | LOW | −4 | ✅ YES |
+| 4 | `src/features/cash-flow/AddTransactionButton.tsx` | Single-use component owning only `open` state; could inline into `CashFlowPage` | MEDIUM | −25 net | ⏸ DEFERRED |
+| 5 | `app/components/SettingsLink.tsx` | Single-use `HeaderGlobalAction`; could inline into `AppShell` | MEDIUM | −13 net | ⏸ DEFERRED |
+| 6 | `src/lib/storage/keys.ts` L1 | `STORAGE_NAMESPACE` exported but never imported outside the file — remove `export` | LOW (cosmetic) | 0 | ⏸ DEFERRED |
+| 7 | `src/lib/storage/keys.ts` L11 | `StorageKey` type exported but never imported — forward API surface | LOW | −1 | ⏸ DEFERRED |
+| 8 | `useTransactions.ts` revision counter | Investigated per task spec: IS the simplest correct fix for `react-hooks/set-state-in-effect@v7`; no simpler alternative | N/A | 0 | ✅ LEFT ALONE |
+
+**Deferred rationale:**
+- **#4 `AddTransactionButton`:** Session 7 deliberately separated it to isolate the `open` state; inlining adds state to a currently-stateless parent component with non-trivial re-render implications. MEDIUM.
+- **#5 `SettingsLink`:** Separated for symmetric organizational structure alongside `ThemeSwitcher`/`CurrencySwitcher`; Session 8 explicitly inspected it as part of a peer trio. MEDIUM.
+- **#6 `STORAGE_NAMESPACE` export:** Zero-line-delta cosmetic visibility change; not a meaningful simplification.
+- **#7 `StorageKey` type:** Forward API surface consistent with this codebase's pattern of exporting all repository-layer types (cf. `StorageQuotaExceededError`, `TransactionRepository`).
+
+**Revision counter conclusion:** The pattern (`useState(0)` counter incremented after create to re-trigger the load effect) is the canonical solution for the constraint. The alternatives — `useReducer`, ref callbacks, caller-managed state updates — are all more complex or require changes to multiple layers. No change.
+
+### Bug observed — NOT fixed in this pass
+
+`src/features/cash-flow/TransactionTable.tsx` `AmountCell`: `const money = tx.amount as unknown as Money` casts a `number` (e.g. `50000`) to the `Money` interface, then renders `{money.amount} {money.currency}`. A JavaScript `number` has no `.amount` or `.currency` property; both yield `undefined`. The amount column renders `"−undefined undefined"` for every transaction. This was undetected in Session 7 because verification was "mental only." This is a **bug fix**, not a simplification — it must be fixed before Phase 1.2b. Fixing it here would be a behavior change and violates the scope of this pass.
+
+### Line-count delta (before → after)
+
+- `app/lib/settings-defaults.ts`: deleted (−5 lines)
+- `src/lib/transactions/local-storage-repository.ts`: 96 → 88 lines (−8)
+- `src/features/cash-flow/AddTransactionModal.tsx`: 228 → 224 lines (−4)
+- **Total: −17 lines across 2 modified files + 1 deleted file.**
+
+### Quality gates
+
+- `bun run lint` — 0 errors (1 pre-existing font warning in `layout.tsx`, unchanged)
+- `bunx tsc --noEmit` — 0 errors
+- `bun run test` — 32/32 pass
+- `bun run build` — all 6 routes build (`ƒ Dynamic`)
+- Manual flow verification:
+  - Flow 1 (SideNav rail): `AppShell.tsx` not touched; isRail behavior unchanged ✓
+  - Flow 2 (theme switch): view-source of `localhost:3000` shows `<html lang="en" class="cds--g90">` in first byte ✓
+  - Flow 3 (currency popover): `CurrencySwitcher.tsx` not touched ✓
+  - Flow 4 (Cash Flow happy path): `Promise.resolve` removal is semantically identical in `async` functions; `resetForm` inline has same transitive deps; both statically verified ✓
+
+### Carbon discipline re-check (§12 — files touched)
+
+- No raw hex introduced ✓
+- No ad-hoc px introduced ✓
+- No `localStorage` calls leaked into features or app/components ✓
+- No Carbon component primitives replaced ✓
+
+### Noticed but not touched (per Principle 3)
+
+- `@eslint/eslintrc` package in `package.json` — installed in Session 3 but unused after the `FlatCompat` approach was dropped. Removing it is a `package.json` change (out of scope).
+- `src/lib/storage/keys.ts` exports `STORAGE_NAMESPACE` (unused externally) and `StorageKey` (unused anywhere) — deferred above.
+
+### Recommendation for next session
+
+**Fix the `AmountCell` bug first, then proceed to Phase 1.2b.** The bug (amount renders as `undefined undefined`) is a pre-existing defect that must be corrected before row actions (edit/delete) are built on top of it. The fix is one line in `TransactionTable.tsx`: replace `const money = tx.amount as unknown as Money` with `const money: Money = { amount: tx.amount, currency: tx.currency }`. After that, Phase 1.2b (Edit/Delete + OverflowMenu) is the correct next step — the shell is stable, the data layer is clean, and the simplification pass is complete.
+
