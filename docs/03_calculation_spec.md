@@ -52,8 +52,10 @@ g_m = (1 + g)^(1/12) − 1
 ```
 
 For `g = 0.15`, `g_m ≈ 0.011714917`.
-For `g = 0.175`, `g_m ≈ 0.013561968`.
+For `g = 0.175`, `g_m ≈ 0.013529722`.
 For `g = 0.20`, `g_m ≈ 0.015309521`.
+
+> **Spec correction (post-Phase-0.2).** An earlier draft of this spec listed the 17.5% monthly rate as `0.013561968`. That was an arithmetic error. The correct value is `0.013529722`, verified against `(1.175)^(1/12) − 1`. The `monthlyRateFromAnnual` test in `src/lib/projection/rates.spec.ts` is the source of truth.
 
 The portfolio value at the end of month `k` (where `1 ≤ k ≤ 60`), assuming each month's contribution is made at the start of the month and earns a full month of growth that same month, is:
 

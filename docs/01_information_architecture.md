@@ -75,22 +75,45 @@ No search in the header. No user menu (no auth in MVP). No notification bell (no
 
 ## 4. SideNav anatomy
 
-Default state: **expanded** on `lg+`, **collapsed** (rail-only icons) on `md`, **closed** on `sm` (opens via header menu button).
+Default state: **overlay**. The SideNav is closed by default at all breakpoints; the header menu button (`<HeaderMenuButton>`) toggles it open. On `lg+` it stays open across navigations until the user dismisses it; on smaller breakpoints Carbon's overlay behavior auto-dismisses on link click. Implemented via Carbon's `<HeaderContainer>` render-prop pattern wrapping `<SideNav isPersistent={false} expanded={isSideNavExpanded}>`.
+
+> **Spec correction (post-Phase-0.3).** An earlier draft of this section described "rail on `md`, expanded on `lg+`, closed on `sm`" and showed `isRail` in the code sample. Those two patterns are mutually exclusive — `isRail` is always-visible icons, not openable-via-menu-button. The overlay pattern above is what shipped and what the rest of the spec assumes.
 
 ```tsx
-<SideNav aria-label="Primary navigation" isRail>
-  <SideNavItems>
-    <SideNavLink renderIcon={Dashboard}    href="/">/Dashboard</SideNavLink>
-    <SideNavLink renderIcon={ArrowsVertical} href="/cash-flow">Cash Flow</SideNavLink>
-    <SideNavLink renderIcon={ChartLineSmooth} href="/simulation">Simulation</SideNavLink>
-    <SideNavLink renderIcon={Report}        href="/reports">Reports</SideNavLink>
-    <SideNavDivider />
-    <SideNavLink renderIcon={Settings}      href="/settings">Settings</SideNavLink>
-  </SideNavItems>
-</SideNav>
+<HeaderContainer
+  render={({ isSideNavExpanded, onClickSideNavExpand }) => (
+    <>
+      <Header aria-label="Flowstate">
+        <SkipToContent />
+        <HeaderMenuButton
+          aria-label={isSideNavExpanded ? 'Close menu' : 'Open menu'}
+          onClick={onClickSideNavExpand}
+          isActive={isSideNavExpanded}
+        />
+        <HeaderName href="/" prefix="Flow">state</HeaderName>
+        <HeaderGlobalBar>{/* Currency · Theme · Settings */}</HeaderGlobalBar>
+      </Header>
+      <SideNav
+        aria-label="Primary navigation"
+        expanded={isSideNavExpanded}
+        isPersistent={false}
+      >
+        <SideNavItems>
+          <SideNavLink as={Link} href="/"           renderIcon={Dashboard}>Dashboard</SideNavLink>
+          <SideNavLink as={Link} href="/cash-flow"  renderIcon={ArrowsVertical}>Cash Flow</SideNavLink>
+          <SideNavLink as={Link} href="/simulation" renderIcon={ChartLineSmooth}>Simulation</SideNavLink>
+          <SideNavLink as={Link} href="/reports"    renderIcon={Report}>Reports</SideNavLink>
+          <SideNavDivider />
+          <SideNavLink as={Link} href="/settings"   renderIcon={Settings}>Settings</SideNavLink>
+        </SideNavItems>
+      </SideNav>
+      <Content>{children}</Content>
+    </>
+  )}
+/>
 ```
 
-The active route is decorated with Carbon's built-in `aria-current="page"` and the `cds--side-nav__item--active` class.
+The active route is detected via `usePathname()` and decorated with Carbon's `isActive` prop plus an explicit `aria-current="page"` attribute. `as={Link}` (Next.js `<Link>`) replaces the default anchor so navigation is client-side. See `docs/decisions/003_sidenav-next-link.md`.
 
 No nested submenus in the MVP. Future Reports → Export sub-items would use `<SideNavMenu>`.
 
