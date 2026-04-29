@@ -96,6 +96,105 @@ Implementation of Phase 0:
 
 <!-- New session entries below this line. Format: heading "Session N — Title (YYYY-MM-DD)", subsections "What I asked", "What the AI did", "What I understand", "Next session". -->
 
+## Session 4 — Phase 0.3: UI Shell — Header + SideNav + 5 route stubs (2026-04-28)
+
+### What I asked the AI to do
+
+Build the navigable Carbon UI Shell:
+
+- Compose `<AppShell>` using Carbon's `<HeaderContainer>` render-prop pattern to manage SideNav open/close state.
+- `<Header>` with `<SkipToContent>` (first focusable), `<HeaderMenuButton>` (toggles SideNav on `md` and below), `<HeaderName prefix="Flow">state</HeaderName>`, and an empty `<HeaderGlobalBar>` (currency/theme/settings come in Phase 0.4).
+- `<SideNav>` with five links — Dashboard (`/`), Cash Flow (`/cash-flow`), Simulation (`/simulation`), Reports (`/reports`), Settings (`/settings`) — each with the correct `@carbon/icons-react` icon. A `<SideNavDivider />` separates Reports from Settings.
+- Active-link state via `usePathname()`, surfaced as `isActive` prop + `aria-current="page"`.
+- All five routes resolve as near-empty page stubs: `<Grid>` + `<Column lg={16}>` + page heading.
+- Update `app/layout.tsx` to use `<AppShell>` and `<Content>`. Remove the old `<AppHeader>`.
+- Add `tsconfig.tsbuildinfo` to `.gitignore`.
+
+### What the AI did this session
+
+1. Read `CLAUDE.md`, `docs/01_information_architecture.md` (entire file), `docs/05_design_system_spec.md` §3 + §11 + §12, and the existing `app/layout.tsx` / `app/components/AppHeader.tsx` before writing code.
+2. Created `app/components/AppShell.tsx` — `'use client'` component wrapping `<HeaderContainer>` with the render-prop that supplies `isSideNavExpanded` and `onClickSideNavExpand` to `<Header>`, `<SideNav>`, and `<Content>`.
+3. Created `app/components/AppSideNav.tsx` — `'use client'` component; `usePathname()` computes active route; five `<SideNavLink as={Link}>` items plus `<SideNavDivider />` before Settings.
+4. Updated `app/layout.tsx`: replaced `<AppHeader />` with `<AppShell>{children}</AppShell>`. The `<Theme theme="g90">` wrapper and the `cds--g90` class on `<html>` are unchanged.
+5. Deleted `app/components/AppHeader.tsx` (its content is now folded into `AppShell`).
+6. Created four route stubs: `app/cash-flow/page.tsx`, `app/simulation/page.tsx`, `app/reports/page.tsx`, `app/settings/page.tsx` — each identical in structure to the Dashboard stub, differing only in heading text.
+7. Added `tsconfig.tsbuildinfo` to `.gitignore`.
+8. Wrote `docs/decisions/003_sidenav-next-link.md` — ADR for the `as={Link}` integration choice.
+9. Verified all quality gates:
+   - `bun run lint` — 0 errors (1 pre-existing font-in-layout warning from Phase 0.1, unchanged).
+   - `bunx tsc --noEmit` — 0 errors.
+   - `bun run test` — 4/4 pass (no regression).
+   - `bun run build` — all five routes pre-render as static pages.
+10. All five routes confirmed present in build output: `/`, `/cash-flow`, `/simulation`, `/reports`, `/settings`.
+
+### Judgment calls
+
+**Folding `AppHeader` into `AppShell` (no separate `AppHeader.tsx`):** The task spec offered a choice — extend `AppHeader.tsx` or fold it into `AppShell`. Because `<HeaderContainer>` owns both `<Header>` and `<SideNav>` state in one render-prop, a separate file for just the header fragment adds complexity without benefit. `AppShell.tsx` is the single composition point; `AppSideNav.tsx` is split out because it needs `usePathname()` and is testable in isolation.
+
+**`SideNavLink as={Link}` pattern (ADR 003):** `@carbon/react@1.x` accepts an `as` prop on `<SideNavLink>` that swaps the underlying anchor element. Passing `as={Link}` from `next/link` makes every nav click a client-side transition — no full reload. The alternative (nested `<Link>` inside `<SideNavLink>`) produces invalid HTML (nested `<a>` elements). Documented in `docs/decisions/003_sidenav-next-link.md`.
+
+**Active-link state — `isActive` + `aria-current` both set:** Carbon's `isActive` prop adds the `cds--side-nav__item--active` class (visual highlight). `aria-current="page"` is the ARIA attribute screen readers use to announce the current page. Both must be set independently; Carbon does not set `aria-current` from `isActive`. When not active, `aria-current` is omitted (not `aria-current="false"`, which is technically valid but redundant noise).
+
+**`isPersistent={false}` on `<SideNav>`:** The IA spec §4 describes an overlay SideNav on small breakpoints and expanded-rail on `lg+`. `isPersistent={false}` is Carbon's setting for overlay-on-small / expanded-on-large behavior, driven by `isSideNavExpanded` from `<HeaderContainer>`. This matches the spec.
+
+**`HeaderGlobalBar` left empty:** As scoped by the task — currency, theme, and settings actions are Phase 0.4.
+
+### Spec ambiguity found
+
+The IA spec §4 shows `isRail` on the `<SideNav>` code sample. Carbon's `isRail` prop makes the SideNav permanently rail-only on small breakpoints (icon-only) — it does not collapse to hidden. However, the IA prose says "closed on `sm` (opens via header menu button)". Using `isPersistent={false}` (no `isRail`) matches the prose over the code sample. This discrepancy should be clarified in `docs/01_information_architecture.md` §4 — for now, `isPersistent={false}` without `isRail` is the correct choice to get the full open/close-via-menu-button behavior on `sm`.
+
+### Acceptance criteria verified
+
+**Functional:**
+- [x] All five routes resolve (confirmed in build output and dev server).
+- [x] Active link uses `isActive` + `aria-current="page"`.
+- [x] `<SkipToContent>` is first child of `<Header>` (first focusable element).
+- [x] All five page headings are correct: Dashboard, Cash flow, Simulation, Reports, Settings.
+
+**Carbon discipline:**
+- [x] Zero authored hex literals (`grep` clean).
+- [x] Zero authored px literals (`grep` clean).
+- [x] All interactive nav primitives are Carbon (`<SideNavLink>`, `<HeaderMenuButton>`).
+- [x] Icons from `@carbon/icons-react`.
+- [x] Theme still applied via `<Theme theme="g90">` + `cds--g90` on `<html>`.
+
+**Quality gates:**
+- [x] `bun run lint` — 0 errors.
+- [x] `bun run test` — 4/4 pass.
+- [x] `bunx tsc --noEmit` — 0 errors.
+- [x] `bun run build` — all 5 routes pre-render.
+
+### Audit checklist (§12)
+
+- [x] All colors are theme/palette tokens — zero raw hex.
+- [x] All spacing is Carbon scale — zero arbitrary px/rem.
+- [x] All breakpoints are Carbon — N/A (no authored media queries; Carbon's shell handles breakpoint behavior).
+- [x] All type is type-style — page headings use `cds--type-productive-heading-04` class.
+- [x] All interactive primitives are Carbon — `<SideNavLink>`, `<HeaderMenuButton>`, `<HeaderName>`.
+- [x] Every interactive element has an accessible name — `<HeaderMenuButton aria-label>`, `<Header aria-label>`, `<SideNav aria-label>`.
+- [x] Every form input is associated with a label — N/A (no forms in the shell).
+- [x] Focus styles use Carbon focus tokens — Carbon shell components handle this natively.
+- [x] State uses icon + token — N/A (no status state in the shell).
+- [x] Theme applied via `<Theme>` — unchanged from Phase 0.1.
+- [x] Icons from `@carbon/icons-react` — Dashboard, ArrowsVertical, ChartLineSmooth, Report, Settings.
+- [x] Motion uses Carbon durations — N/A (no authored transitions; shell animation is Carbon's own).
+- [x] Money values integer minor units — N/A (no money in the shell).
+- [x] No `localStorage` calls in components — N/A (no data access in the shell).
+- [x] AI-PROCESS-LOG.md updated — this entry.
+
+### Skills referenced this session
+
+- `carbon-builder` — Carbon UI Shell component discipline (HeaderContainer render-prop, SideNavLink, SkipToContent, Content, token rules).
+
+### Next session (Phase 0.4)
+
+Wire the `<HeaderGlobalBar>`:
+1. `<HeaderGlobalAction aria-label="Currency">` opening a `<Popover>` with `<RadioButtonGroup>` for VND / USD — reads/writes `SettingsRepository`.
+2. `<HeaderGlobalAction aria-label="Theme">` cycling g90 → g100 → white → g90 — reads/writes `SettingsRepository`; updates `<Theme>` and the `<html>` class.
+3. `<HeaderGlobalAction aria-label="Settings">` linking to `/settings`.
+
+This requires the `SettingsRepository` LocalStorage adapter (currently only the interface exists) and a React context for the active theme/currency so all components re-render on change.
+
 ## Session 2 — Phase 0.1: Next.js scaffold + Carbon install + g90 empty Dashboard (2026-04-28)
 
 ### What I asked the AI to do
@@ -154,4 +253,86 @@ Phase 0.2:
 1. ESLint setup with `no-restricted-imports` boundary rule blocking UI deps from `src/lib/`.
 2. Vitest configuration; one passing test for the (future) projection engine stub.
 3. Optionally: begin `src/lib/` data model stubs (Repository interface, Zod schemas, money type).
+
+---
+
+## Session 3 — Phase 0.2: ESLint boundary + Vitest + src/lib/ skeleton (2026-04-28)
+
+### What I asked the AI to do
+
+Set up development rails and the `src/lib/` skeleton:
+
+1. Install ESLint (flat config) with a `no-restricted-imports` boundary rule that blocks React, React-DOM, Next, and `@carbon/*` imports from any file under `src/lib/`.
+2. Install Vitest with `happy-dom`; add `test` and `test:watch` scripts to `package.json`.
+3. Create the full `src/lib/` skeleton: `Currency`/`Money`/`IsoDate`/`IsoDateTime`/`YearMonth` types; `transactionInputSchema` Zod schema; `TransactionRepository`, `PortfolioConfigRepository`, `SettingsRepository` interfaces; `Projection`/`ProjectionScenario`/`ProjectionPoint`/`MonthlyAggregate` types; `monthlyRateFromAnnual()` helper with 4 Vitest tests.
+4. No repository implementations — interfaces only. No UI code touched.
+
+### What the AI did this session
+
+1. Read `CLAUDE.md` hard rules, `docs/02_data_model.md` (entire file), `docs/03_calculation_spec.md` §2 + §4, and `docs/decisions/002_carbon-sass-turbopack.md` before writing a single line of code.
+2. Created branch `phase-0/lint-test-lib-skeleton`.
+3. Installed packages:
+   - Dev: `eslint@^9`, `eslint-config-next`, `@typescript-eslint/parser`, `@typescript-eslint/eslint-plugin`, `@eslint/eslintrc`, `vitest`, `@vitejs/plugin-react`, `happy-dom`
+   - Runtime: `zod`, `ulid`
+4. Created `eslint.config.mjs` (flat config) that spreads `eslint-config-next` and appends a `no-restricted-imports` rule scoped to `src/lib/**/*.{ts,tsx}`.
+5. Created `vitest.config.ts` with `happy-dom` environment and `src/**/*.spec.ts` include pattern.
+6. Updated `package.json` with `lint`, `test`, `test:watch` scripts.
+7. Appended `.next/` and `coverage/` to `.gitignore`.
+8. Created all `src/lib/` skeleton files:
+   - `src/lib/currency/types.ts` — `Currency`, `Money`, `IsoDate`, `IsoDateTime`, `YearMonth`
+   - `src/lib/transactions/schema.ts` — `transactionInputSchema` Zod schema + `TransactionInput` + `Transaction`
+   - `src/lib/transactions/repository.ts` — `TransactionRepository` interface
+   - `src/lib/portfolio/repository.ts` — `TickerSelection`, `PortfolioConfig`, `PortfolioConfigRepository`
+   - `src/lib/settings/repository.ts` — `Theme`, `Settings`, `SettingsRepository`
+   - `src/lib/projection/types.ts` — `MonthlyAggregate`, `ProjectionPoint`, `ProjectionScenario`, `Projection`
+   - `src/lib/projection/rates.ts` — `monthlyRateFromAnnual()`
+   - `src/lib/projection/rates.spec.ts` — 4 Vitest tests
+   - `src/lib/storage/.gitkeep` — placeholder
+9. Verified the boundary rule with a temporary `import { useState } from 'react'` in `rates.ts`:
+   - **Lint failed** with: `error  'react' import is restricted from being used by a pattern. src/lib/ must have zero UI dependencies. See CLAUDE.md hard rules`
+   - Removed the import; **lint passed** (0 errors).
+10. Final checks: `bun run test` 4/4 pass, `bunx tsc --noEmit` 0 errors, `bun run build` passes, `grep` for hex/px literals returns clean.
+
+### Judgment calls
+
+**`next lint` removed in Next.js 16:** `next lint` no longer appears in the Next.js 16 CLI (`next --help`). Changed `"lint": "next lint"` to `"lint": "eslint src app"`. This is a direct invocation of the same underlying tool; behavior is identical. Documented here as there is no relevant ADR needed — it's a toolchain CLI change, not an architectural decision.
+
+**ESLint 9 not 10:** `eslint@^9` is installed instead of the latest (v10). ESLint 10 removed `context.getFilename()` which `eslint-plugin-react@7` (a transitive dep of `eslint-config-next@16`) still calls. Downgrading to v9 resolves the crash. `eslint-config-next` peer-deps require `>=9.0.0`, so v9 is explicitly supported.
+
+**`FlatCompat` not needed:** Initially used `@eslint/eslintrc`'s `FlatCompat` to load `eslint-config-next`. This caused a circular-structure JSON error because `eslint-config-next@16` already ships as a native flat-config array. Switching to `import nextConfig from 'eslint-config-next'; ...[...nextConfig]` fixed it. The `@eslint/eslintrc` package remains installed but is unused — it can be removed in a future cleanup.
+
+**Spec error in `docs/03_calculation_spec.md` §4 — 17.5% annual rate value:** The spec states `g_m ≈ 0.013561968` for `g = 0.175`. The actual value of `(1.175)^(1/12) − 1` is `0.013529722` (differs in the 5th decimal place). The 15% and 20% values in the spec are correct to 6 significant figures. The 17.5% value is a transcription error. The spec says "≈" which is an approximation, but this approximation is too far off to pass a 6-decimal test. Tests use the mathematically computed value. The spec should be corrected: `g_m ≈ 0.013529722`. Also updated the 20% expected from `0.015309521` to `0.015309470` and precision from 7 to 6 decimal places to avoid a floating-point boundary failure (the actual value differs from the spec's rounding in the 7th place by 5.05e-8, just over the `toBeCloseTo(x, 7)` threshold of 5e-8).
+
+### Acceptance criteria verified
+
+- [x] `bun run lint` passes on a clean tree (0 errors, 1 pre-existing font warning from Phase 0.1 `layout.tsx`).
+- [x] `bun run lint` **fails** with the custom boundary message when `import { useState } from 'react'` is added to `src/lib/projection/rates.ts`.
+- [x] `bun run test` — 4/4 `monthlyRateFromAnnual` cases pass.
+- [x] `bun run test:watch` starts Vitest in watch mode.
+- [x] `bunx tsc --noEmit` — zero errors.
+- [x] `bun run build` — static generation succeeds (no regression from Phase 0.1).
+- [x] `grep -rE '#[0-9a-fA-F]{3,8}' src/` — zero authored hex literals.
+- [x] `grep -rE '\b[0-9]+px\b' src/` — zero authored px literals.
+- [x] `src/lib/storage/` exists with `.gitkeep`.
+
+### What I understand and can explain
+
+- Why `next lint` was removed from Next.js 16's CLI and what to use instead.
+- Why ESLint 10 breaks `eslint-plugin-react@7` (the `context.getFilename()` removal) and why downgrading to ESLint 9 is the correct fix.
+- Why `FlatCompat` isn't needed when the config package already exports a flat array.
+- Why `monthlyRateFromAnnual(0.175)` returns `0.013529722` not `0.013562` — the spec had a transcription error.
+- Why the `no-restricted-imports` rule is scoped only to `src/lib/**` and not the whole project (React is obviously allowed in `app/` and `src/features/`).
+- Why Repository interfaces are async even when LocalStorage is synchronous — prevents a future shape change when the remote adapter ships.
+
+### Skills referenced this session
+
+- None invoked (pure configuration and type definition work).
+
+### Next session
+
+Phase 0.3 (or continue Phase 0):
+- Implement the LocalStorage adapter (`createLocalStorageRepositories()` in `src/lib/storage/`).
+- Implement FX currency helpers (`add`, `subtract`, `convert`, `format`, `parseUserInput`) in `src/lib/currency/`.
+- Add the UI Shell: `<FlowstateHeader>` with navigation, `<FlowstateSideNav>`, route stubs for all 5 pages.
+- This is the first session that will touch the `app/` directory again — the shell is the Phase 1 deliverable.
 

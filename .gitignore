@@ -1,7 +1,10 @@
 # build output
 dist/
+.next/
 # generated types
 .astro/
+# test coverage
+coverage/
 
 # dependencies
 node_modules/
@@ -25,6 +28,7 @@ pnpm-debug.log*
 
 # editor and tooling
 .vscode/
+tsconfig.tsbuildinfo
 
 # claude code
 .agents/
