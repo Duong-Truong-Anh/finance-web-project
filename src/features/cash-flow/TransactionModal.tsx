@@ -58,7 +58,7 @@ export default function TransactionModal({
 
   const [kind, setKind] = useState<'income' | 'expense'>(tx?.kind ?? 'expense');
   const [name, setName] = useState(tx?.name ?? '');
-  const [amount, setAmount] = useState<number>(tx?.amount.amount ?? 0);
+  const [amount, setAmount] = useState<number | undefined>(tx?.amount.amount);
   const [currency, setCurrency] = useState<Currency>(tx?.amount.currency ?? initialCurrency);
   const [date, setDate] = useState(tx?.occurredOn ?? todayIso());
   const [notes, setNotes] = useState(tx?.notes ?? '');
@@ -166,12 +166,17 @@ export default function TransactionModal({
             label="Amount"
             min={0}
             step={1}
-            value={amount}
+            value={amount ?? ''}
+            allowEmpty
             onChange={(_e, { value }) => {
-              const parsed =
-                typeof value === 'number' ? value : parseInt(String(value), 10);
-              setAmount(isNaN(parsed) ? 0 : Math.max(0, parsed));
+              if (value === '' || value === undefined || value === null) {
+                setAmount(undefined);
+                return;
+              }
+              const parsed = typeof value === 'number' ? value : parseInt(String(value), 10);
+              setAmount(isNaN(parsed) ? undefined : Math.max(0, parsed));
             }}
+            onFocus={(e) => e.currentTarget.select()}
             helperText="Enter in minor units — VND: đồng (e.g. 50000), USD: cents (e.g. 500 = $5.00)"
             invalid={!!errors.amount}
             invalidText={errors.amount ?? ''}

@@ -145,19 +145,20 @@ export default function TransactionTable({ kind, transactions, onEdit, onDelete,
                 <TableHead>
                   <TableRow>
                     <TableSelectAll {...getSelectionProps()} />
-                    {headers.map((header) => (
-                      <TableHeader
-                        {...getHeaderProps({ header })}
-                        key={header.key}
-                        style={
-                          header.key === 'amount'
-                            ? ({ textAlign: 'right' } as React.CSSProperties)
-                            : undefined
-                        }
-                      >
-                        {header.header}
-                      </TableHeader>
-                    ))}
+                    {headers.map((header) => {
+                      const { key: _hKey, ...headerProps } = getHeaderProps({ header });
+                      return (
+                        <TableHeader key={header.key} {...headerProps}>
+                          {header.key === 'amount' ? (
+                            <span style={{ display: 'block', textAlign: 'end' }}>
+                              {header.header}
+                            </span>
+                          ) : (
+                            header.header
+                          )}
+                        </TableHeader>
+                      );
+                    })}
                     {/* No visible header text; each OverflowMenu carries its own aria-label */}
                     <TableHeader key="actions-header" />
                   </TableRow>
@@ -165,8 +166,9 @@ export default function TransactionTable({ kind, transactions, onEdit, onDelete,
                 <TableBody>
                   {tableRows.map((row) => {
                     const origTx = txById.get(row.id);
+                    const { key: _rKey, ...rowProps } = getRowProps({ row });
                     return (
-                      <TableRow {...getRowProps({ row })} key={row.id}>
+                      <TableRow key={row.id} {...rowProps}>
                         <TableSelectRow {...getSelectionProps({ row })} />
                         {row.cells.map((cell) => {
                           const headerKey = (cell as { info: { header: HeaderKey } }).info.header;
