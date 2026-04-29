@@ -14,6 +14,8 @@ export function useTransactions() {
   // This avoids calling setState directly inside the effect body (react-hooks/set-state-in-effect).
   const [revision, setRevision] = useState(0);
 
+  const reload = useCallback(() => setRevision((r) => r + 1), []);
+
   useEffect(() => {
     let active = true;
     const repo = createLocalStorageTransactionRepository();
@@ -35,9 +37,27 @@ export function useTransactions() {
   const create = useCallback(async (input: TransactionInput) => {
     const repo = createLocalStorageTransactionRepository();
     await repo.create(input);
-    // Increment revision instead of calling reload() — triggers the load effect.
-    setRevision((r) => r + 1);
-  }, []);
+    reload();
+  }, [reload]);
 
-  return { state, create };
+  const update = useCallback(async (id: string, patch: Partial<TransactionInput>) => {
+    const repo = createLocalStorageTransactionRepository();
+    await repo.update(id, patch);
+    reload();
+  }, [reload]);
+
+  const remove = useCallback(async (id: string) => {
+    const repo = createLocalStorageTransactionRepository();
+    await repo.remove(id);
+    reload();
+  }, [reload]);
+
+  // N individual removes — bulkRemove is a future repo concern, not now.
+  const removeMany = useCallback(async (ids: string[]) => {
+    const repo = createLocalStorageTransactionRepository();
+    await Promise.all(ids.map((id) => repo.remove(id)));
+    reload();
+  }, [reload]);
+
+  return { state, create, update, remove, removeMany };
 }

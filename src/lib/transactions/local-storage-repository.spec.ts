@@ -44,8 +44,7 @@ class FakeStorage implements Storage {
 const VALID_INPUT: TransactionInput = {
   kind: 'income',
   name: 'Salary',
-  amount: 18_000_000,
-  currency: 'VND',
+  amount: { amount: 18_000_000, currency: 'VND' },
   occurredOn: '2026-04-01',
   notes: null,
 };
@@ -53,8 +52,7 @@ const VALID_INPUT: TransactionInput = {
 const VALID_EXPENSE: TransactionInput = {
   kind: 'expense',
   name: 'Rent',
-  amount: 5_500_000,
-  currency: 'VND',
+  amount: { amount: 5_500_000, currency: 'VND' },
   occurredOn: '2026-04-05',
   notes: 'April rent',
 };
@@ -99,8 +97,8 @@ describe('createLocalStorageTransactionRepository', () => {
 
       expect(tx.kind).toBe('income');
       expect(tx.name).toBe('Salary');
-      expect(tx.amount).toBe(18_000_000);
-      expect(tx.currency).toBe('VND');
+      expect(tx.amount).toEqual({ amount: 18_000_000, currency: 'VND' });
+      expect(tx.amount.currency).toBe('VND');
       expect(tx.occurredOn).toBe('2026-04-01');
       expect(tx.notes).toBeNull();
 
@@ -120,7 +118,7 @@ describe('createLocalStorageTransactionRepository', () => {
     it('throws ZodError when input is invalid', async () => {
       const repo = makeRepo();
       await expect(
-        repo.create({ ...VALID_INPUT, amount: -1 } as TransactionInput),
+        repo.create({ ...VALID_INPUT, amount: { amount: -1, currency: 'VND' } } as TransactionInput),
       ).rejects.toThrow(ZodError);
     });
 
@@ -157,7 +155,7 @@ describe('createLocalStorageTransactionRepository', () => {
       const updated = await repo.update(tx.id, { name: 'Updated Salary' });
 
       expect(updated.name).toBe('Updated Salary');
-      expect(updated.amount).toBe(tx.amount);
+      expect(updated.amount).toEqual(tx.amount);
       expect(updated.createdAt).toBe(t1.toISOString());
       expect(updated.updatedAt).toBe(t2.toISOString());
     });
@@ -173,7 +171,7 @@ describe('createLocalStorageTransactionRepository', () => {
       const repo = makeRepo();
       const tx = await repo.create(VALID_INPUT);
       await expect(
-        repo.update(tx.id, { amount: -999 } as Partial<TransactionInput>),
+        repo.update(tx.id, { amount: { amount: -999, currency: 'VND' } } as Partial<TransactionInput>),
       ).rejects.toThrow(ZodError);
     });
   });
@@ -202,7 +200,7 @@ describe('createLocalStorageTransactionRepository', () => {
       const inputs: TransactionInput[] = Array.from({ length: 5 }, (_, i) => ({
         ...VALID_INPUT,
         name: `Item ${i + 1}`,
-        amount: (i + 1) * 1_000_000,
+        amount: { amount: (i + 1) * 1_000_000, currency: 'VND' as const },
       }));
       const created = await repo.bulkCreate(inputs);
       expect(created).toHaveLength(5);
@@ -286,8 +284,7 @@ describe('createLocalStorageTransactionRepository', () => {
       const input: TransactionInput = {
         kind: 'expense',
         name: 'Coffee',
-        amount: 50_000,
-        currency: 'VND',
+        amount: { amount: 50_000, currency: 'VND' },
         occurredOn: '2026-04-15',
         notes: 'morning coffee',
       };
@@ -297,8 +294,8 @@ describe('createLocalStorageTransactionRepository', () => {
       expect(fromList).toEqual(created);
       expect(fromList.kind).toBe('expense');
       expect(fromList.name).toBe('Coffee');
-      expect(fromList.amount).toBe(50_000);
-      expect(fromList.currency).toBe('VND');
+      expect(fromList.amount).toEqual({ amount: 50_000, currency: 'VND' });
+      expect(fromList.amount.currency).toBe('VND');
       expect(fromList.occurredOn).toBe('2026-04-15');
       expect(fromList.notes).toBe('morning coffee');
     });

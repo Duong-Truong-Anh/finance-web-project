@@ -18,14 +18,20 @@ import {
   TextInput,
 } from '@carbon/react';
 import { transactionInputSchema } from '@/src/lib/transactions/schema';
-import type { TransactionInput } from '@/src/lib/transactions/schema';
+import type { Transaction, TransactionInput } from '@/src/lib/transactions/schema';
 import { StorageQuotaExceededError } from '@/src/lib/storage/errors';
 import type { Currency } from '@/src/lib/currency/types';
 
+export type ModalState =
+  | { open: false }
+  | { open: true; mode: 'create' }
+  | { open: true; mode: 'edit'; transaction: Transaction };
+
 interface Props {
-  open: boolean;
+  modalState: ModalState;
   onClose: () => void;
-  onCreated: (input: TransactionInput) => Promise<void>;
+  onCreate: (input: TransactionInput) => Promise<void>;
+  onUpdate: (id: string, patch: Partial<TransactionInput>) => Promise<void>;
   initialCurrency: Currency;
 }
 
@@ -35,50 +41,47 @@ function todayIso(): string {
   return Intl.DateTimeFormat('en-CA').format(new Date());
 }
 
-export default function AddTransactionModal({
-  open,
+// TransactionModal is remounted by the parent via a key prop whenever the
+// mode or target transaction changes. useState initializers therefore always
+// reflect the correct starting values without a synchronous setState-in-effect.
+export default function TransactionModal({
+  modalState,
   onClose,
-  onCreated,
+  onCreate,
+  onUpdate,
   initialCurrency,
 }: Props) {
-  const [kind, setKind] = useState<'income' | 'expense'>('expense');
-  const [name, setName] = useState('');
-  const [amount, setAmount] = useState<number>(0);
-  const [currency, setCurrency] = useState<Currency>(initialCurrency);
-  const [date, setDate] = useState(todayIso);
-  const [notes, setNotes] = useState('');
+  const isEdit = modalState.open && modalState.mode === 'edit';
+  const tx = isEdit
+    ? (modalState as { open: true; mode: 'edit'; transaction: Transaction }).transaction
+    : null;
+
+  const [kind, setKind] = useState<'income' | 'expense'>(tx?.kind ?? 'expense');
+  const [name, setName] = useState(tx?.name ?? '');
+  const [amount, setAmount] = useState<number>(tx?.amount.amount ?? 0);
+  const [currency, setCurrency] = useState<Currency>(tx?.amount.currency ?? initialCurrency);
+  const [date, setDate] = useState(tx?.occurredOn ?? todayIso());
+  const [notes, setNotes] = useState(tx?.notes ?? '');
   const [errors, setErrors] = useState<FieldErrors>({});
   const [storageError, setStorageError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
-  // All close paths (X button, Escape, Cancel) flow through ComposedModal.onClose.
-  // Resetting form here covers every scenario without needing a useEffect.
   const handleClose = useCallback(() => {
-    setKind('expense');
-    setName('');
-    setAmount(0);
-    setCurrency(initialCurrency);
-    setDate(todayIso());
-    setNotes('');
     setErrors({});
     setStorageError(null);
     setIsSaving(false);
     onClose();
-  }, [initialCurrency, onClose]);
+  }, [onClose]);
 
   const handleSave = useCallback(async () => {
     const input = {
       kind,
       name,
-      amount,
-      currency,
+      amount: { amount, currency },
       occurredOn: date,
       notes: notes.trim() || null,
     };
 
-    // Validate-on-submit: run Zod parse and surface field-level errors.
-    // Chosen over validate-on-blur for simplicity while giving Carbon's
-    // invalid+invalidText exactly the data they need.
     const result = transactionInputSchema.safeParse(input);
     if (!result.success) {
       const fieldErrors: FieldErrors = {};
@@ -93,7 +96,11 @@ export default function AddTransactionModal({
     setErrors({});
     setIsSaving(true);
     try {
-      await onCreated(result.data);
+      if (isEdit && tx) {
+        await onUpdate(tx.id, result.data);
+      } else {
+        await onCreate(result.data);
+      }
       handleClose();
     } catch (err) {
       if (err instanceof StorageQuotaExceededError) {
@@ -104,12 +111,11 @@ export default function AddTransactionModal({
     } finally {
       setIsSaving(false);
     }
-  }, [kind, name, amount, currency, date, notes, onCreated, handleClose]);
+  }, [kind, name, amount, currency, date, notes, isEdit, tx, onCreate, onUpdate, handleClose]);
 
   // Cmd/Ctrl + Enter saves from anywhere inside the modal.
-  // handleSave is in deps so the listener always calls the latest version.
   useEffect(() => {
-    if (!open) return;
+    if (!modalState.open) return;
     const listener = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
         e.preventDefault();
@@ -118,11 +124,11 @@ export default function AddTransactionModal({
     };
     document.addEventListener('keydown', listener);
     return () => document.removeEventListener('keydown', listener);
-  }, [open, handleSave]);
+  }, [modalState.open, handleSave]);
 
   return (
-    <ComposedModal open={open} onClose={handleClose} size="sm">
-      <ModalHeader title="Add transaction" />
+    <ComposedModal open={modalState.open} onClose={handleClose} size="sm">
+      <ModalHeader title={isEdit ? 'Edit transaction' : 'Add transaction'} />
       <ModalBody hasForm>
         {storageError && (
           <InlineNotification
