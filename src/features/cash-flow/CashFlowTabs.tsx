@@ -5,9 +5,12 @@ import type { Transaction } from '@/src/lib/transactions/schema';
 
 interface Props {
   transactions: Transaction[];
+  onEdit: (id: string) => void;
+  onDelete: (id: string) => void;
+  onBulkDelete: (ids: string[]) => void;
 }
 
-export default function CashFlowTabs({ transactions }: Props) {
+export default function CashFlowTabs({ transactions, onEdit, onDelete, onBulkDelete }: Props) {
   return (
     <Tabs>
       <TabList aria-label="Filter transactions">
@@ -17,13 +20,31 @@ export default function CashFlowTabs({ transactions }: Props) {
       </TabList>
       <TabPanels>
         <TabPanel>
-          <TransactionTable kind="all" transactions={transactions} />
+          <TransactionTable
+            kind="all"
+            transactions={transactions}
+            onEdit={onEdit}
+            onDelete={onDelete}
+            onBulkDelete={onBulkDelete}
+          />
         </TabPanel>
         <TabPanel>
-          <TransactionTable kind="income" transactions={transactions} />
+          <TransactionTable
+            kind="income"
+            transactions={transactions}
+            onEdit={onEdit}
+            onDelete={onDelete}
+            onBulkDelete={onBulkDelete}
+          />
         </TabPanel>
         <TabPanel>
-          <TransactionTable kind="expense" transactions={transactions} />
+          <TransactionTable
+            kind="expense"
+            transactions={transactions}
+            onEdit={onEdit}
+            onDelete={onDelete}
+            onBulkDelete={onBulkDelete}
+          />
         </TabPanel>
       </TabPanels>
     </Tabs>
