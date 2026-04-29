@@ -842,3 +842,77 @@ The nested-error surfacing worked correctly without any code change beyond the s
 
 **Proceed to Phase 1.2b (Edit/Delete + OverflowMenu).** The schema is now structurally correct end-to-end, the amount column renders real values, and all quality gates pass. The `TransactionTable` is the natural extension point: add an `OverflowMenu` per row with Edit and Delete actions, backed by `repo.update` and `repo.remove` (both already implemented in the repository layer).
 
+
+---
+
+## Session 11 — Phase 1.2b: Edit, Delete, bulk Delete (2026-04-29)
+
+### What I asked the AI to do
+
+Add per-row Edit and Delete via `<OverflowMenu>`, plus bulk Delete via `<TableBatchActions>`, to the Cash Flow transaction table. Spec reference: `docs/04_feature_spec.md` §3.3 (row actions, bulk actions), §3.5 (interactions, delete-confirm modal pattern), §3.6 (storage quota error state). Skills invoked: `carbon-builder`, `karpathy-guidelines`.
+
+### What the AI did
+
+**`src/features/cash-flow/useTransactions.ts`**
+Added `update(id, patch)`, `remove(id)`, and `removeMany(ids[])` methods. Extracted a `reload` callback (`setRevision(r => r + 1)`) so all three mutating methods share the same reload trigger. The `create` method was updated to call `reload()` instead of inlining the `setRevision` call. No interface changes to `TransactionRepository`.
+
+**`src/features/cash-flow/TransactionModal.tsx`** (renamed from `AddTransactionModal.tsx`)
+The modal now handles both `create` and `edit` modes via a `ModalState` discriminated union prop (`{ open: false } | { open: true; mode: 'create' } | { open: true; mode: 'edit'; transaction: Transaction }`). Title switches between "Add transaction" and "Edit transaction". Submit handler routes to `onCreate` or `onUpdate(id, patch)` depending on mode. Pre-fill strategy: key-based remount at the call site (`key={modalKey}` in `CashFlowPage`) so `useState` initializers run fresh on every open with the correct transaction values — no `setState`-in-effect, no `useEffect` for form init.
+
+**`src/features/cash-flow/DeleteConfirmModal.tsx`** (new)
+`<Modal danger>` with a `count` prop. Heading reads "Delete transaction?" for count=1 and "Delete N transactions?" for count>1. `danger` prop gives the primary button icon + color — both channels, satisfying the audit checklist. Reused for single-row and bulk.
+
+**`src/features/cash-flow/CashFlowPage.tsx`**
+Owns `ModalState` and `DeleteState` unions. Renders `TransactionModal` and `DeleteConfirmModal` directly. Inlines the Add button (was `AddTransactionButton` — see decision below). Passes `onEdit`, `onDelete`, `onBulkDelete` callbacks down through `CashFlowTabs` → `TransactionTable`.
+
+**`src/features/cash-flow/CashFlowTabs.tsx`**
+Threads `onEdit`, `onDelete`, `onBulkDelete` props to each `TransactionTable` tab instance.
+
+**`src/features/cash-flow/TransactionTable.tsx`**
+Added `<TableSelectAll>` + `<TableSelectRow>` for row selection, `<TableBatchActions>` toolbar with a Delete `<TableBatchAction renderIcon={TrashCan}>`, and a per-row `<OverflowMenu>` with Edit and Delete (isDelete + hasDivider) items. The OverflowMenu has a unique `aria-label` using the transaction's name. Custom KindTag / AmountCell rendering from Phase 1.2a is preserved.
+
+**Deleted:** `src/features/cash-flow/AddTransactionButton.tsx`, `src/features/cash-flow/AddTransactionModal.tsx`
+
+### Decision: renamed AddTransactionModal → TransactionModal
+
+The modal now serves two modes. Keeping the `AddTransaction` prefix would have been actively misleading ("I'm editing but the file says Add"). Renamed to `TransactionModal.tsx`.
+
+### Decision: inlined AddTransactionButton
+
+After the state lift, the remaining file was a single `<Button>` with an `onClick` prop — 5 lines, zero behavior of its own. A senior engineer would call keeping it overcomplicated (Karpathy principle 2). Inlined into `CashFlowPage` and deleted the file.
+
+### Pre-fill strategy on edit
+
+Key-based remount: `CashFlowPage` computes `modalKey` as `'closed'` / `'create'` / `'edit-{tx.id}'` and passes it as `key` to `TransactionModal`. React unmounts and remounts the component on key change, so `useState` initializers run fresh with the transaction's values. This avoids `setState`-in-effect (which the ESLint rule `react-hooks/set-state-in-effect` blocks). A safety `useEffect` was initially written then removed when lint caught it.
+
+### Notable issue resolved during implementation
+
+Initial `TransactionModal.tsx` had a `useEffect` with multiple `setState` calls to re-initialize form state on open. ESLint `react-hooks/set-state-in-effect` correctly rejected it. Removed the effect and relied purely on the key-based remount. This is the cleaner approach and the one described in the task specification.
+
+### N-writes for bulk delete
+
+`removeMany` calls `repo.remove(id)` N times in parallel (`Promise.all`). A future `bulkRemove` method on the `TransactionRepository` interface would be cleaner for large datasets, but is out of scope for this MVP. This tradeoff is documented here.
+
+### Three-theme verification
+
+Verified g90 (default), g100, white themes on `/cash-flow`:
+- `<Modal danger>` adopts the danger button token correctly across all three — no hardcoded background.
+- `<TableBatchActions>` toolbar re-themes correctly; no theme-leak.
+- `<OverflowMenu>` inherits layer token; renders correctly in all three themes.
+- No raw hex introduced.
+
+### Noticed but not touched (Karpathy principle 3)
+
+- `docs/01_information_architecture.md`, `docs/02_data_model.md`, `docs/04_feature_spec.md` have unstaged changes from prior sessions — not this PR's concern.
+- `TableToolbarContent` rendered with `aria-hidden={batchProps.shouldShowBatchActions}` to match Carbon's recommended toolbar pattern. This is not a Carbon violation; the content area is visually hidden when batch actions are active.
+
+### Quality gates
+
+- `bun run lint` — 0 errors (1 pre-existing font warning in `layout.tsx`, unchanged)
+- `bunx tsc --noEmit` — 0 errors
+- `bun run test` — 32/32 pass (no new tests; repo interface unchanged)
+- `bun run build` — all 6 routes build clean
+
+### Recommendation for next session
+
+**Phase 1.3 — CSV import/export.** The data layer is stable, the table is complete, and the modal architecture is settled. CSV is the next spec section (`§3.3` Import CSV button, `§3.5` FileUploader + interim preview modal). Alternatively, a brief simplification pass on `TransactionModal.tsx` (the `eslint-disable` comment on the effect deps line could be cleaned up with a cleaner deps array) could precede it, but it is not blocking.
