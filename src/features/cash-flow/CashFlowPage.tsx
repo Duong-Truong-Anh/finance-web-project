@@ -6,13 +6,15 @@ import {
   InlineNotification,
   Stack,
 } from '@carbon/react';
-import { Add } from '@carbon/icons-react';
+import { Add, Upload } from '@carbon/icons-react';
 import { useTransactions } from './useTransactions';
 import { useFx } from './useFx';
 import TransactionModal, { type ModalState } from './TransactionModal';
 import DeleteConfirmModal from './DeleteConfirmModal';
 import CashFlowTabs from './CashFlowTabs';
 import EmptyState from './EmptyState';
+import ExportCsvButton from './ExportCsvButton';
+import ImportCsvModal from './ImportCsvModal';
 import type { Transaction } from '@/src/lib/transactions/schema';
 import type { Currency } from '@/src/lib/currency/types';
 
@@ -23,11 +25,12 @@ interface Props {
 }
 
 export default function CashFlowPage({ initialCurrency }: Props) {
-  const { state, create, update, remove, removeMany } = useTransactions();
+  const { state, create, update, remove, removeMany, addMany } = useTransactions();
   const fxState = useFx();
 
   const [modalState, setModalState] = useState<ModalState>({ open: false });
   const [deleteState, setDeleteState] = useState<DeleteState>({ open: false });
+  const [importOpen, setImportOpen] = useState(false);
 
   const openCreate = useCallback(() => setModalState({ open: true, mode: 'create' }), []);
   const openEdit = useCallback(
@@ -38,6 +41,9 @@ export default function CashFlowPage({ initialCurrency }: Props) {
 
   const openDelete = useCallback((ids: string[]) => setDeleteState({ open: true, ids }), []);
   const closeDelete = useCallback(() => setDeleteState({ open: false }), []);
+
+  const openImport = useCallback(() => setImportOpen(true), []);
+  const closeImport = useCallback(() => setImportOpen(false), []);
 
   const handleConfirmDelete = useCallback(async () => {
     if (!deleteState.open) return;
@@ -50,8 +56,6 @@ export default function CashFlowPage({ initialCurrency }: Props) {
     }
   }, [deleteState, closeDelete, remove, removeMany]);
 
-  // Resolve the transaction object for the edit handler passed to tabs.
-  // The table passes an id; we look it up from state.
   const handleEditById = useCallback(
     (id: string) => {
       if (state.status !== 'ready') return;
@@ -63,21 +67,27 @@ export default function CashFlowPage({ initialCurrency }: Props) {
 
   const deleteCount = deleteState.open ? deleteState.ids.length : 0;
 
-  // Key drives remount of TransactionModal so useState initializers pick up
-  // the correct pre-fill values without setState-in-effect.
   const modalKey = !modalState.open
     ? 'closed'
     : modalState.mode === 'edit'
       ? `edit-${modalState.transaction.id}`
       : 'create';
 
+  const transactions = state.status === 'ready' ? state.transactions : [];
+
   return (
     <Stack gap={7}>
       <h1 className="cds--type-productive-heading-04">Cash flow</h1>
 
-      <Button kind="primary" renderIcon={Add} onClick={openCreate}>
-        Add transaction
-      </Button>
+      <div style={{ display: 'flex', gap: 'var(--cds-spacing-03)', marginBlockEnd: 'var(--cds-spacing-05)' }}>
+        <Button kind="primary" renderIcon={Add} onClick={openCreate}>
+          Add transaction
+        </Button>
+        <ExportCsvButton transactions={transactions} />
+        <Button kind="tertiary" renderIcon={Upload} onClick={openImport}>
+          Import CSV
+        </Button>
+      </div>
 
       {fxState.status === 'error' && (
         <InlineNotification
@@ -138,6 +148,12 @@ export default function CashFlowPage({ initialCurrency }: Props) {
         count={deleteCount}
         onCancel={closeDelete}
         onConfirm={handleConfirmDelete}
+      />
+
+      <ImportCsvModal
+        open={importOpen}
+        onClose={closeImport}
+        addMany={addMany}
       />
     </Stack>
   );

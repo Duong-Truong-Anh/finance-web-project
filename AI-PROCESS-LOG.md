@@ -1124,3 +1124,124 @@ Two options, in priority order:
 2. **Phase 1.4 — CSV import/export** (`src/lib/csv/` `parseCsv`/`serializeCsv`, `<FileUploader>` in the modal). The data model and Zod schema are stable; the CSV round-trip is well-specified.
 
 Recommend Playwright first if grading criteria weight runtime test coverage; CSV first if the demo deadline is near.
+
+---
+
+## Session 14 — Phase 1.4: CSV import / export (2026-05-01)
+
+### What I asked the AI to do
+
+Implement Phase 1.4: CSV import and export for the Cash Flow page. Five concrete outcomes required:
+1. `serializeCsv(transactions): string` — pure, deterministic, RFC-4180, sorted date desc / id desc.
+2. `parseCsv(input): ParseResult` — pure, header-driven, row-level non-fatal errors, Zod-validated.
+3. `createMany(transactions: Transaction[]): Promise<void>` — added to repository interface and LocalStorage implementation; one read + one write.
+4. Export button on the Cash Flow page that triggers a browser download.
+5. Import button + `<Modal>` with idle → previewing → importing states, Carbon `<FileUploaderDropContainer>`, `<InlineNotification kind="warning">` for row errors.
+
+CSV format: `date,kind,name,amount,currency,notes`, **major units** (human-editable), RFC 4180 quoting, `\r\n` line endings, UTF-8 BOM accepted on input.
+
+### What the AI did
+
+**`src/lib/csv/types.ts`** — Defined `ParseError` (rowNumber, message, rawRow) and `ParseResult` (valid: Transaction[], errors: ParseError[]).
+
+**`src/lib/csv/parse.ts`** — `parseCsv` pure function with:
+- BOM stripping (`﻿` prefix → sliced).
+- `\r?\n` split + trailing-blank-line drop.
+- RFC 4180 `tokenizeRow` that handles quoted fields, `""` escapes, and trailing-comma empty-last-field.
+- `toMinorUnits(majorString, currency)` that splits on `.` rather than using `parseFloat` — exactly as specified. VND rejects any `.` or `,`; USD requires the regex `/^(\d+)(?:\.(\d{2}))?$/` (0 or exactly 2 decimals).
+- Per-row try/catch: ZodError `.issues.map(e => e.message)` (not `.errors` — the Zod version in the project uses `.issues`); other errors use `.message`.
+- Empty notes cell → `null` (preserves `notes: null` through round-trip).
+
+**`src/lib/csv/serialize.ts`** — `serializeCsv` pure function with:
+- Sort by `occurredOn` desc then `id` desc.
+- `toMajorUnits`: VND = `String(amount)`, USD = `Math.floor(amount/100) + '.' + padStart(2,'0')`. No float arithmetic.
+- `quoteField`: wraps in `"..."` if field contains `,`, `"`, `\r`, or `\n`; escapes internal `"` as `""`.
+- `\r\n` between rows, trailing `\r\n`.
+
+**`src/lib/csv/parse.spec.ts`** — 14 test cases covering all required cases from the spec.
+
+**`src/lib/csv/serialize.spec.ts`** — 15 test cases including USD cent edge cases (0.05, 0.01), sort determinism, and RFC 4180 quoting.
+
+**`src/lib/csv/round-trip.spec.ts`** — 10-fixture test covering both currencies, income + expense, names with commas/quotes/accents, empty and non-empty notes, same-date transactions. Comparison strips `id`/`createdAt`/`updatedAt` (factory assigns new ULIDs on import) and sorts by all data fields for stable equality. Commented to document the why.
+
+**`src/lib/transactions/repository.ts`** — Added `createMany(transactions: Transaction[]): Promise<void>` signature with a comment explaining the semantics (pre-formed objects, one write, no-op for empty).
+
+**`src/lib/transactions/local-storage-repository.ts`** — Implemented `createMany`: early-return guard for empty array (no write), then one `readAll()` + one `writeAll([...existing, ...transactions])`.
+
+**`src/lib/transactions/local-storage-repository.spec.ts`** — Four new `createMany` test cases: no-op empty (spy verifies zero setItem calls), all-three-present after bulk insert, pre-existing row preserved, exactly-one-write spy test.
+
+**`src/features/cash-flow/useTransactions.ts`** — Added `addMany(transactions: Transaction[]): Promise<void>` that calls `repo.createMany` and bumps the revision counter. Returned from the hook without shape changes to existing exports.
+
+**`src/features/cash-flow/ExportCsvButton.tsx`** — `<Button kind="ghost" renderIcon={Download}>` that is `disabled` when `transactions.length === 0`. Click handler builds CSV string, creates a Blob, programmatically clicks a temporary `<a>`, revokes the URL. No state, no effect.
+
+**`src/features/cash-flow/ImportCsvModal.tsx`** — `<Modal>` with three internal states (`idle` / `previewing` / `importing`). Idle shows `<FileUploaderDropContainer>`. Previewing shows a count paragraph and, if errors exist, a `<InlineNotification kind="warning" lowContrast hideCloseButton>` with up to 5 formatted error messages. Importing shows `<InlineLoading>` as `primaryButtonText` and disables the primary button. `onSecondarySubmit` and `onRequestClose` both call `handleClose` which resets to idle.
+
+**`src/features/cash-flow/CashFlowPage.tsx`** — Added `importOpen` state, `openImport`/`closeImport` callbacks, `addMany` from `useTransactions`. Replaced the single `<Button>` above the table with a flex div using Carbon spacing tokens (`--cds-spacing-03` gap, `--cds-spacing-05` margin-block-end). Rendered `<ExportCsvButton>`, `<Button kind="tertiary" renderIcon={Upload}>Import CSV</Button>`, and `<ImportCsvModal>`.
+
+### Major decisions and their rationale
+
+**Major units in CSV (not minor units).** The task prompt explicitly overrode `docs/02_data_model.md §6` which specifies minor units. Rationale accepted: the CSV is human-editable (graders open in Excel), and `50000000` is unreadable as VND salary. The trade-off is that `toMinorUnits` must parse carefully to avoid float rounding — solved by string-splitting on `.` and the `^(\d+)(?:\.(\d{2}))?$` regex for USD.
+
+**`parseCsv` imports nothing from React / Next / Carbon.** It only imports `ZodError` (validation utility, not UI), `createTransaction` (pure factory), `Currency` type, and its own types. ESLint boundary: 0 errors.
+
+**`createMany` vs `bulkCreate`.** `bulkCreate(inputs: TransactionInput[])` already existed on the repository — it takes un-formed inputs and assigns new IDs. `createMany(transactions: Transaction[])` takes already-formed objects (IDs already assigned by the factory during parse). They serve different callers: `bulkCreate` for programmatic creation, `createMany` for import of parsed rows.
+
+**`ZodError.issues` not `.errors`.** On the Zod version in this project, the property name is `.issues`. Calling `.errors.map(...)` produced a `Cannot read properties of undefined` runtime error. Fixed by using `.issues`.
+
+**`secondaryButtonDisabled` not on `<Modal>`.** Carbon's `Modal` component in this project version does not expose `secondaryButtonDisabled`. The prop is on `ComposedModal`. Removed the prop; during the brief `importing` state, the secondary button remains clickable but `handleClose` is idempotent (sets modal to idle and calls `setImportOpen(false)`, both safe to call twice).
+
+**Column name `date` in CSV, `occurredOn` in Transaction.** The mapping is explicit in `parse.ts` (`fields[colIndex['date']]` → `occurredOn`) and `serialize.ts` (`tx.occurredOn` → `date` column).
+
+### Quoting edge cases found
+
+- **Trailing-comma empty last field.** A row like `...,April rent,` ends with a comma. After advancing past the comma, `i === line.length`. The tokenizer pushes `''` and breaks. Without the explicit `if (i >= line.length) { fields.push(''); break; }` guard, the trailing empty notes cell was silently dropped, causing a column-count mismatch on re-parse. Found during round-trip test authoring.
+- **`""` escape inside a quoted field.** `"He said ""hi"""` — the closing `""` before the final `"` are an escaped quote, not a close. The tokenizer increments by 2 when `line[i+1] === '"'`, so `He said "hi"` is parsed correctly.
+
+### Excel BOM finding
+
+The BOM is `﻿` (U+FEFF, byte sequence `EF BB BF` in UTF-8). Excel 2016+ writes it when you save-as CSV (UTF-8). The parser strips it with `input.startsWith('﻿') ? input.slice(1) : input`. The round-trip test doesn't exercise BOM (serializer doesn't write one per spec), but `parse.spec.ts` has an explicit `﻿` prefix test case that passes.
+
+### Things noticed but not fixed (per Karpathy principle 3)
+
+- `removeMany` in `useTransactions.ts` still does N individual `repo.remove()` calls instead of a single-write bulk remove. This is pre-existing dead-weight but not broken and not in scope.
+- The `docs/02_data_model.md §6` CSV format spec still says "minor units" and uses `occurredOn` as the column name. The implementation diverges. The spec should be updated in a future doc cleanup PR.
+
+### Quality gates (initial PR)
+
+| Check | Result |
+|---|---|
+| `bun run test` | 93 passed (was 55; +38 new tests) |
+| `bunx tsc --noEmit` | 0 errors |
+| `bun run lint` | 0 errors (1 pre-existing font warning) |
+| `bun run build` | All 7 routes built |
+
+### Post-PR review — GitHub Copilot findings and resolutions
+
+After the PR was opened, GitHub Copilot reviewed the code and raised four issues. Each was evaluated against the architectural context before acting.
+
+**Issue 1 & 4 (same bug, two descriptions): embedded newlines break round-trip.**
+`quoteField` correctly wrapped fields containing `\n`/`\r` in quotes per RFC 4180, but `parseCsv` splits the input on line endings before tokenizing — so a quoted multi-line record would have its row boundary broken on re-import. Copilot's suggested fix was a full character-level parser. Rejected as over-engineering for MVP. Instead: added `normalizeField()` to `serialize.ts` that replaces `[\r\n]+` with a space in `name` and `notes` before quoting. The serializer now never produces multi-line records, the parser is unchanged, and round-trip is safe. Trade-off: a newline in notes becomes a space in the exported file — acceptable for this use case.
+
+**Issue 2: VND empty string and scientific notation silently parsed as valid amounts.**
+`Number('')` returns `0` and `Number('1e3')` returns `1000`, both of which passed the old `!Number.isInteger(n) || n < 0` guard. An empty amount cell for VND would silently insert a ₫0 transaction. Fixed by replacing the guard with `/^\d+$/` which requires at least one digit and rejects anything non-decimal. One-line change in `toMinorUnits`.
+
+**Issue 3: stray characters after closing quote not rejected.**
+Copilot flagged that `"a"x,b` would be mis-tokenized. Evaluated and skipped — our serializer never produces that pattern, and the failure mode (shifted columns → Zod validation error) is already visible to the user. Adding strict post-quote validation would be defensive complexity with no real-world benefit at MVP stage.
+
+**Copilot commit on the branch.**
+Before the fixes were applied, Copilot pushed a `chore: planning CSV parser improvements` commit to the branch that added a `package-lock.json` (8086 lines). The project uses Bun (`bun.lockb`), not npm — this file was a Copilot environment artefact and does not belong in the repo. Reverted with `git revert f13b01b`.
+
+**Lesson noted:** GitHub Copilot is useful for spotting issues but should only be used for review, not for applying fixes directly to branches — it lacks the architectural context (Bun vs npm, line-splitting parser design choice, MVP scope) needed to make good implementation decisions.
+
+### Quality gates (final)
+
+| Check | Result |
+|---|---|
+| `bun run test` | **97 passed** (+4 tests for the two fixes) |
+| `bunx tsc --noEmit` | 0 errors |
+| `bun run lint` | 0 errors |
+| `bun run build` | All 7 routes built |
+
+### Recommendation for next session
+
+**Phase 1.X — Playwright E2E smokes.** The critical user paths (add transaction, export CSV, import CSV, currency toggle + reflow) have no automated runtime-level coverage. With CSV import/export now live, locking in a regression suite before Phase 1.5 (monthly ComboChart) is the responsible move — a chart change is more likely to visually break things than trigger a TypeScript error.

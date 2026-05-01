@@ -59,5 +59,11 @@ export function useTransactions() {
     reload();
   }, [reload]);
 
-  return { state, create, update, remove, removeMany };
+  const addMany = useCallback(async (transactions: Transaction[]) => {
+    const repo = createLocalStorageTransactionRepository();
+    await repo.createMany(transactions);
+    reload();
+  }, [reload]);
+
+  return { state, create, update, remove, removeMany, addMany };
 }
