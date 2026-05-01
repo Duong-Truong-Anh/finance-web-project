@@ -97,6 +97,19 @@ describe('serializeCsv', () => {
       const csv = serializeCsv([makeTx({ notes: 'April rent' })]);
       expect(csv).toContain('April rent');
     });
+
+    it('normalizes embedded newline in notes to a space', () => {
+      const csv = serializeCsv([makeTx({ notes: 'line one\nline two' })]);
+      // The normalized value should appear; the raw newline should not be in any field
+      expect(csv).toContain('line one line two');
+      expect(csv).not.toContain('line one\nline two');
+    });
+
+    it('normalizes embedded newline in name to a space', () => {
+      const csv = serializeCsv([makeTx({ name: 'bad\nname' })]);
+      expect(csv).toContain('bad name');
+      expect(csv).not.toContain('bad\nname');
+    });
   });
 
   describe('column order', () => {

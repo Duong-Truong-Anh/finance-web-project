@@ -10,14 +10,11 @@ const REQUIRED_COLUMNS = ['date', 'kind', 'name', 'amount', 'currency', 'notes']
 function toMinorUnits(majorString: string, currency: Currency): number {
   const trimmed = majorString.trim();
   if (currency === 'VND') {
-    if (trimmed.includes('.') || trimmed.includes(',')) {
-      throw new Error('VND amount must be a whole number');
+    // Reject empty strings, scientific notation (1e3), hex (0x10), decimals, etc.
+    if (!/^\d+$/.test(trimmed)) {
+      throw new Error('VND amount must be a non-negative integer (digits only)');
     }
-    const n = Number(trimmed);
-    if (!Number.isInteger(n) || n < 0) {
-      throw new Error('VND amount must be a non-negative integer');
-    }
-    return n;
+    return Number(trimmed);
   }
   // USD: 'NNN' or 'NNN.DD'. Exactly 0 or 2 decimal places.
   const match = /^(\d+)(?:\.(\d{2}))?$/.exec(trimmed);

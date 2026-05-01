@@ -2,10 +2,17 @@ import type { Transaction } from '../transactions/schema';
 
 const HEADER = 'date,kind,name,amount,currency,notes';
 
-// Wraps a field in quotes if it contains any RFC 4180 special characters.
-// Escapes internal double-quotes as "".
+// Replaces embedded newlines with a space so the serializer never produces
+// RFC-4180 multi-line records. The line-splitting parser cannot handle them,
+// so allowing newlines through would break export → import round-trips.
+function normalizeField(value: string): string {
+  return value.replace(/[\r\n]+/g, ' ');
+}
+
+// Wraps a field in quotes if it contains , or ". Newlines are already
+// normalized out by normalizeField before this is called.
 function quoteField(value: string): string {
-  if (value.includes(',') || value.includes('"') || value.includes('\r') || value.includes('\n')) {
+  if (value.includes(',') || value.includes('"')) {
     return `"${value.replace(/"/g, '""')}"`;
   }
   return value;
@@ -35,10 +42,10 @@ export function serializeCsv(transactions: Transaction[]): string {
     const fields = [
       tx.occurredOn,
       tx.kind,
-      tx.name,
+      normalizeField(tx.name),
       toMajorUnits(tx.amount.amount, tx.amount.currency),
       tx.amount.currency,
-      tx.notes ?? '',
+      normalizeField(tx.notes ?? ''),
     ];
     return fields.map(quoteField).join(',');
   });

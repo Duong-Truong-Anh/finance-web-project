@@ -145,6 +145,23 @@ describe('parseCsv', () => {
     });
   });
 
+  describe('VND amount edge cases', () => {
+    it('produces ParseError for an empty amount cell', () => {
+      const csv = `${HEADER}\n2026-04-01,income,Salary,,VND,`;
+      const result = parseCsv(csv);
+      expect(result.valid).toHaveLength(0);
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0].message).toContain('digits only');
+    });
+
+    it('produces ParseError for scientific notation like 1e3', () => {
+      const csv = `${HEADER}\n2026-04-01,income,Salary,1e3,VND,`;
+      const result = parseCsv(csv);
+      expect(result.valid).toHaveLength(0);
+      expect(result.errors).toHaveLength(1);
+    });
+  });
+
   describe('USD amount conversions', () => {
     it('converts 500.00 USD to 50000 cents', () => {
       const csv = `${HEADER}\n2026-04-01,income,Consulting,500.00,USD,`;
