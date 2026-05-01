@@ -1,8 +1,14 @@
 'use client';
 import { useCallback, useState } from 'react';
-import { Button, DataTableSkeleton, InlineNotification, Stack } from '@carbon/react';
+import {
+  Button,
+  DataTableSkeleton,
+  InlineNotification,
+  Stack,
+} from '@carbon/react';
 import { Add } from '@carbon/icons-react';
 import { useTransactions } from './useTransactions';
+import { useFx } from './useFx';
 import TransactionModal, { type ModalState } from './TransactionModal';
 import DeleteConfirmModal from './DeleteConfirmModal';
 import CashFlowTabs from './CashFlowTabs';
@@ -18,6 +24,7 @@ interface Props {
 
 export default function CashFlowPage({ initialCurrency }: Props) {
   const { state, create, update, remove, removeMany } = useTransactions();
+  const fxState = useFx();
 
   const [modalState, setModalState] = useState<ModalState>({ open: false });
   const [deleteState, setDeleteState] = useState<DeleteState>({ open: false });
@@ -72,6 +79,16 @@ export default function CashFlowPage({ initialCurrency }: Props) {
         Add transaction
       </Button>
 
+      {fxState.status === 'error' && (
+        <InlineNotification
+          kind="warning"
+          lowContrast
+          hideCloseButton
+          title="Live exchange rates are unavailable."
+          subtitle="Showing amounts in stored currency."
+        />
+      )}
+
       <div>
         {state.status === 'loading' && (
           <DataTableSkeleton
@@ -98,6 +115,8 @@ export default function CashFlowPage({ initialCurrency }: Props) {
         {state.status === 'ready' && state.transactions.length > 0 && (
           <CashFlowTabs
             transactions={state.transactions}
+            displayCurrency={initialCurrency}
+            fxState={fxState}
             onEdit={handleEditById}
             onDelete={(id) => openDelete([id])}
             onBulkDelete={openDelete}
