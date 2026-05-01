@@ -278,6 +278,75 @@ describe('createLocalStorageTransactionRepository', () => {
     });
   });
 
+  describe('createMany', () => {
+    it('is a no-op when input is empty — no write occurs', async () => {
+      const setItemSpy = vi.spyOn(storage, 'setItem');
+      const repo = makeRepo();
+      await repo.createMany([]);
+      const txCalls = setItemSpy.mock.calls.filter(([key]) => key === STORAGE_KEYS.transactions);
+      expect(txCalls).toHaveLength(0);
+    });
+
+    it('inserts all rows and preserves pre-existing transactions', async () => {
+      const repo = makeRepo();
+      const d = await repo.create(VALID_INPUT); // pre-existing
+
+      // Build three Transaction objects via bulkCreate then copy them
+      const [a, b, c] = await repo.bulkCreate([
+        { ...VALID_EXPENSE, name: 'A' },
+        { ...VALID_EXPENSE, name: 'B' },
+        { ...VALID_EXPENSE, name: 'C' },
+      ]);
+
+      // Remove what bulkCreate added so we can re-insert via createMany
+      await repo.remove(a.id);
+      await repo.remove(b.id);
+      await repo.remove(c.id);
+
+      await repo.createMany([a, b, c]);
+
+      const all = await repo.list();
+      expect(all).toHaveLength(4);
+      const ids = all.map((t) => t.id);
+      expect(ids).toContain(d.id);
+      expect(ids).toContain(a.id);
+      expect(ids).toContain(b.id);
+      expect(ids).toContain(c.id);
+    });
+
+    it('preserves transactions from a prior create() call', async () => {
+      const repo = makeRepo();
+      const x = await repo.create(VALID_INPUT);
+      const extra = await repo.create(VALID_EXPENSE);
+      // Remove extra so we can re-insert via createMany
+      await repo.remove(extra.id);
+
+      await repo.createMany([extra]);
+
+      const all = await repo.list();
+      expect(all.map((t) => t.id)).toContain(x.id);
+      expect(all.map((t) => t.id)).toContain(extra.id);
+    });
+
+    it('writes to storage exactly once for N transactions', async () => {
+      const setItemSpy = vi.spyOn(storage, 'setItem');
+      const repo = makeRepo();
+
+      const [tx1, tx2, tx3] = await repo.bulkCreate([
+        { ...VALID_INPUT, name: 'One' },
+        { ...VALID_INPUT, name: 'Two' },
+        { ...VALID_INPUT, name: 'Three' },
+      ]);
+      await repo.clear();
+
+      setItemSpy.mockClear();
+      await repo.createMany([tx1, tx2, tx3]);
+
+      const txCalls = setItemSpy.mock.calls.filter(([key]) => key === STORAGE_KEYS.transactions);
+      expect(txCalls).toHaveLength(1);
+    });
+  });
+
   describe('round trip', () => {
     it('preserves all fields through create → list', async () => {
       const repo = makeRepo();

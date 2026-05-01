@@ -85,6 +85,12 @@ export function createLocalStorageTransactionRepository(opts?: {
       return created;
     },
 
+    async createMany(transactions: Transaction[]): Promise<void> {
+      if (transactions.length === 0) return;
+      const existing = readAll();
+      writeAll([...existing, ...transactions]);
+    },
+
     async clear(): Promise<void> {
       adapter.remove(KEY);
     },
