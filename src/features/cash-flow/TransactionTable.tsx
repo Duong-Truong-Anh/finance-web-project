@@ -4,6 +4,7 @@ import {
   DataTable,
   OverflowMenu,
   OverflowMenuItem,
+  SkeletonText,
   Table,
   TableBatchAction,
   TableBatchActions,
@@ -21,6 +22,10 @@ import {
 } from '@carbon/react';
 import { ArrowUp, ArrowDown, TrashCan } from '@carbon/icons-react';
 import type { Transaction } from '@/src/lib/transactions/schema';
+import type { Currency } from '@/src/lib/currency/types';
+import type { FxState } from './useFx';
+import { convert } from '@/src/lib/currency/convert';
+import { format } from '@/src/lib/currency/format';
 
 const HEADERS = [
   { key: 'occurredOn', header: 'Date' },
@@ -32,9 +37,15 @@ const HEADERS = [
 
 type HeaderKey = (typeof HEADERS)[number]['key'];
 
+function localeFor(currency: Currency): 'vi-VN' | 'en-US' {
+  return currency === 'VND' ? 'vi-VN' : 'en-US';
+}
+
 interface Props {
   kind: 'all' | 'income' | 'expense';
   transactions: Transaction[];
+  displayCurrency: Currency;
+  fxState: FxState;
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
   onBulkDelete: (ids: string[]) => void;
@@ -52,8 +63,28 @@ function KindTag({ txKind }: { txKind: 'income' | 'expense' }) {
   );
 }
 
-function AmountCell({ tx }: { tx: Transaction }) {
+function AmountCell({
+  tx,
+  displayCurrency,
+  fxState,
+}: {
+  tx: Transaction;
+  displayCurrency: Currency;
+  fxState: FxState;
+}) {
   const isExpense = tx.kind === 'expense';
+
+  if (fxState.status === 'loading') {
+    return <SkeletonText width="60px" />;
+  }
+
+  const displayMoney =
+    fxState.status === 'ready'
+      ? convert(tx.amount, displayCurrency, fxState.fx)
+      : tx.amount;
+
+  const formatted = format(displayMoney, localeFor(displayMoney.currency));
+
   return (
     <span
       style={{
@@ -62,14 +93,22 @@ function AmountCell({ tx }: { tx: Transaction }) {
       }}
     >
       {isExpense ? '−' : ''}
-      {tx.amount.amount} {tx.amount.currency}
+      {formatted}
     </span>
   );
 }
 
 const DATE_FMT = new Intl.DateTimeFormat('en-CA');
 
-export default function TransactionTable({ kind, transactions, onEdit, onDelete, onBulkDelete }: Props) {
+export default function TransactionTable({
+  kind,
+  transactions,
+  displayCurrency,
+  fxState,
+  onEdit,
+  onDelete,
+  onBulkDelete,
+}: Props) {
   const filtered = useMemo(
     () =>
       kind === 'all'
@@ -182,7 +221,11 @@ export default function TransactionTable({ kind, transactions, onEdit, onDelete,
                           if (headerKey === 'amount' && origTx) {
                             return (
                               <TableCell key={cell.id} style={{ textAlign: 'right' }}>
-                                <AmountCell tx={origTx} />
+                                <AmountCell
+                                  tx={origTx}
+                                  displayCurrency={displayCurrency}
+                                  fxState={fxState}
+                                />
                               </TableCell>
                             );
                           }
