@@ -1206,13 +1206,40 @@ The BOM is `﻿` (U+FEFF, byte sequence `EF BB BF` in UTF-8). Excel 2016+ writes
 - `removeMany` in `useTransactions.ts` still does N individual `repo.remove()` calls instead of a single-write bulk remove. This is pre-existing dead-weight but not broken and not in scope.
 - The `docs/02_data_model.md §6` CSV format spec still says "minor units" and uses `occurredOn` as the column name. The implementation diverges. The spec should be updated in a future doc cleanup PR.
 
-### Quality gates
+### Quality gates (initial PR)
 
 | Check | Result |
 |---|---|
 | `bun run test` | 93 passed (was 55; +38 new tests) |
 | `bunx tsc --noEmit` | 0 errors |
 | `bun run lint` | 0 errors (1 pre-existing font warning) |
+| `bun run build` | All 7 routes built |
+
+### Post-PR review — GitHub Copilot findings and resolutions
+
+After the PR was opened, GitHub Copilot reviewed the code and raised four issues. Each was evaluated against the architectural context before acting.
+
+**Issue 1 & 4 (same bug, two descriptions): embedded newlines break round-trip.**
+`quoteField` correctly wrapped fields containing `\n`/`\r` in quotes per RFC 4180, but `parseCsv` splits the input on line endings before tokenizing — so a quoted multi-line record would have its row boundary broken on re-import. Copilot's suggested fix was a full character-level parser. Rejected as over-engineering for MVP. Instead: added `normalizeField()` to `serialize.ts` that replaces `[\r\n]+` with a space in `name` and `notes` before quoting. The serializer now never produces multi-line records, the parser is unchanged, and round-trip is safe. Trade-off: a newline in notes becomes a space in the exported file — acceptable for this use case.
+
+**Issue 2: VND empty string and scientific notation silently parsed as valid amounts.**
+`Number('')` returns `0` and `Number('1e3')` returns `1000`, both of which passed the old `!Number.isInteger(n) || n < 0` guard. An empty amount cell for VND would silently insert a ₫0 transaction. Fixed by replacing the guard with `/^\d+$/` which requires at least one digit and rejects anything non-decimal. One-line change in `toMinorUnits`.
+
+**Issue 3: stray characters after closing quote not rejected.**
+Copilot flagged that `"a"x,b` would be mis-tokenized. Evaluated and skipped — our serializer never produces that pattern, and the failure mode (shifted columns → Zod validation error) is already visible to the user. Adding strict post-quote validation would be defensive complexity with no real-world benefit at MVP stage.
+
+**Copilot commit on the branch.**
+Before the fixes were applied, Copilot pushed a `chore: planning CSV parser improvements` commit to the branch that added a `package-lock.json` (8086 lines). The project uses Bun (`bun.lockb`), not npm — this file was a Copilot environment artefact and does not belong in the repo. Reverted with `git revert f13b01b`.
+
+**Lesson noted:** GitHub Copilot is useful for spotting issues but should only be used for review, not for applying fixes directly to branches — it lacks the architectural context (Bun vs npm, line-splitting parser design choice, MVP scope) needed to make good implementation decisions.
+
+### Quality gates (final)
+
+| Check | Result |
+|---|---|
+| `bun run test` | **97 passed** (+4 tests for the two fixes) |
+| `bunx tsc --noEmit` | 0 errors |
+| `bun run lint` | 0 errors |
 | `bun run build` | All 7 routes built |
 
 ### Recommendation for next session
