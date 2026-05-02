@@ -1347,3 +1347,24 @@ No flake was observed. All 9 tests passed on the first post-fix run and on subse
 ### Recommendation for next session
 
 **Phase 1.5 — monthly Carbon ComboChart on the Cash Flow page.** The smoke harness is in place; the regression net is live. The ComboChart is the last piece of Phase 1's Cash Flow page spec. Confirmed: proceed.
+
+### Post-PR review — GitHub Copilot findings and resolutions
+
+After the PR was opened, GitHub Copilot reviewed the code and raised 6 inline comments. The brief was to assume each comment wrong until proven justified. Each was evaluated against the source code before acting.
+
+| # | File | Comment | Verdict |
+|---|---|---|---|
+| 1 | `seed.ts:8` | Import `STORAGE_KEYS` from `src/lib/storage/keys.ts` instead of hardcoding string literals | **Justified** — DRY violation against an already-exported source of truth |
+| 2 | `seed.ts:46` | "one day stale" comment will become inaccurate over time | **Rejected** — comment is tied to an explicit date; intent is self-documenting and wording does not affect correctness |
+| 3 | `currency-toggle.spec.ts:23` | Second `addInitScript` redundant; use `seedStorage(context, { transactions: [...] })` | **Justified** — `seedStorage` accepts `transactions`; current code seeds empty then immediately overwrites, hardcoding the key in the spec |
+| 4 | `cash-flow-csv.spec.ts:2` | `import fs from 'node:fs/promises'` default-import interop breaks in native ESM | **Rejected** — Node.js built-in modules explicitly expose a default export in ESM; the concern applies to third-party CJS packages, not built-ins |
+| 5 | `cash-flow-csv.spec.ts:26` | Use `seedStorage` for `EXPORT_TX` to avoid hardcoded key | **Partially justified** — hardcoded key is real; fix uses `TX_KEY` as serializable arg rather than `seedStorage` (which would add a confusing double `addInitScript`) |
+| 6 | `cash-flow-crud.spec.ts:53` | Use `seedStorage` for `COFFEE_TX` to avoid hardcoded key | **Partially justified** — same analysis as #5 |
+
+**3 changes applied across 4 files:**
+
+1. **`e2e/fixtures/seed.ts`** — derive `TX_KEY`/`FX_KEY` from `STORAGE_KEYS` (imported from `src/lib/storage/keys`); export `TX_KEY` for specs.
+2. **`e2e/currency-toggle.spec.ts`** — collapse `beforeEach` to `seedStorage(context, { transactions: [SALARY_TX] })`, removing redundant overwrite.
+3. **`e2e/cash-flow-crud.spec.ts`** + **`e2e/cash-flow-csv.spec.ts`** — import `TX_KEY`; pass as `{ txs, key }` serializable arg to `addInitScript`, matching the pattern already used inside `seedStorage`.
+
+**Quality gates (post-fix):** `bun run e2e` 9 passed · `bun run test` 97 passed · `bunx tsc --noEmit` 0 errors · `bun run lint` 0 errors.

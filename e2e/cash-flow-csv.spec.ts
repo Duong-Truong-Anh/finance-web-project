@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import fs from 'node:fs/promises';
-import { seedStorage, mockFx } from './fixtures/seed';
+import { seedStorage, mockFx, TX_KEY } from './fixtures/seed';
 import type { Transaction } from '../src/lib/transactions/schema';
 
 const EXPORT_TX: Transaction = {
@@ -21,8 +21,8 @@ test.beforeEach(async ({ context }) => {
 
 test('exports CSV when transactions exist', async ({ page, context }) => {
   await context.addInitScript(
-    (txs) => window.localStorage.setItem('flowstate:v1:transactions', JSON.stringify(txs)),
-    [EXPORT_TX],
+    ({ txs, key }) => window.localStorage.setItem(key, JSON.stringify(txs)),
+    { txs: [EXPORT_TX], key: TX_KEY },
   );
   await page.goto('/cash-flow');
 

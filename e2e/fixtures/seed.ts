@@ -1,11 +1,10 @@
 import type { BrowserContext } from '@playwright/test';
 import type { Transaction } from '../../src/lib/transactions/schema';
 import type { FxRateSnapshot } from '../../src/lib/currency/types';
+import { STORAGE_KEYS } from '../../src/lib/storage/keys';
 
-// Storage keys must match STORAGE_KEYS in src/lib/storage/keys.ts exactly.
-// namespace = 'flowstate:v1:', keys = 'transactions' and 'fx'.
-const TX_KEY = 'flowstate:v1:transactions';
-const FX_KEY = 'flowstate:v1:fx';
+export const TX_KEY = STORAGE_KEYS.transactions;
+const FX_KEY = STORAGE_KEYS.fx;
 
 export const FX_SNAPSHOT: FxRateSnapshot = {
   base: 'USD',

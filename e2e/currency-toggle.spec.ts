@@ -16,11 +16,7 @@ const SALARY_TX: Transaction = {
 
 test.beforeEach(async ({ context }) => {
   await mockFx(context);
-  await seedStorage(context); // cookies: g90 theme, VND currency; empty transactions
-  await context.addInitScript(
-    (txs) => window.localStorage.setItem('flowstate:v1:transactions', JSON.stringify(txs)),
-    [SALARY_TX],
-  );
+  await seedStorage(context, { transactions: [SALARY_TX] });
 });
 
 test('reflows table amounts when display currency changes', async ({ page }) => {

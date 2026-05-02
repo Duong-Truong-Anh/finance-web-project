@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { seedStorage, mockFx } from './fixtures/seed';
+import { seedStorage, mockFx, TX_KEY } from './fixtures/seed';
 import type { Transaction } from '../src/lib/transactions/schema';
 
 // Static fixture — a complete Transaction used in edit and delete tests.
@@ -48,8 +48,8 @@ test('adds a VND transaction via the modal', async ({ page }) => {
 
 test('edits a transaction', async ({ page, context }) => {
   await context.addInitScript(
-    (txs) => window.localStorage.setItem('flowstate:v1:transactions', JSON.stringify(txs)),
-    [COFFEE_TX],
+    ({ txs, key }) => window.localStorage.setItem(key, JSON.stringify(txs)),
+    { txs: [COFFEE_TX], key: TX_KEY },
   );
   await page.goto('/cash-flow');
 
@@ -69,8 +69,8 @@ test('edits a transaction', async ({ page, context }) => {
 
 test('deletes a transaction', async ({ page, context }) => {
   await context.addInitScript(
-    (txs) => window.localStorage.setItem('flowstate:v1:transactions', JSON.stringify(txs)),
-    [COFFEE_TX],
+    ({ txs, key }) => window.localStorage.setItem(key, JSON.stringify(txs)),
+    { txs: [COFFEE_TX], key: TX_KEY },
   );
   await page.goto('/cash-flow');
 
