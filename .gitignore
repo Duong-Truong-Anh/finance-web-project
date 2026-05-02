@@ -33,6 +33,10 @@ tsconfig.tsbuildinfo
 # Next.js auto-generated type reference (regenerates per build; line 3 churns)
 next-env.d.ts
 
+# playwright
+playwright-report/
+test-results/
+
 # claude code
 .agents/
 .claude/

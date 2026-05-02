@@ -1245,3 +1245,126 @@ Before the fixes were applied, Copilot pushed a `chore: planning CSV parser impr
 ### Recommendation for next session
 
 **Phase 1.X — Playwright E2E smokes.** The critical user paths (add transaction, export CSV, import CSV, currency toggle + reflow) have no automated runtime-level coverage. With CSV import/export now live, locking in a regression suite before Phase 1.5 (monthly ComboChart) is the responsible move — a chart change is more likely to visually break things than trigger a TypeScript error.
+
+---
+
+## Session 15 — Phase 1.X: Playwright smoke harness (2026-05-02)
+
+### What I asked the AI to do
+
+Install Playwright and write a 9-test smoke harness (3 spec files) covering the Cash Flow page's CRUD operations, CSV import/export, and currency toggle — before Phase 1.5 (monthly Carbon ComboChart) lands. The brief specified exactly 9 tests, one Chromium project, deterministic FX mocking, and zero CSS-class selectors.
+
+### Understanding statement (required pre-work)
+
+The task is a regression net, not a comprehensive E2E suite. 9 tests across 3 specs pin the load-bearing user paths so that Phase 1.5 chart changes have a browser-level check. Every test must be isolated (empty localStorage, deterministic mocked FX), use only accessible role/label selectors, and pass offline (no real network calls). No new source files, no changes to `src/` or `app/`.
+
+### What the AI did this session
+
+1. **Required reading order honored:** `CLAUDE.md` → `docs/04_feature_spec.md §3` → `AppShell.tsx` + `CurrencySwitcher.tsx` → `CashFlowPage.tsx` + `ImportCsvModal.tsx` + `ExportCsvButton.tsx` + `TransactionModal.tsx` + `DeleteConfirmModal.tsx` + `TransactionTable.tsx` → `src/lib/storage/keys.ts` → `app/api/fx/latest/route.ts` → `src/lib/currency/format.ts` + `convert.ts` → `src/lib/csv/parse.ts`. Read 16 source files before writing a line of test code.
+
+2. **Installed `@playwright/test@1.59.1`** (bun resolved `^1.49.0` to latest stable), added `e2e` and `e2e:ui` scripts, fetched Chromium binary via `bunx playwright install chromium`.
+
+3. **Created `playwright.config.ts`** — single Chromium project, `fullyParallel: true`, `webServer` auto-starts `bun run dev` and reuses if already running, `actionTimeout: 5_000`.
+
+4. **Created `e2e/fixtures/seed.ts`** — `seedStorage()` helper adds cookies (g90 theme, VND currency) and an `addInitScript` that seeds `flowstate:v1:transactions` and `flowstate:v1:fx` in localStorage before each navigation. `mockFx()` intercepts `**/api/fx/latest` and returns a deterministic `{ VND: 25000, USD: 1 }` snapshot.
+
+5. **Created `e2e/fixtures/sample-import.csv`** — 2 valid rows (Salary + Rent, VND).
+
+6. **Created `e2e/cash-flow-crud.spec.ts`** (4 tests): empty state, add via modal, edit via overflow menu, delete via overflow menu + confirm modal.
+
+7. **Created `e2e/cash-flow-csv.spec.ts`** (3 tests): export download filename + content, valid import with preview count, bad CSV (missing column) with warning notification and disabled button.
+
+8. **Created `e2e/currency-toggle.spec.ts`** (2 tests): VND→USD reflow check, cookie persistence across `page.reload()`.
+
+9. **Updated `package.json`, `.gitignore`**, added `playwright-report/` and `test-results/` to gitignore.
+
+10. **Iterated through one failure round** — initial run: 3 passed, 6 failed. Diagnosed all failures, applied targeted fixes, re-ran: 9/9 pass.
+
+### Selector strategy — what worked and what didn't
+
+**Stable accessible names (no fixes needed):**
+- `getByRole('button', { name: 'Add transaction' })` — Carbon `<Button>` text is the accessible name ✓
+- `getByRole('button', { name: 'Export CSV' })` — same ✓
+- `getByRole('button', { name: 'Import CSV' })` — same ✓
+- `getByRole('button', { name: 'Save' })` — ComposedModal footer primary button ✓
+- `getByRole('button', { name: 'Delete' })` — DeleteConfirmModal primary button ✓
+- `getByRole('menuitem', { name: 'Edit' })` / `{ name: 'Delete' }` — Carbon OverflowMenuItem renders `<button role="menuitem">` ✓
+- `getByRole('button', { name: /Display currency: VND/ })` — CurrencySwitcher HeaderGlobalAction aria-label ✓
+- `getByRole('button', { name: 'Import 2 rows' })` — ImportCsvModal computed primary text ✓
+
+**Workarounds required:**
+
+1. **`getByLabel('Name')` — strict mode violation.** Playwright's `getByLabel` does case-insensitive substring matching. The VND radio button is labeled "VND – Vietnamese Đồng" — "Vietnamese" contains "name". Fix: `getByLabel('Name', { exact: true })`.
+
+2. **`getByRole('button', { name: 'Actions for Coffee' })` — timeout.** Carbon's `OverflowMenu` trigger is wrapped in a `Tooltip` in @carbon/react 1.106.x. The tooltip may expose the accessible name via `aria-labelledby` pointing to a portal element, making role+name resolution unreliable without the full tooltip DOM present. Fix: scope the button lookup to the data row — `page.getByRole('row').filter({ hasText: /Coffee/ }).getByRole('button')` — which finds the overflow menu trigger without relying on accessible name computation.
+
+3. **`getByRole('radio', ...).click()` — pointer event interception.** Carbon's RadioButton renders `<span class="cds--radio-button__appearance">` as a visual replacement that intercepts mouse events via z-index. Clicking the input directly fails because the span is "in the way." Fix: click the associated label element — `page.locator('label', { hasText: 'USD – US Dollar' }).click()` — which activates the radio without pointer interception.
+
+4. **`getByRole('button', { name: 'Import' })` — strict mode violation.** "Import CSV" button also on the page matches without exact. Fix: `getByRole('button', { name: 'Import', exact: true })`.
+
+### Storage key finding
+
+`src/lib/storage/keys.ts` uses colon-namespaced keys: `flowstate:v1:transactions` and `flowstate:v1:fx`. The task brief assumed dot-namespaced keys (`flowstate.transactions.v1`). The seed helper was written with the correct keys from the start after reading the source file. No key mismatch occurred.
+
+### FX cache staleness — by design
+
+The seeded FX snapshot has `fetchedAt: '2026-05-01T00:00:00.000Z'`. The FX repository's `getCurrent()` checks `isSameUtcDay(cachedDate, now())` — since the seed date is yesterday, the cache is always stale and the repo calls `/api/fx/latest` to refresh. This means `mockFx()` is the real source of truth. The FX seed in localStorage is harmless (it would only matter if the mock were absent). Both mechanisms work together: offline-safe regardless of seed date.
+
+### Flake analysis
+
+No flake was observed. All 9 tests passed on the first post-fix run and on subsequent re-runs. The parallel suite ran in 8.5 seconds total. The `addInitScript` override pattern (second script runs after beforeEach's script, overwrites the same localStorage key) was verified to work correctly — confirmed by the export CSV test which uses the same pattern and passed on the first attempt.
+
+### Per-test timing (final run)
+
+| Test | Time |
+|---|---|
+| shows errors when CSV header is missing a column | 3.6s |
+| shows empty state with zero transactions | 3.7s |
+| exports CSV when transactions exist | 4.0s |
+| adds a VND transaction via the modal | 4.0s |
+| imports a valid CSV | 4.1s |
+| reflows table amounts when display currency changes | 4.1s |
+| edits a transaction | 4.2s |
+| deletes a transaction | 4.3s |
+| persists currency choice across reload | 4.6s |
+| **Suite total** | **8.5s** |
+
+### Things noticed but not fixed (Karpathy principle 3)
+
+- `removeMany` in `useTransactions.ts` still does N individual `repo.remove()` calls — noted in Session 14, still deferred.
+- `docs/02_data_model.md §6` CSV format spec still drifts from implementation — deferred to a doc-only PR.
+- The Playwright version bun installed (`1.59.1`) is newer than the pinned `^1.49.0` — no behavior differences observed; the lock file captures the actual version.
+
+### Quality gates (final)
+
+| Check | Result |
+|---|---|
+| `bun run e2e` | **9 passed** (8.5s suite) |
+| `bunx tsc --noEmit` | 0 errors |
+| `bun run lint` | 0 errors (1 pre-existing font warning) |
+| `bun run test` | 97 passed (Vitest unaffected) |
+
+### Recommendation for next session
+
+**Phase 1.5 — monthly Carbon ComboChart on the Cash Flow page.** The smoke harness is in place; the regression net is live. The ComboChart is the last piece of Phase 1's Cash Flow page spec. Confirmed: proceed.
+
+### Post-PR review — GitHub Copilot findings and resolutions
+
+After the PR was opened, GitHub Copilot reviewed the code and raised 6 inline comments. The brief was to assume each comment wrong until proven justified. Each was evaluated against the source code before acting.
+
+| # | File | Comment | Verdict |
+|---|---|---|---|
+| 1 | `seed.ts:8` | Import `STORAGE_KEYS` from `src/lib/storage/keys.ts` instead of hardcoding string literals | **Justified** — DRY violation against an already-exported source of truth |
+| 2 | `seed.ts:46` | "one day stale" comment will become inaccurate over time | **Rejected** — comment is tied to an explicit date; intent is self-documenting and wording does not affect correctness |
+| 3 | `currency-toggle.spec.ts:23` | Second `addInitScript` redundant; use `seedStorage(context, { transactions: [...] })` | **Justified** — `seedStorage` accepts `transactions`; current code seeds empty then immediately overwrites, hardcoding the key in the spec |
+| 4 | `cash-flow-csv.spec.ts:2` | `import fs from 'node:fs/promises'` default-import interop breaks in native ESM | **Rejected** — Node.js built-in modules explicitly expose a default export in ESM; the concern applies to third-party CJS packages, not built-ins |
+| 5 | `cash-flow-csv.spec.ts:26` | Use `seedStorage` for `EXPORT_TX` to avoid hardcoded key | **Partially justified** — hardcoded key is real; fix uses `TX_KEY` as serializable arg rather than `seedStorage` (which would add a confusing double `addInitScript`) |
+| 6 | `cash-flow-crud.spec.ts:53` | Use `seedStorage` for `COFFEE_TX` to avoid hardcoded key | **Partially justified** — same analysis as #5 |
+
+**3 changes applied across 4 files:**
+
+1. **`e2e/fixtures/seed.ts`** — derive `TX_KEY`/`FX_KEY` from `STORAGE_KEYS` (imported from `src/lib/storage/keys`); export `TX_KEY` for specs.
+2. **`e2e/currency-toggle.spec.ts`** — collapse `beforeEach` to `seedStorage(context, { transactions: [SALARY_TX] })`, removing redundant overwrite.
+3. **`e2e/cash-flow-crud.spec.ts`** + **`e2e/cash-flow-csv.spec.ts`** — import `TX_KEY`; pass as `{ txs, key }` serializable arg to `addInitScript`, matching the pattern already used inside `seedStorage`.
+
+**Quality gates (post-fix):** `bun run e2e` 9 passed · `bun run test` 97 passed · `bunx tsc --noEmit` 0 errors · `bun run lint` 0 errors.
