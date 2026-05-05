@@ -217,17 +217,30 @@ Behavior (the adapter is in `src/lib/`, which has zero UI deps — so it does no
 
 ## 6. CSV import / export
 
-Round-trip-safe. Header row + UTF-8 + `\n` line endings. RFC 4180 quoting. `﻿` BOM optional on export.
+Round-trip-safe. Header row + UTF-8 + `\r\n` line endings. RFC 4180 quoting. UTF-8 BOM accepted (and stripped) on import; never written on export.
 
 ```
-kind,name,amount,currency,occurredOn,notes
-income,Salary,18000000,VND,2026-04-01,April salary
-expense,Rent,5500000,VND,2026-04-05,
+date,kind,name,amount,currency,notes
+2026-04-01,income,Salary,18000000,VND,April salary
+2026-04-05,expense,Rent,5500000,VND,
 ```
 
-The `amount` column is in minor units (matches storage). Import validates with the same Zod schema. Export emits in the user's stored currency, not display currency — round-tripping must be lossless.
+**Column order is normative** (the parser is header-driven, but the serializer always emits this order):
 
-The implementation lives in `src/lib/csv/` and exposes `parseCsv(text): { rows: TransactionInput[]; errors: ImportError[] }` and `serializeCsv(transactions): string`. Vitest covers the round trip on a 200-row fixture.
+1. `date` — ISO `YYYY-MM-DD`. Maps to `Transaction.occurredOn`.
+2. `kind` — `income` or `expense` (lowercase).
+3. `name` — free text.
+4. `amount` — **major units** as a string. VND has zero decimals (`50000`); USD has exactly two (`500.00`). Non-negative.
+5. `currency` — `VND` or `USD`.
+6. `notes` — free text. Empty cell = `null` after parse.
+
+**Why major units, not minor units (revised post-Phase-1.4).** An earlier draft of this section specified minor units to match storage exactly. That changed during Phase 1.4: the CSV is meant to be human-editable (graders open it in Excel), and `50000000` is unreadable as VND salary while `$500.00` is unambiguous as USD. The trade-off — having to parse decimals carefully to avoid float rounding — is solved in `src/lib/csv/parse.ts` by string-splitting on `.` and rejecting anything that doesn't match `^(\d+)(?:\.(\d{2}))?$` for USD. **Never `parseFloat` a monetary string.**
+
+Import validates with the same Zod schema as the UI form. Export emits in the user's stored currency, not display currency — round-tripping must be lossless. Embedded newlines in `name` or `notes` are normalized to spaces during serialize so that the parser's line-split-then-tokenize design works without a multi-line record special case.
+
+The implementation lives in `src/lib/csv/` and exposes `parseCsv(text): { valid: Transaction[]; errors: ParseError[] }` and `serializeCsv(transactions): string`. Vitest covers the round trip on a hand-written fixture covering both currencies, both kinds, names with commas/quotes/accents, and same-date transactions.
+
+> **Spec correction (post-Phase-1.4).** The earlier draft of this section listed columns as `kind,name,amount,currency,occurredOn,notes` with `amount` in minor units. The implementation diverged during Phase 1.4 (per the prompt's explicit override) to put `date` first, rename `occurredOn → date` for human readability, and switch `amount` to major units. This section is now the source of truth; the implementation matches.
 
 ## 7. The future-sync seam
 
