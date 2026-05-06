@@ -16,15 +16,22 @@ import EmptyState from './EmptyState';
 import ExportCsvButton from './ExportCsvButton';
 import ImportCsvModal from './ImportCsvModal';
 import type { Transaction } from '@/src/lib/transactions/schema';
-import type { Currency } from '@/src/lib/currency/types';
+import type { Currency, FxRateSnapshot } from '@/src/lib/currency/types';
+import type { Theme } from '@/src/lib/settings/repository';
+import { aggregateByMonth } from '@/src/lib/aggregation/aggregate-by-month';
+import CashFlowComboChart from '@/src/components/charts/CashFlowComboChart';
+
+// Fallback FX used only when live rates are loading or errored; chart degrades gracefully.
+const IDENTITY_FX: FxRateSnapshot = { base: 'USD', rates: { VND: 25000, USD: 1 }, fetchedAt: '1970-01-01T00:00:00.000Z' };
 
 type DeleteState = { open: false } | { open: true; ids: string[] };
 
 interface Props {
   initialCurrency: Currency;
+  initialTheme: Theme;
 }
 
-export default function CashFlowPage({ initialCurrency }: Props) {
+export default function CashFlowPage({ initialCurrency, initialTheme }: Props) {
   const { state, create, update, remove, removeMany, addMany } = useTransactions();
   const fxState = useFx();
 
@@ -133,6 +140,18 @@ export default function CashFlowPage({ initialCurrency }: Props) {
           />
         )}
       </div>
+
+      {state.status === 'ready' && state.transactions.length > 0 && (
+        <CashFlowComboChart
+          months={aggregateByMonth(
+            state.transactions,
+            initialCurrency,
+            fxState.status === 'ready' ? fxState.fx : IDENTITY_FX,
+          )}
+          displayCurrency={initialCurrency}
+          theme={initialTheme}
+        />
+      )}
 
       <TransactionModal
         key={modalKey}

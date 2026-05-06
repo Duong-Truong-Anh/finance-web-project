@@ -13,6 +13,8 @@
     "e2e:ui": "playwright test --ui"
   },
   "dependencies": {
+    "@carbon/charts": "^1.27.10",
+    "@carbon/charts-react": "^1.27.10",
     "@carbon/icons-react": "^11.79.0",
     "@carbon/pictograms-react": "^11.100.0",
     "@carbon/react": "^1.106.0",
@@ -47,5 +49,8 @@
   "trustedDependencies": [
     "sharp",
     "unrs-resolver"
-  ]
+  ],
+  "patchedDependencies": {
+    "@carbon/charts@1.27.10": "patches/@carbon%2Fcharts@1.27.10.patch"
+  }
 }

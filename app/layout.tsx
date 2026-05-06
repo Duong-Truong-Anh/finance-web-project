@@ -6,6 +6,7 @@ import { readTheme, readCurrency } from './lib/cookies-server';
 // inability to resolve relative @forward paths in @carbon/styles/index.scss.
 // See docs/decisions/002_carbon-sass-turbopack.md
 import '@carbon/styles/css/styles.css';
+import '@carbon/charts/styles.css';
 import './globals.scss';
 
 export const metadata: Metadata = {
