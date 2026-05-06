@@ -1,0 +1,41 @@
+{
+  "$schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json",
+  "entry": [
+    "app/**/page.{ts,tsx}",
+    "app/**/layout.{ts,tsx}",
+    "app/**/route.{ts,tsx}",
+    "app/**/error.{ts,tsx}",
+    "app/**/not-found.{ts,tsx}"
+  ],
+  "boundaries": {
+    "zones": [
+      { "name": "lib",        "patterns": ["src/lib/**"] },
+      { "name": "features",   "patterns": ["src/features/**"] },
+      { "name": "components", "patterns": ["src/components/**"] },
+      { "name": "app",        "patterns": ["app/**"] },
+      { "name": "tests",      "patterns": ["e2e/**", "src/**/*.spec.ts", "src/**/*.spec.tsx"] }
+    ],
+    "rules": [
+      { "from": "lib",        "allow": ["lib"] },
+      { "from": "components", "allow": ["lib", "components"] },
+      { "from": "features",   "allow": ["lib", "components", "features"] },
+      { "from": "app",        "allow": ["lib", "components", "features", "app"] },
+      { "from": "tests",      "allow": ["lib", "components", "features", "app", "tests"] }
+    ]
+  },
+  "rules": {
+    "unused-files":         "warn",
+    "unused-exports":       "warn",
+    "unused-types":         "warn",
+    "unused-dependencies":  "warn",
+    "unresolved-imports":   "error",
+    "circular-dependencies":"error",
+    "duplicate-exports":    "error",
+    "feature-flags":        "off"
+  },
+  "health": {
+    "maxCyclomatic": 20,
+    "maxCognitive": 15,
+    "maxCrap": 30
+  }
+}

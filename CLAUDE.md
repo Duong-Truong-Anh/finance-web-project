@@ -36,6 +36,7 @@ You are the implementation partner on Flowstate, a personal cash flow management
 4. **Money is integer minor units + currency tag.** `{ amount: 50000000, currency: 'VND' }`. Never floats. Never bare numbers as money.
 5. **Form schemas are Zod.** The same schema validates UI input and CSV imports.
 6. **Finnhub key is never on the client.** All ticker calls go through Next.js route handlers.
+7. **Static analysis is part of the verification loop.** `bun run fallow:check` must pass before a PR. Fallow enforces zone-to-zone boundaries (`src/lib/` may only import from `src/lib/`; `features/` composes `components/` and `lib/`; etc.), unresolved imports, circular dependencies, and duplicate exports. Unused-code and complexity findings are surfaced as warnings against a baseline; address only in dedicated cleanup phases. The fallow Agent Skill is installed at `.claude/skills/fallow/` and is invoked automatically when an implementer asks "find dead code", "check boundaries", "audit health", etc.
 
 ### Process
 
@@ -152,3 +153,4 @@ CLAUDE.md                         # This file.
 | Dev server | `bun run dev` |
 | Build | `bun run build` |
 | E2E | `bun run e2e` |
+| Static analysis | `bun run fallow:check` |
