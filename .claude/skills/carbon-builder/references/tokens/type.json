@@ -1,0 +1,59 @@
+{
+  "$schema": "embedded snapshot from @carbon/type",
+  "fontFamilies": {
+    "sans":  "'IBM Plex Sans', system-ui, -apple-system, BlinkMacSystemFont, '.SFNSText-Regular', sans-serif",
+    "mono":  "'IBM Plex Mono', system-ui, -apple-system, BlinkMacSystemFont, '.SFNSText-Regular', monospace",
+    "serif": "'IBM Plex Serif', 'Georgia', Times, serif"
+  },
+  "fontWeights": {
+    "light":    300,
+    "regular":  400,
+    "semibold": 600
+  },
+  "scale": [12, 14, 16, 18, 20, 24, 28, 32, 36, 42, 48, 54, 60, 68, 76, 84, 92, 102, 112, 122, 132, 144, 156],
+  "scaleNote": "Generated from Yn = Yn-1 + (floor((n-2)/4) + 1) * 2 with Y1 = 12. 23 steps total.",
+  "typeStyles": {
+    "caption-01":          {"fontSize": 12, "lineHeight": 1.33333, "weight": "regular", "letterSpacing": "0.32px"},
+    "caption-02":          {"fontSize": 14, "lineHeight": 1.28572, "weight": "regular", "letterSpacing": "0.32px"},
+    "label-01":            {"fontSize": 12, "lineHeight": 1.33333, "weight": "regular", "letterSpacing": "0.32px"},
+    "label-02":            {"fontSize": 14, "lineHeight": 1.28572, "weight": "regular", "letterSpacing": "0.16px"},
+    "helper-text-01":      {"fontSize": 12, "lineHeight": 1.33333, "letterSpacing": "0.32px"},
+    "helper-text-02":      {"fontSize": 14, "lineHeight": 1.28572, "letterSpacing": "0.16px"},
+    "legal-01":            {"fontSize": 12, "lineHeight": 1.33333, "weight": "regular", "letterSpacing": "0.32px"},
+    "legal-02":            {"fontSize": 14, "lineHeight": 1.28572, "weight": "regular", "letterSpacing": "0.16px"},
+    "code-01":             {"fontFamily": "mono", "fontSize": 12, "lineHeight": 1.33333, "weight": "regular", "letterSpacing": "0.32px"},
+    "code-02":             {"fontFamily": "mono", "fontSize": 14, "lineHeight": 1.42857, "weight": "regular", "letterSpacing": "0.32px"},
+    "body-compact-01":     {"fontSize": 14, "lineHeight": 1.28572, "weight": "regular", "letterSpacing": "0.16px"},
+    "body-compact-02":     {"fontSize": 16, "lineHeight": 1.375,   "weight": "regular", "letterSpacing": 0},
+    "body-01":             {"fontSize": 14, "lineHeight": 1.42857, "weight": "regular", "letterSpacing": "0.16px"},
+    "body-02":             {"fontSize": 16, "lineHeight": 1.5,     "weight": "regular", "letterSpacing": 0},
+    "heading-compact-01":  {"fontSize": 14, "lineHeight": 1.28572, "weight": "semibold", "letterSpacing": "0.16px"},
+    "heading-compact-02":  {"fontSize": 16, "lineHeight": 1.375,   "weight": "semibold", "letterSpacing": 0},
+    "heading-01":          {"fontSize": 14, "lineHeight": 1.42857, "weight": "semibold", "letterSpacing": "0.16px"},
+    "heading-02":          {"fontSize": 16, "lineHeight": 1.5,     "weight": "semibold", "letterSpacing": 0},
+    "heading-03":          {"fontSize": 20, "lineHeight": 1.4,     "weight": "regular", "letterSpacing": 0},
+    "heading-04":          {"fontSize": 28, "lineHeight": 1.28572, "weight": "regular", "letterSpacing": 0},
+    "heading-05":          {"fontSize": 32, "lineHeight": 1.25,    "weight": "regular", "letterSpacing": 0},
+    "heading-06":          {"fontSize": 42, "lineHeight": 1.199,   "weight": "light", "letterSpacing": 0},
+    "heading-07":          {"fontSize": 54, "lineHeight": 1.199,   "weight": "light", "letterSpacing": 0},
+    "fluid-heading-03":    {"fluid": true, "baseFontSize": 20, "atMax": 24, "weight": "regular"},
+    "fluid-heading-04":    {"fluid": true, "baseFontSize": 28, "atMax": 32, "weight": "regular"},
+    "fluid-heading-05":    {"fluid": true, "baseFontSize": 32, "atMax": 60, "weight": "regular_to_light"},
+    "fluid-heading-06":    {"fluid": true, "baseFontSize": 32, "atMax": 60, "weight": "semibold"},
+    "fluid-paragraph-01":  {"fluid": true, "baseFontSize": 24, "atMax": 32, "weight": "light"},
+    "fluid-quotation-01":  {"fluid": true, "fontFamily": "serif", "baseFontSize": 28, "atMax": 32, "weight": "regular"},
+    "fluid-quotation-02":  {"fluid": true, "fontFamily": "serif", "baseFontSize": 32, "atMax": 60, "weight": "light"},
+    "fluid-display-01":    {"fluid": true, "baseFontSize": 42, "atMax": 76, "weight": "light"},
+    "fluid-display-02":    {"fluid": true, "baseFontSize": 42, "atMax": 76, "weight": "semibold"},
+    "fluid-display-03":    {"fluid": true, "baseFontSize": 42, "atMax": 84, "weight": "light"},
+    "fluid-display-04":    {"fluid": true, "baseFontSize": 42, "atMax": 132,"weight": "light"}
+  },
+  "guidance": {
+    "productInterface": "use heading-XX, body-XX, body-compact-XX, label-XX, helper-text-XX, code-XX",
+    "marketing":        "use fluid-heading-XX, fluid-display-XX, fluid-paragraph-01, fluid-quotation-XX",
+    "code":             "code-01 inline in dense; code-02 inline in body; do not set font-family directly",
+    "captions":         "caption-01 / caption-02 for image captions and footnotes",
+    "labels":           "label-01 / label-02 for input labels and table headers"
+  },
+  "sassUsage": "@use '@carbon/type';\n.x { @include type.type-style('body-01'); }"
+}
