@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { seedStorage, mockFx } from './fixtures/seed';
+import { seedStorage, mockFx, attachErrorGuard, type ErrorGuard } from './fixtures/seed';
 import type { Transaction } from '../src/lib/transactions/schema';
 
 // 50 000 000 VND income → $2 000.00 USD at the mocked 25 000 VND/USD rate.
@@ -14,9 +14,16 @@ const SALARY_TX: Transaction = {
   notes: null,
 };
 
-test.beforeEach(async ({ context }) => {
+let guard: ErrorGuard;
+
+test.beforeEach(async ({ page, context }) => {
+  guard = attachErrorGuard(page);
   await mockFx(context);
   await seedStorage(context, { transactions: [SALARY_TX] });
+});
+
+test.afterEach(async () => {
+  expect(guard.errors, `Captured errors:\n${guard.errors.join('\n')}`).toEqual([]);
 });
 
 test('reflows table amounts when display currency changes', async ({ page }) => {

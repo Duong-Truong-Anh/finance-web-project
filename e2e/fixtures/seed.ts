@@ -1,4 +1,4 @@
-import type { BrowserContext } from '@playwright/test';
+import type { BrowserContext, Page } from '@playwright/test';
 import type { Transaction } from '../../src/lib/transactions/schema';
 import type { FxRateSnapshot } from '../../src/lib/currency/types';
 import { STORAGE_KEYS } from '../../src/lib/storage/keys';
@@ -38,6 +38,22 @@ export async function seedStorage(
     },
     { txs: transactions, fx: FX_SNAPSHOT, txKey: TX_KEY, fxKey: FX_KEY },
   );
+}
+
+export type ErrorGuard = { errors: string[] };
+
+/**
+ * Capture page errors and console errors so transient render bugs (e.g. invalid
+ * React children that self-resolve on the next render) don't slip past assertions
+ * that wait for stable DOM. Call in beforeEach; assert the array is empty in afterEach.
+ */
+export function attachErrorGuard(page: Page): ErrorGuard {
+  const guard: ErrorGuard = { errors: [] };
+  page.on('pageerror', (err) => guard.errors.push(`pageerror: ${err.message}`));
+  page.on('console', (msg) => {
+    if (msg.type() === 'error') guard.errors.push(`console.error: ${msg.text()}`);
+  });
+  return guard;
 }
 
 /**
