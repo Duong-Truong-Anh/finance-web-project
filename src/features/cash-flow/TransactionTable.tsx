@@ -130,7 +130,7 @@ export default function TransactionTable({
         kind: tx.kind,
         name: tx.name,
         notes: tx.notes ?? '',
-        amount: tx.amount,
+        amount: '',
       })),
     [filtered],
   );
@@ -238,7 +238,7 @@ export default function TransactionTable({
                             );
                           }
                           return (
-                            <TableCell key={cell.id}>{cell.value as string}</TableCell>
+                            <TableCell key={cell.id}>{typeof cell.value === 'string' ? cell.value : ''}</TableCell>
                           );
                         })}
                         <TableCell key={`${row.id}-actions`}>
