@@ -132,9 +132,9 @@ Each tab body renders the same `<DataTable>` (different filter). Above the tabs,
 
 - `<Button kind="primary" renderIcon={Add}>Add transaction</Button>` — opens a `<ComposedModal>` with the entry form (see 3.4).
 - `<Button kind="tertiary" renderIcon={Upload}>Import CSV</Button>`
-- `<Button kind="ghost" renderIcon={Download}>Export CSV</Button>`
+- `<Button kind="ghost" renderIcon={Download}>Export CSV</Button>` — disabled when there are zero transactions.
 
-Right side of the bar: a `<DateRangePicker>` filtering the month set (default: all months).
+~~Right side of the bar: a `<DateRangePicker>` filtering the month set~~ — **deferred to v1.1**. The chart already shows all months and the tabs filter by kind; date filtering is redundant for MVP.
 
 Below the table: a Carbon Charts `<GroupedBarChart>` showing inflow / outflow per month, with a line overlay for net flow (this is a single chart with a secondary axis — Carbon Charts supports it via `<ComboChart>`).
 
@@ -151,13 +151,14 @@ Below the table: a Carbon Charts `<GroupedBarChart>` showing inflow / outflow pe
 
 `<DataTable>` is `useStaticWidth` with sticky header. Columns: `Date · Kind · Name · Notes · Amount`. Amount column is right-aligned, tabular-nums. Kind column shows `<Tag>` badges (`type="green"` for income, `type="red"` for expense) — the Carbon palette tokens, not arbitrary hue.
 
-Row actions (`<TableToolbarMenu>` + per-row `<OverflowMenu>`):
+Row actions (per-row `<OverflowMenu>`):
 
 - Edit (re-opens the modal pre-filled)
-- Duplicate
 - Delete (confirms via `<Modal>` per Carbon convention)
 
-Bulk actions (`<TableBatchActions>`): Delete selected · Export selected.
+~~Duplicate~~ — **deferred to v1.1**. Add-transaction is fast enough that duplicate adds little MVP value.
+
+Bulk actions (`<TableBatchActions>`): Delete selected. ~~Export selected~~ — **deferred to v1.1**; users can export-all then trim externally.
 
 ### 3.4 The "Add transaction" modal
 
@@ -177,9 +178,10 @@ Validation uses the Zod schema; field-level `invalid` + `invalidText` props are 
 ### 3.5 Interactions
 
 - Tabs filter the table only; the chart always shows all months.
-- Clicking a month bar in the chart filters the table to that month (and updates the date-range picker accordingly).
-- CSV import opens a `<FileUploader>`; on parse, an interim modal shows a `<DataTable>` of parsed rows + an error panel. The user confirms or cancels.
-- Negative net flow months render the net-flow line in `support-error` red. (This is color *plus* the typographic minus glyph — color is not the only channel.)
+- ~~Clicking a month bar in the chart filters the table to that month~~ — **deferred to v1.1**. Cross-component selection state adds non-trivial wiring for marginal value at MVP.
+- CSV import opens a `<FileUploader>`; on parse, an interim modal shows a count of valid rows and a list of error rows in an `<InlineNotification kind="warning">`. The user confirms or cancels.
+- Negative net flow months render the net-flow line in `support-error` red. (This is color *plus* the typographic minus glyph in the table — color is not the only channel.)
+- Currency toggle in the header reflows both table amounts and chart axis labels.
 
 ### 3.6 Empty / error states
 

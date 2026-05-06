@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import fs from 'node:fs/promises';
-import { seedStorage, mockFx, TX_KEY } from './fixtures/seed';
+import { seedStorage, mockFx, attachErrorGuard, TX_KEY, type ErrorGuard } from './fixtures/seed';
 import type { Transaction } from '../src/lib/transactions/schema';
 
 const EXPORT_TX: Transaction = {
@@ -14,9 +14,16 @@ const EXPORT_TX: Transaction = {
   notes: null,
 };
 
-test.beforeEach(async ({ context }) => {
+let guard: ErrorGuard;
+
+test.beforeEach(async ({ page, context }) => {
+  guard = attachErrorGuard(page);
   await mockFx(context);
   await seedStorage(context); // empty seed; each test seeds what it needs
+});
+
+test.afterEach(async () => {
+  expect(guard.errors, `Captured errors:\n${guard.errors.join('\n')}`).toEqual([]);
 });
 
 test('exports CSV when transactions exist', async ({ page, context }) => {

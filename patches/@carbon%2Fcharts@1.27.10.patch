@@ -1,0 +1,15 @@
+diff --git a/dist/angle-utils-Dy0Gf7Eb.mjs b/dist/angle-utils-Dy0Gf7Eb.mjs
+index 68ee8163ae202fd2940ce413be7175b8b39e43d9..f7688ded7bbdc0fb4a383de31b3f1c33741809b9 100644
+--- a/dist/angle-utils-Dy0Gf7Eb.mjs
++++ b/dist/angle-utils-Dy0Gf7Eb.mjs
+@@ -1286,7 +1286,9 @@ async function yi(e, t) {
+       } catch (o) {
+         const s = e.find((a) => a.href == null) || document.styleSheets[0];
+         i.href != null && r.push(it(i.href).then((a) => ot(a, t)).then((a) => st(a).forEach((c) => {
+-          s.insertRule(c, i.cssRules.length);
++          let length = 0;
++          try { length = i.cssRules.length; } catch {}
++          s.insertRule(c, length);
+         })).catch((a) => {
+           console.error("Error loading remote stylesheet", a);
+         })), console.error("Error inlining remote css file", o);

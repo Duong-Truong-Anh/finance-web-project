@@ -1368,3 +1368,152 @@ After the PR was opened, GitHub Copilot reviewed the code and raised 6 inline co
 3. **`e2e/cash-flow-crud.spec.ts`** + **`e2e/cash-flow-csv.spec.ts`** — import `TX_KEY`; pass as `{ txs, key }` serializable arg to `addInitScript`, matching the pattern already used inside `seedStorage`.
 
 **Quality gates (post-fix):** `bun run e2e` 9 passed · `bun run test` 97 passed · `bunx tsc --noEmit` 0 errors · `bun run lint` 0 errors.
+
+---
+
+## Session 16 — Phase 1.5: Monthly ComboChart + render-bug fix + e2e error guard (2026-05-05)
+
+### What I asked the AI to do
+
+Three deliverables in one session:
+
+1. Fix a real runtime render bug in `TransactionTable.tsx` where deleting a single transaction causes React to throw "Objects are not valid as a React child" during Carbon's DataTable transition frame.
+2. Build a monthly `aggregateByMonth` pure function and a `<CashFlowComboChart>` Carbon Charts ComboChart (stacked-bar Income/Expenses + line Net flow) wired into the Cash Flow page.
+3. Upgrade the Playwright harness with `attachErrorGuard` so transient render errors (the kind the bug produces) are caught even though they self-resolve before DOM assertions settle.
+
+Skills invoked: `carbon-builder` (Carbon Charts discipline), `karpathy-guidelines` (three outcomes only, no extra refactoring).
+
+### What the AI did
+
+**Bug fix — `src/features/cash-flow/TransactionTable.tsx` (2 surgical edits):**
+
+- Line 133: `amount: tx.amount` → `amount: ''`. Stops the Money object `{ amount, currency }` from being placed in the DataTable row data dict. The `amount` field was used only as a column-order sentinel; the rendered value comes from `<AmountCell tx={origTx} />` via the `origTx` lookup.
+- Line 241: `{cell.value as string}` → `{typeof cell.value === 'string' ? cell.value : ''}`. Defensive fallback — even if a future change reintroduces a non-string into a row field, the renderer no longer throws.
+
+No new helpers, no abstraction.
+
+**`src/lib/aggregation/aggregate-by-month.ts` (new pure function):**
+
+- Converts each transaction to display currency individually via `convert()` before summing, preserving precision.
+- Buckets by `tx.occurredOn.slice(0, 7)` (the `YYYY-MM` prefix).
+- Returns `CashFlowMonth[]` sorted ascending by `yearMonth`.
+- Zero React/Next/Carbon imports. Relative imports throughout (Vitest doesn't resolve `@/` aliases).
+
+**`src/lib/aggregation/aggregate-by-month.spec.ts` (new, 7 cases):**
+
+Empty input, single income, single expense, mixed same-month, three months sorted, VND→USD FX conversion, same-month different-day grouping.
+
+**`src/components/charts/CashFlowComboChart.tsx` (new):**
+
+- `'use client'` Carbon Charts wrapper.
+- `ScaleTypes.LABELS` (enum, not string literal) for the bottom axis — tsc caught the string-literal type error on first run.
+- Three data groups: Income (stacked-bar), Expenses (stacked-bar), Net flow (line).
+- `theme` prop passed through directly; Carbon Charts honors `'g90' | 'g100' | 'white'` natively.
+- Private `toMajor` helper inline — no separate export.
+- Returns `null` when `months.length === 0`.
+
+**`src/features/cash-flow/CashFlowPage.tsx` (modified):**
+
+- Added `initialTheme: Theme` prop.
+- Added `IDENTITY_FX` const (rough 25 000 VND/USD fallback for when FX is loading/errored), one-line comment.
+- Chart render block below tabs when `state.status === 'ready' && state.transactions.length > 0`. No `useMemo`.
+
+**`app/cash-flow/page.tsx` (modified):**
+
+- Parallel `Promise.all([readCurrency(), readTheme()])`.
+- `initialTheme={theme}` passed to `CashFlowPage`.
+
+**`app/layout.tsx` (modified):**
+
+- `import '@carbon/charts/styles.css'` added directly below `@carbon/styles/css/styles.css`. Turbopack accepted it cleanly — no workaround needed.
+
+**`e2e/fixtures/seed.ts` (modified):**
+
+- `attachErrorGuard(page)` added. Registers `pageerror` + `console.error` listeners; pushes into an `ErrorGuard.errors` array.
+
+**All three Playwright spec files (modified):**
+
+- `let guard: ErrorGuard` declared at module scope.
+- `beforeEach`: `guard = attachErrorGuard(page)` prepended before existing setup.
+- `afterEach`: `expect(guard.errors).toEqual([])` with a helpful failure message showing captured errors.
+
+### Bug-fix verification
+
+The relationship between the bug fix and the error guard is load-bearing: before the fix, Carbon's DataTable renders one transitional frame containing the deleted row's Money object as `cell.value`. The `origTx` lookup returns `undefined` (row already removed from `txById`), so the `&& origTx` guard fails and the fallback `{cell.value as string}` renders an object — React throws. The error self-resolves on the next render, so DOM assertions that wait for stable state miss it entirely. With `attachErrorGuard` active, the `pageerror` listener captures it immediately in that transitional frame, and `afterEach` fails the test.
+
+After the two-line fix: `amount: ''` means `cell.value` is always a string in the fallback path; `typeof cell.value === 'string' ? cell.value : ''` is belt-and-braces. The transitional frame no longer throws. The `deletes a transaction` test passes cleanly with the guard active.
+
+Both states were confirmed by running `bun run e2e` with and without the fix applied:
+- Without fix (guard active): `deletes a transaction` fails with `pageerror: Objects are not valid as a React child`.
+- With fix (guard active): all 9 tests pass.
+
+### Carbon Charts integration findings
+
+- **Theme prop**: `ComboChart` accepts `theme` directly in the options object. `'g90' | 'g100' | 'white'` are honored natively. No extra wrapper needed.
+- **ScaleTypes**: The `scaleType` axis option requires the `ScaleTypes` enum from `@carbon/charts`, not a string literal. TypeScript catches this — `'labels'` as a plain string fails compilation. Fixed by importing `{ ScaleTypes }` and using `ScaleTypes.LABELS`.
+- **CSS import**: `import '@carbon/charts/styles.css'` in `layout.tsx` was accepted by Turbopack cleanly (same mechanism as `@carbon/styles/css/styles.css`). No Sass/Turbopack workaround needed.
+- **ComboChart combo-axis**: The `right` axis `correspondingDatasets: ['Net flow']` and `comboChartTypes` pairing work as documented. Carbon Charts correctly renders the line on the right axis and stacked bars on the left.
+- **Data-vis palette**: Carbon Charts assigns series colors from its built-in data-vis palette automatically. No custom hex needed.
+
+### Alias resolution caveat
+
+`@/` path aliases are resolved by Next.js (via `tsconfig.json` `paths`) but not by Vitest. The aggregation source and spec files initially used `@/src/lib/...` imports, which caused Vitest to fail with "Failed to resolve import." Fixed by switching to relative imports (`../transactions/schema`, `../currency/types`, `../currency/convert`) — consistent with all other `src/lib/` spec files.
+
+### Things noticed but not fixed (per principle 3)
+
+- `useTransactions` still lacks a bulk-remove optimisation (deferred from Session 14). Not touched.
+- The `@next/next/no-page-custom-font` lint warning on `app/layout.tsx` is pre-existing (Google Fonts `<link>` in `<head>`). Not introduced by this session; not fixed.
+- No allowlists were added to `attachErrorGuard` — no third-party noise was observed during the E2E run.
+
+### Quality gates
+
+| Gate | Result |
+|---|---|
+| `bunx tsc --noEmit` | 0 errors |
+| `bun run lint` | 0 errors (1 pre-existing warning) |
+| `bun run test` | 105 passed (was 97; +7 aggregation + 1 spec file = +8) |
+| `bun run e2e` | 9 passed (same 9, all with error guard active) |
+
+### Recommendation for next session
+
+**Phase 2 — Dashboard KPI tiles + 30-year projection chart.** The Cash Flow page is now complete per spec §3. Phase 2 wires the projection engine (`src/lib/projection/`) into the Dashboard page with KPI tiles (net flow this month, YTD, projected value at 10/20/30 years) and the 30-year `LineChart`. Phase 1.6 (Settings page) is lower priority unless the professor's rubric weights it.
+
+---
+
+## Session 16 (addendum) — Patch: @carbon/charts SecurityError on document.styleSheets (2026-05-05)
+
+### What I asked the AI to do
+
+Fix a runtime crash where the `CashFlowComboChart` throws a `SecurityError` because Carbon Charts' internal stylesheet-inlining function (`yi` in `dist/angle-utils-Dy0Gf7Eb.mjs`) blindly accesses `.cssRules` on cross-origin stylesheets injected by Next.js Turbopack.
+
+### Root cause
+
+Inside `yi()`, the outer `try/catch` correctly catches the `SecurityError` thrown when iterating `cssRules` on a protected cross-origin stylesheet. However, the `catch` block then queues an asynchronous `.then()` callback that calls `i.cssRules.length` on the **same protected stylesheet** — completely unguarded. That second access throws another `SecurityError` with no handler, crashing the chart.
+
+### What the AI did
+
+- Located the crash site: `node_modules/@carbon/charts/dist/angle-utils-Dy0Gf7Eb.mjs`, line 1289 (`s.insertRule(c, i.cssRules.length)`).
+- Applied a 3-line surgical fix: introduced a `let length = 0` with a `try { length = i.cssRules.length; } catch {}` guard, defaulting to 0 (insert at front of fallback sheet) when the protected stylesheet is inaccessible.
+- Used `bun patch --commit` to create `patches/@carbon%2Fcharts@1.27.10.patch`, so the fix re-applies automatically on every `bun install`.
+
+### Quality gates
+
+`bunx tsc --noEmit` — 0 errors. No other gates affected (patch touches only a node_modules dist file).
+
+---
+
+## Session 16 (addendum 2) — Refactor: stacked-bar → grouped-bar, remove secondary Y-axis (2026-05-05)
+
+### What I asked the AI to do
+
+Refactor `CashFlowComboChart` from stacked bars to grouped bars so Income and Expenses render side-by-side from the zero baseline. Remove the redundant right Y-axis since Net flow shares the same currency scale as the primary axis.
+
+### What the AI did
+
+Three surgical edits to `src/components/charts/CashFlowComboChart.tsx`:
+
+- `comboChartTypes`: `'stacked-bar'` → `'grouped-bar'` for the Income/Expenses series.
+- `axes`: removed the `right` axis entry entirely.
+- Left axis title: `'Inflow / Outflow (${displayCurrency})'` → `'Amount (${displayCurrency})'` to reflect that all three series (Income, Expenses, Net flow) now share the single left axis.
+
+`bunx tsc --noEmit` — 0 errors.
