@@ -1,5 +1,6 @@
 'use client';
 import { useCallback, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   settingsRepository,
   DEFAULT_SETTINGS,
@@ -16,6 +17,7 @@ export type UseSettingsResult = SettingsState & {
 };
 
 export function useSettings(): UseSettingsResult {
+  const router = useRouter();
   const [state, setState] = useState<SettingsState>({
     status: 'loading',
     settings: null,
@@ -46,7 +48,8 @@ export function useSettings(): UseSettingsResult {
   const set = useCallback(async (value: Settings) => {
     await settingsRepository.set(value);
     setState({ status: 'ready', settings: value, error: null });
-  }, []);
+    router.refresh();
+  }, [router]);
 
   return { ...state, set };
 }

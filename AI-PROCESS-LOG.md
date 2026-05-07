@@ -47,6 +47,7 @@ The **pre-Carbon history** (V1 vanilla bento dashboard, Flowstate v0 hand-built 
 - Session 19 — Phase 1.W1 — Standardize AI-PROCESS-LOG format — 2026-05-07
 - Session 20 — Phase 2.2 — Dashboard wiring: KPI tiles, projection chart, recent transactions — 2026-05-07
 - Session 21 — Phase 1.6 — Settings page + fallow/font cleanups — 2026-05-07
+- Session 22 — Phase 1.6 — Theme refresh fix: useSettings.set() now invalidates the server layout — 2026-05-07
 
 ---
 
@@ -1914,6 +1915,39 @@ E2E (`bun run e2e`) not run in CI this session — requires dev server. Target: 
 ### Recommendation for next session
 
 **Phase 3 — Simulation page.** The KPI tiles and projection chart at `/` already link to `/simulation`, which is still a placeholder. Phase 3 delivers the Configuration region (ratio slider, ticker tiles via Finnhub integration), the 30-year `<AreaChart>` with thresholds, and the Milestone Tile grid. The `finnhubKey` field in `Settings` is now persisted and available for the ticker route handler to read from the `X-Flowstate-Finnhub-Key` request header. The Onboarding redirect target for the Reset action should also be wired once that route ships.
+
+## Session 22 — Phase 1.6: Theme refresh fix (2026-05-07)
+
+### What I asked the AI to do
+
+Theme switching from the Settings page moved the radio button and persisted to cookies + LocalStorage, but the rendered theme did not update until a full manual reload. The fix was to push `router.refresh()` into `useSettings.set()` so every consumer gets correct behavior automatically, and remove the now-redundant calls from header components.
+
+### What the AI did
+
+- **`src/features/settings/useSettings.ts`** — added `useRouter` import from `next/navigation`; called `router.refresh()` after `setState` inside the `set` callback; added `router` to the `useCallback` dependency array.
+- **`app/components/ThemeSwitcher.tsx`** — removed `useRouter` import, `const router = useRouter()`, the explanatory comment, and the explicit `router.refresh()` call. `handleClick` is now a single `await setSettings(...)` line.
+- **`app/components/CurrencySwitcher.tsx`** — same removals; `useState` import retained; component is otherwise unchanged.
+- **`e2e/settings.spec.ts`** — added a fourth test: visits `/settings`, clicks `g100` radio, asserts `<html>` gains `cds--g100` class without reload; clicks `White` radio, asserts `cds--white`. This is the load-bearing regression guard.
+
+### Spec drift / discrepancies / things noticed
+
+None. `ThemeTile.tsx` and `DisplayCurrencyTile.tsx` confirmed to have no `router.refresh()` calls — they delegate to `onSet` (the hook's `set`), which now handles refresh automatically.
+
+### Quality gates
+
+| Gate | Result |
+|---|---|
+| `bunx tsc --noEmit` | ✓ 0 errors |
+| `bun run lint` | ✓ 0 errors, 0 warnings |
+| `bun run test` | ✓ 139 passed, 1 skipped (unchanged baseline) |
+| `bun run build` | ✓ 7 routes, all dynamic |
+| `bun run fallow:check` | ✓ 0 issues in changed files, 0 regressions |
+
+E2E (`bun run e2e`) requires a running dev server — to be confirmed manually. Expected: 16 cases (was 15; +1 theme-immediate-apply test).
+
+### Recommendation for next session
+
+**Phase 3 — Simulation page.** The KPI tiles and projection chart at `/` already link to `/simulation`, which is still a placeholder. Phase 3 delivers the Configuration region (ratio slider, ticker tiles via Finnhub integration), the 30-year `<AreaChart>` with thresholds, and the Milestone Tile grid. The `finnhubKey` field in `Settings` is now persisted and available for the ticker route handler. The Onboarding redirect target for the Reset action should also be wired once that route ships.
 
 <!-- ──────────────────────────────────────────────────────────────────── -->
 <!-- APPEND NEW SESSION ENTRIES ABOVE THIS LINE.                          -->

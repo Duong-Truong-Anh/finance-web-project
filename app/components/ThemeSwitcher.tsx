@@ -1,6 +1,5 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
 import { HeaderGlobalAction } from '@carbon/react';
 import { Asleep, Light } from '@carbon/icons-react';
 import { useSettings } from '@/src/features/settings/useSettings';
@@ -20,16 +19,11 @@ const LABEL: Record<Theme, string> = {
 };
 
 export default function ThemeSwitcher({ current }: { current: Theme }) {
-  const router = useRouter();
   const { settings, set: setSettings } = useSettings();
 
   async function handleClick() {
     const next = NEXT_THEME[current];
-    // set() writes to LocalStorage AND mirrors theme to the flowstate-theme cookie.
-    // The cookie write is synchronous inside set(), so router.refresh() sees the
-    // updated cookie on the next server request.
     await setSettings({ ...(settings ?? DEFAULT_SETTINGS), theme: next });
-    router.refresh();
   }
 
   return (
