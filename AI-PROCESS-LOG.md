@@ -45,6 +45,7 @@ The **pre-Carbon history** (V1 vanilla bento dashboard, Flowstate v0 hand-built 
 - Session 17 — Phase 1.7 — fallow static analysis integration — 2026-05-06
 - Session 18 — Phase 2.1 — Projection engine + portfolio repository — 2026-05-07
 - Session 19 — Phase 1.W1 — Standardize AI-PROCESS-LOG format — 2026-05-07
+- Session 20 — Phase 2.2 — Dashboard wiring: KPI tiles, projection chart, recent transactions — 2026-05-07
 
 ---
 
@@ -1778,6 +1779,65 @@ Session 8 has no "Phase X.Y" designation in its title. Listed in the index witho
 ### Recommendation for next session
 
 **Phase 2.2 — Dashboard wiring.** The projection engine and portfolio repository are complete and tested (Session 18). The integration contract is locked; Phase 2.2 consumes `computeProjection` and `portfolioRepository` directly from `@/src/lib/projection` and `@/src/lib/portfolio` without modifying the engine. Build KPI tiles (net flow this month, YTD, projected value at 10/20/30 years), the condensed 30-year `<LineChart>`, the recent-5 transaction `<DataTable>`, and the empty state on `app/page.tsx`.
+
+## Session 20 — Phase 2.2: Dashboard wiring — KPI tiles, projection chart, recent transactions (2026-05-07)
+
+### What I asked the AI to do
+
+Wire the locked Phase 2.1 engine into the Dashboard (`/`) route. Deliver four KPI tiles, a condensed 30-year `<LineChart>`, a recent-5 `<DataTable>`, and an empty state — all using Carbon components and tokens. The math is done; this phase is pure frontend composition. Invoke `karpathy-guidelines`, `carbon-builder`, and `fallow` skills as required.
+
+### What the AI did
+
+- **`src/lib/projection/current-month-index.ts`** — New pure helper. Derives the series index for "today" anchored at the earliest transaction YYYY-MM, clamped to [0, 360]. Same anchor convention as `aggregateMonthlyInvestments` (3-line duplication; deliberate over wrong abstraction). Takes `today: Date` as a parameter — never reads `Date.now()`.
+
+- **`src/lib/projection/current-month-index.spec.ts`** — Five Vitest cases: null for empty transactions, identity (same month), 6-month offset, upper clamp to 360, lower clamp to 0. All use a fixed `today` — not `new Date()`.
+
+- **`src/lib/projection/index.ts`** — Added `currentMonthIndex` re-export.
+
+- **`src/features/dashboard/usePortfolioConfig.ts`** — Read-only hook mirroring `useTransactions` shape. Loads from `portfolioRepository` on mount; falls back to `DEFAULT_PORTFOLIO_CONFIG` on null; surfaces `error` state on throw.
+
+- **`src/features/dashboard/KpiTile.tsx`** — Carbon `<ClickableTile href>` with three slots: label, value, sub. `negative?: boolean` prop pairs `ArrowDown` icon with `var(--cds-support-error)` color for the negative-net-flow tile (dual channel per Carbon status discipline). Used four times in `DashboardPage`.
+
+- **`src/features/dashboard/EmptyState.tsx`** — `AddDocument` pictogram (spec called `TaskAdd`; absent from `@carbon/pictograms-react@11` — see ADR 005), `productive-heading-03` heading, `body-01` copy, primary `Button` routing to `/cash-flow`.
+
+- **`src/features/dashboard/RecentTransactionsTable.tsx`** — `DataTable size="sm"`. Sorts by `occurredOn` desc, takes 5. Columns: Date / Kind / Name / Amount (Notes column intentionally omitted for Dashboard density). `KindTag` and `AmountCell` copied from `TransactionTable.tsx` (second use site — spec says copy; extract on third). Toolbar carries `View all →` ghost button to `/cash-flow`.
+
+- **`src/features/dashboard/DashboardPage.tsx`** — Client orchestrator. Composes `useTransactions`, `useFx`, `usePortfolioConfig`. Two `useMemo`s as specified: `projection` over the input tuple; `monthIndex` over transactions + stable `today`. Render branches: loading skeleton (tile skeletons + `DataTableSkeleton`) → `InlineNotification` kind="error" → `EmptyState` → full dashboard. IDENTITY_FX declared locally (not imported from CashFlowPage per spec). `todayYM` derived from `today.getUTCFullYear()` / `getUTCMonth()`.
+
+- **`src/components/charts/ProjectionLineChart.tsx`** — Carbon Charts `<LineChart>`. Yearly downsampling: indices 0, 12, 24, …, 360 (31 points × 3 scenarios = 93 data rows). Series labels: '15% growth', '17.5% growth', '20% growth'. Key labels: 'Yr N'. `toMajor` private function (copy, not shared, per karpathy). Returns null when all values zero.
+
+- **`app/page.tsx`** — Converted from placeholder to async server component. Reads `currency` + `theme` cookies in parallel via `Promise.all`. Wraps `DashboardPage` in `Grid` + `Column`. Mirrors `app/cash-flow/page.tsx` exactly.
+
+- **`e2e/dashboard.spec.ts`** — Three Playwright cases with `attachErrorGuard`:  (1) empty seed → empty state, (2) 3-transaction seed → KPI tiles + chart + table, (3) VND income → currency toggle reflows Contributed tile to USD.
+
+- **`docs/decisions/005_add-document-pictogram.md`** — ADR for `AddDocument` substitution.
+
+### Spec drift / discrepancies / things noticed
+
+- **`TaskAdd` pictogram does not exist** in `@carbon/pictograms-react@11.100.0`. Substituted `AddDocument` (semantically appropriate for "add your first transaction"). ADR 005 filed. Spec §2.5 should be updated.
+- **`<ClickableTile as={Link}>`** is not supported by the Carbon TypeScript type definition (ClickableTileProps does not include `as`). The implementation destructures `href` from props and renders a native `<a>` element, so `href` prop works correctly. Used `href` directly — full-page navigation, acceptable for MVP.
+- **`<Button as={Link}>`** is supported (Carbon Button uses `PolymorphicComponentPropWithRef`) and used in EmptyState and RecentTransactionsTable without TypeScript errors.
+- `app/page.tsx` spec shows a double-wrapped `<Grid>` (one in the server component, one in `DashboardPage`). The implementation follows the pattern from `app/cash-flow/page.tsx`: the server component adds the outer Grid+Column wrapper, and `DashboardPage` renders its own Grid for the internal row layout. This is the established pattern.
+
+### Quality gates
+
+| Gate | Result |
+|---|---|
+| `bunx tsc --noEmit` | ✓ 0 errors |
+| `bun run lint` | ✓ 0 errors, 1 pre-existing warning in app/layout.tsx |
+| `bun run test` | ✓ 133 passed, 1 skipped (was 128; +5 from currentMonthIndex spec) |
+| `bun run build` | ✓ all 7 routes build (/, /cash-flow, /reports, /settings, /simulation, /api/fx/latest, /_not-found) |
+| `bun run fallow:check` | ✓ 0 regressions (3 pre-existing devDependency warnings unchanged from baseline) |
+
+E2E not run in CI this session — requires dev server. Manual check recommended before PR merge.
+
+### Spec-specific notes — pictogram and ClickableTile
+
+`TaskAdd` was specified but is not exported from the installed pictogram package. This is a spec error, not an implementation gap. `AddDocument` is the corrected choice and is documented in ADR 005. The `ClickableTile as={Link}` constraint: Carbon React's type definition for `ClickableTile` correctly types `href` (used here) but does not expose `as`. Navigation works via native `<a href>` — the same semantic result, minus Next.js prefetching which is a performance-only concern irrelevant for the MVP.
+
+### Recommendation for next session
+
+**Phase 3 — Simulation page.** The KPI tiles at `/` now link to `/simulation`, which is a placeholder. Phase 3 delivers the Configuration region (ratio slider, ticker tiles), the 30-year `<AreaChart>` with thresholds at months 60/120/240/360, and the Milestone Tile grid (3 horizons × 3 scenarios). The projection engine and portfolio repository are already wired at the Dashboard; Phase 3 adds an editing surface for `portfolioConfig` (ratio + tickers), Finnhub integration for live price display, and the `<StructuredList>` summary below the milestone grid.
 
 <!-- ──────────────────────────────────────────────────────────────────── -->
 <!-- APPEND NEW SESSION ENTRIES ABOVE THIS LINE.                          -->
