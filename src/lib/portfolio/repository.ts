@@ -29,7 +29,7 @@ export function createLocalStoragePortfolioRepository(opts?: {
     },
 
     async set(config: PortfolioConfig): Promise<void> {
-      adapter.write(KEY, config);
+      adapter.write(KEY, portfolioConfigSchema.parse(config));
     },
 
     async clear(): Promise<void> {
