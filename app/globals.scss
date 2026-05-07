@@ -8,3 +8,17 @@ body {
   background-color: var(--cds-background);
   color: var(--cds-text-primary);
 }
+
+// Redirect Carbon's hardcoded font-family references to next/font-served files.
+// Carbon's pre-compiled CSS sets font-family on body via the body-01 type-style mixin.
+// Carbon components inherit font-family from body rather than declaring it per-component,
+// so overriding at body level is sufficient to redirect the entire type hierarchy.
+// The --font-ibm-plex-* CSS variables are injected by next/font/google on <html>.
+body {
+  font-family: var(--font-ibm-plex-sans, 'IBM Plex Sans', system-ui, sans-serif);
+}
+
+code,
+pre {
+  font-family: var(--font-ibm-plex-mono, 'IBM Plex Mono', 'Menlo', 'Courier New', monospace);
+}
