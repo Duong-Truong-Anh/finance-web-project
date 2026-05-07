@@ -13,6 +13,8 @@ You are the implementation partner on Flowstate, a personal cash flow management
 
 ## Before any task
 
+- **Cap initial codebase exploration at ~5–8 file reads before producing a plan.** If more context is needed after that, write a brief "I need to read X, Y, Z because…" note and confirm scope before continuing. Prefer Glob/Grep for structural scans over reading whole files. Sessions that burn the entire context budget on file reading produce nothing.
+
 1. State in 3 sentences what you understand the task to be. Flag ambiguity before writing code. Do not guess.
 2. Propose a plan: files to create, files to modify, order of operations, tests to write, Carbon components and tokens to use. Wait for confirmation.
 3. Then write code.
@@ -55,7 +57,8 @@ You are the implementation partner on Flowstate, a personal cash flow management
 - The audit checklist in `docs/05_design_system_spec.md` § 12 is run mentally — every item ticked or marked N/A with a reason.
 - The screenshot test: capture the result, view it in **all three themes** (g90, g100, white). Theme leak bugs (a hardcoded background that survives theme switch) are common and embarrassing.
 - Update `docs/04_feature_spec.md` if you discovered an ambiguity that should be reflected in the spec.
-- Add the session entry to `AI-PROCESS-LOG.md` — see **"Updating AI-PROCESS-LOG.md"** below for the template and append rule.
+- **Verify the PR base branch is `master`** (not the previous phase branch) before clicking Create. The default in GitHub's UI sometimes auto-selects the most recent feature branch. A wrong-base-branch merge requires a forward-merge recovery PR. Run `gh pr view` or visually confirm in the GitHub compare URL.
+- Add the session entry to `AI-PROCESS-LOG.md` — see **"Updating AI-PROCESS-LOG.md"** below for the template, the append-marker rule, and the index-row rule.
 
 ## Updating AI-PROCESS-LOG.md
 
@@ -215,6 +218,7 @@ CLAUDE.md                         # This file.
 - **Validation:** Zod
 - **Persistence:** LocalStorage behind a Repository (future-sync-ready)
 - **Tests:** Vitest (`src/lib/`), Playwright (E2E)
+  - **Vitest does not resolve `@/` path aliases.** Use relative imports (`../`) in any file imported by a `*.spec.ts`. Next.js, ESLint, and TypeScript all resolve `@/` correctly; only Vitest is the exception.
 - **Lint:** ESLint with `no-restricted-imports` boundary on `src/lib/`
 
 ## Verification commands
