@@ -55,7 +55,82 @@ You are the implementation partner on Flowstate, a personal cash flow management
 - The audit checklist in `docs/05_design_system_spec.md` § 12 is run mentally — every item ticked or marked N/A with a reason.
 - The screenshot test: capture the result, view it in **all three themes** (g90, g100, white). Theme leak bugs (a hardcoded background that survives theme switch) are common and embarrassing.
 - Update `docs/04_feature_spec.md` if you discovered an ambiguity that should be reflected in the spec.
-- Add the session entry to `AI-PROCESS-LOG.md`.
+- Add the session entry to `AI-PROCESS-LOG.md` — see **"Updating AI-PROCESS-LOG.md"** below for the template and append rule.
+
+## Updating AI-PROCESS-LOG.md
+
+`AI-PROCESS-LOG.md` is a graded deliverable, a cold-start retrieval substrate for future implementer agents, and a project memory that survives conversation resets.
+
+### Append rule
+
+Find the marker near the bottom of the file and place the new session block **immediately above** it:
+
+```
+<!-- APPEND NEW SESSION ENTRIES ABOVE THIS LINE -->
+```
+
+Never insert entries anywhere else in the file.
+
+### Index rule
+
+When adding a new session, also append one row to `## Session Index` at the top of the file. Format:
+
+```
+- Session N — Phase X.Y — Short title — YYYY-MM-DD
+```
+
+Addendum rows are indented two spaces under their parent:
+
+```
+  - Session N (addendum) — Phase X.Y — Short subtitle — YYYY-MM-DD
+```
+
+### Canonical session template
+
+```markdown
+## Session N — Phase X.Y: <title> (YYYY-MM-DD)
+
+### What I asked the AI to do
+
+_User's framing in 2–3 sentences._
+
+### What the AI did
+
+_Bulleted list of changes, grouped by file or concern._
+
+### Spec drift / discrepancies / things noticed
+
+_Ambiguities resolved, implementation divergences, or things observed but not fixed. Write "None." if nothing applies._
+
+### Quality gates
+
+| Gate | Result |
+|---|---|
+| `bunx tsc --noEmit` | |
+| `bun run lint` | |
+| `bun run test` | |
+| `bun run e2e` | |
+| `bun run build` | |
+| `bun run fallow:check` | |
+
+_(Omit rows for gates that don't apply to this session.)_
+
+### [Optional] Phase-specific section — e.g. "Exact pinned values", "Baseline finding counts"
+
+### [Optional] PR review triage — Copilot / human review comments worth recording
+
+### Recommendation for next session
+
+_One paragraph. Always present. Always last._
+```
+
+### Addendum rule
+
+Use `## Session N (addendum) — Phase X.Y: <subtitle> (YYYY-MM-DD)` when the same branch / PR receives small follow-up work after the main session was written. Number further addenda `(addendum 2)`, `(addendum 3)`. A genuinely new task on a different branch is a new session, not an addendum. Each addendum gets its own index row, indented under its parent.
+
+### Historical sessions
+
+Sessions 1–18 are not rewritten. This standard applies to Session 19 onward.
 
 ## Common pitfalls to avoid
 
