@@ -1,0 +1,205 @@
+{
+  "$schema": "embedded snapshot of the four core Carbon themes from @carbon/themes. Hex values are derived from the resolved palette steps.",
+  "_note": "All four themes export the same set of token names. This file gives the resolution. For full unmodified source, see github.com/carbon-design-system/carbon/tree/main/packages/themes/src",
+  "themes": ["white", "g10", "g90", "g100"],
+  "background": {
+    "white": "#ffffff",
+    "g10":   "#f4f4f4",
+    "g90":   "#262626",
+    "g100":  "#161616"
+  },
+  "background-inverse": {
+    "white": "#393939",
+    "g10":   "#393939",
+    "g100":  "#f4f4f4",
+    "g90":   "#f4f4f4"
+  },
+  "background-brand": {
+    "white": "#0f62fe",
+    "g10":   "#0f62fe",
+    "g90":   "#0f62fe",
+    "g100":  "#0f62fe"
+  },
+  "layer-01": {
+    "white": "#f4f4f4",
+    "g10":   "#ffffff",
+    "g90":   "#393939",
+    "g100":  "#262626"
+  },
+  "layer-02": {
+    "white": "#ffffff",
+    "g10":   "#f4f4f4",
+    "g90":   "#525252",
+    "g100":  "#393939"
+  },
+  "layer-03": {
+    "white": "#f4f4f4",
+    "g10":   "#ffffff",
+    "g90":   "#6f6f6f",
+    "g100":  "#525252"
+  },
+  "field-01": {
+    "white": "#f4f4f4",
+    "g10":   "#ffffff",
+    "g90":   "#393939",
+    "g100":  "#262626"
+  },
+  "field-02": {
+    "white": "#ffffff",
+    "g10":   "#f4f4f4",
+    "g90":   "#525252",
+    "g100":  "#393939"
+  },
+  "border-subtle-01": {
+    "white": "#c6c6c6",
+    "g10":   "#c6c6c6",
+    "g90":   "#525252",
+    "g100":  "#525252"
+  },
+  "border-strong-01": {
+    "white": "#8d8d8d",
+    "g10":   "#8d8d8d",
+    "g90":   "#8d8d8d",
+    "g100":  "#6f6f6f"
+  },
+  "border-interactive": {
+    "white": "#0f62fe",
+    "g10":   "#0f62fe",
+    "g90":   "#4589ff",
+    "g100":  "#4589ff"
+  },
+  "border-inverse": {
+    "white": "#161616",
+    "g10":   "#161616",
+    "g90":   "#f4f4f4",
+    "g100":  "#f4f4f4"
+  },
+  "text-primary": {
+    "white": "#161616",
+    "g10":   "#161616",
+    "g90":   "#f4f4f4",
+    "g100":  "#f4f4f4"
+  },
+  "text-secondary": {
+    "white": "#525252",
+    "g10":   "#525252",
+    "g90":   "#c6c6c6",
+    "g100":  "#c6c6c6"
+  },
+  "text-helper": {
+    "white": "#6f6f6f",
+    "g10":   "#6f6f6f",
+    "g90":   "#a8a8a8",
+    "g100":  "#a8a8a8"
+  },
+  "text-error": {
+    "white": "#da1e28",
+    "g10":   "#da1e28",
+    "g90":   "#ff8389",
+    "g100":  "#ff8389"
+  },
+  "text-inverse": {
+    "white": "#ffffff",
+    "g10":   "#ffffff",
+    "g90":   "#161616",
+    "g100":  "#161616"
+  },
+  "text-on-color": {
+    "all":   "#ffffff",
+    "_note": "white in every theme — Carbon's filled buttons are always white-on-blue"
+  },
+  "text-disabled": {
+    "all":   "rgba(text-primary, 0.25)"
+  },
+  "link-primary": {
+    "white": "#0f62fe",
+    "g10":   "#0f62fe",
+    "g90":   "#78a9ff",
+    "g100":  "#78a9ff"
+  },
+  "link-visited": {
+    "white": "#8a3ffc",
+    "g10":   "#8a3ffc",
+    "g90":   "#be95ff",
+    "g100":  "#be95ff"
+  },
+  "icon-primary": {
+    "white": "#161616",
+    "g10":   "#161616",
+    "g90":   "#f4f4f4",
+    "g100":  "#f4f4f4"
+  },
+  "icon-secondary": {
+    "white": "#525252",
+    "g10":   "#525252",
+    "g90":   "#c6c6c6",
+    "g100":  "#c6c6c6"
+  },
+  "icon-on-color": {
+    "all":   "#ffffff"
+  },
+  "icon-interactive": {
+    "white": "#0f62fe",
+    "g10":   "#0f62fe",
+    "g90":   "#ffffff",
+    "g100":  "#ffffff"
+  },
+  "support-error": {
+    "white": "#da1e28",
+    "g10":   "#da1e28",
+    "g90":   "#fa4d56",
+    "g100":  "#fa4d56"
+  },
+  "support-success": {
+    "white": "#24a148",
+    "g10":   "#24a148",
+    "g90":   "#42be65",
+    "g100":  "#42be65"
+  },
+  "support-warning": {
+    "white": "#f1c21b",
+    "g10":   "#f1c21b",
+    "g90":   "#f1c21b",
+    "g100":  "#f1c21b"
+  },
+  "support-info": {
+    "white": "#0043ce",
+    "g10":   "#0043ce",
+    "g90":   "#4589ff",
+    "g100":  "#4589ff"
+  },
+  "support-caution-major": {
+    "all":   "#ff832b"
+  },
+  "focus": {
+    "white": "#0f62fe",
+    "g10":   "#0f62fe",
+    "g90":   "#ffffff",
+    "g100":  "#ffffff"
+  },
+  "focus-inset": {
+    "white": "#ffffff",
+    "g10":   "#ffffff",
+    "g90":   "#161616",
+    "g100":  "#161616"
+  },
+  "interactive": {
+    "white": "#0f62fe",
+    "g10":   "#0f62fe",
+    "g90":   "#4589ff",
+    "g100":  "#4589ff"
+  },
+  "highlight": {
+    "white": "#d0e2ff",
+    "g10":   "#d0e2ff",
+    "g90":   "#001d6c",
+    "g100":  "#001d6c"
+  },
+  "overlay": {
+    "white": "rgba(0,0,0,0.5)",
+    "g10":   "rgba(0,0,0,0.5)",
+    "g90":   "rgba(0,0,0,0.6)",
+    "g100":  "rgba(0,0,0,0.6)"
+  },
+  "ai_tokens_summary": "Each theme also exposes ai-* and chat-* tokens for AI-decorated surfaces (ai-border-strong, ai-aura-start, ai-aura-end, ai-popover-background, ai-overlay, chat-bubble-user, chat-bubble-agent, etc.). Use only on UI that explicitly represents AI output."
+}

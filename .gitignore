@@ -39,6 +39,8 @@ test-results/
 
 # claude code
 .agents/
-.claude/
-skills/
+.claude/*
+!.claude/skills/
+/skills/
 skills-lock.json
+.fallow/

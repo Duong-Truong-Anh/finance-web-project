@@ -1,0 +1,54 @@
+{
+  "$schema": "embedded snapshot from @carbon/layout",
+  "miniUnit": 8,
+  "baseFontSize": 16,
+  "spacing": {
+    "spacing-01": {"rem": "0.125rem", "px": 2,  "miniUnits": 0.25},
+    "spacing-02": {"rem": "0.25rem",  "px": 4,  "miniUnits": 0.5},
+    "spacing-03": {"rem": "0.5rem",   "px": 8,  "miniUnits": 1},
+    "spacing-04": {"rem": "0.75rem",  "px": 12, "miniUnits": 1.5},
+    "spacing-05": {"rem": "1rem",     "px": 16, "miniUnits": 2},
+    "spacing-06": {"rem": "1.5rem",   "px": 24, "miniUnits": 3},
+    "spacing-07": {"rem": "2rem",     "px": 32, "miniUnits": 4},
+    "spacing-08": {"rem": "2.5rem",   "px": 40, "miniUnits": 5},
+    "spacing-09": {"rem": "3rem",     "px": 48, "miniUnits": 6},
+    "spacing-10": {"rem": "4rem",     "px": 64, "miniUnits": 8},
+    "spacing-11": {"rem": "5rem",     "px": 80, "miniUnits": 10},
+    "spacing-12": {"rem": "6rem",     "px": 96, "miniUnits": 12},
+    "spacing-13": {"rem": "10rem",    "px": 160,"miniUnits": 20}
+  },
+  "fluidSpacing": {
+    "fluid-spacing-01": "0",
+    "fluid-spacing-02": "2vw",
+    "fluid-spacing-03": "5vw",
+    "fluid-spacing-04": "10vw"
+  },
+  "containerSizes": {
+    "container-01": "1.5rem",
+    "container-02": "2rem",
+    "container-03": "2.5rem",
+    "container-04": "3rem",
+    "container-05": "4rem",
+    "size-x-small":  "1.5rem",
+    "size-small":    "2rem",
+    "size-medium":   "2.5rem",
+    "size-large":    "3rem",
+    "size-x-large":  "4rem",
+    "size-2x-large": "5rem"
+  },
+  "iconSizes": {
+    "icon-size-01": "1rem",
+    "icon-size-02": "1.25rem",
+    "available": [16, 20, 24, 32]
+  },
+  "deprecated": {
+    "_comment": "These layout-XX tokens are deprecated. Do not use in new code.",
+    "layout-01": "1rem",
+    "layout-02": "1.5rem",
+    "layout-03": "2rem",
+    "layout-04": "3rem",
+    "layout-05": "4rem",
+    "layout-06": "6rem",
+    "layout-07": "10rem"
+  }
+}

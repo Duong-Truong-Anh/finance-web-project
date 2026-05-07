@@ -1,0 +1,25 @@
+{
+  "$schema": "embedded snapshot from @carbon/layout + @carbon/grid",
+  "breakpoints": {
+    "sm":  {"width": "20rem",   "px": 320,  "columns": 4,  "margin": "0"},
+    "md":  {"width": "42rem",   "px": 672,  "columns": 8,  "margin": "1rem"},
+    "lg":  {"width": "66rem",   "px": 1056, "columns": 16, "margin": "1rem"},
+    "xlg": {"width": "82rem",   "px": 1312, "columns": 16, "margin": "1rem"},
+    "max": {"width": "99rem",   "px": 1584, "columns": 16, "margin": "1.5rem"}
+  },
+  "grid": {
+    "defaultColumns": 16,
+    "legacyColumns": 12,
+    "defaultGutter": "2rem",
+    "narrowGutter": "1rem",
+    "condensedGutter": "1px"
+  },
+  "sassUsage": "@use '@carbon/layout';\n.x { @include layout.breakpoint('md') { ... } }",
+  "cssMediaQueries": {
+    "sm-up":  "@media (min-width: 20rem)",
+    "md-up":  "@media (min-width: 42rem)",
+    "lg-up":  "@media (min-width: 66rem)",
+    "xlg-up": "@media (min-width: 82rem)",
+    "max-up": "@media (min-width: 99rem)"
+  }
+}
