@@ -45,6 +45,8 @@ The **pre-Carbon history** (V1 vanilla bento dashboard, Flowstate v0 hand-built 
 - Session 17 — Phase 1.7 — fallow static analysis integration — 2026-05-06
 - Session 18 — Phase 2.1 — Projection engine + portfolio repository — 2026-05-07
 - Session 19 — Phase 1.W1 — Standardize AI-PROCESS-LOG format — 2026-05-07
+- Session 20 — Phase 2.2 — Dashboard wiring: KPI tiles, projection chart, recent transactions — 2026-05-07
+- Session 21 — Phase 1.6 — Settings page + fallow/font cleanups — 2026-05-07
 
 ---
 
@@ -1778,6 +1780,140 @@ Session 8 has no "Phase X.Y" designation in its title. Listed in the index witho
 ### Recommendation for next session
 
 **Phase 2.2 — Dashboard wiring.** The projection engine and portfolio repository are complete and tested (Session 18). The integration contract is locked; Phase 2.2 consumes `computeProjection` and `portfolioRepository` directly from `@/src/lib/projection` and `@/src/lib/portfolio` without modifying the engine. Build KPI tiles (net flow this month, YTD, projected value at 10/20/30 years), the condensed 30-year `<LineChart>`, the recent-5 transaction `<DataTable>`, and the empty state on `app/page.tsx`.
+
+## Session 20 — Phase 2.2: Dashboard wiring — KPI tiles, projection chart, recent transactions (2026-05-07)
+
+### What I asked the AI to do
+
+Wire the locked Phase 2.1 engine into the Dashboard (`/`) route. Deliver four KPI tiles, a condensed 30-year `<LineChart>`, a recent-5 `<DataTable>`, and an empty state — all using Carbon components and tokens. The math is done; this phase is pure frontend composition. Invoke `karpathy-guidelines`, `carbon-builder`, and `fallow` skills as required.
+
+### What the AI did
+
+- **`src/lib/projection/current-month-index.ts`** — New pure helper. Derives the series index for "today" anchored at the earliest transaction YYYY-MM, clamped to [0, 360]. Same anchor convention as `aggregateMonthlyInvestments` (3-line duplication; deliberate over wrong abstraction). Takes `today: Date` as a parameter — never reads `Date.now()`.
+
+- **`src/lib/projection/current-month-index.spec.ts`** — Five Vitest cases: null for empty transactions, identity (same month), 6-month offset, upper clamp to 360, lower clamp to 0. All use a fixed `today` — not `new Date()`.
+
+- **`src/lib/projection/index.ts`** — Added `currentMonthIndex` re-export.
+
+- **`src/features/dashboard/usePortfolioConfig.ts`** — Read-only hook mirroring `useTransactions` shape. Loads from `portfolioRepository` on mount; falls back to `DEFAULT_PORTFOLIO_CONFIG` on null; surfaces `error` state on throw.
+
+- **`src/features/dashboard/KpiTile.tsx`** — Carbon `<ClickableTile href>` with three slots: label, value, sub. `negative?: boolean` prop pairs `ArrowDown` icon with `var(--cds-support-error)` color for the negative-net-flow tile (dual channel per Carbon status discipline). Used four times in `DashboardPage`.
+
+- **`src/features/dashboard/EmptyState.tsx`** — `AddDocument` pictogram (spec called `TaskAdd`; absent from `@carbon/pictograms-react@11` — see ADR 005), `productive-heading-03` heading, `body-01` copy, primary `Button` routing to `/cash-flow`.
+
+- **`src/features/dashboard/RecentTransactionsTable.tsx`** — `DataTable size="sm"`. Sorts by `occurredOn` desc, takes 5. Columns: Date / Kind / Name / Amount (Notes column intentionally omitted for Dashboard density). `KindTag` and `AmountCell` copied from `TransactionTable.tsx` (second use site — spec says copy; extract on third). Toolbar carries `View all →` ghost button to `/cash-flow`.
+
+- **`src/features/dashboard/DashboardPage.tsx`** — Client orchestrator. Composes `useTransactions`, `useFx`, `usePortfolioConfig`. Two `useMemo`s as specified: `projection` over the input tuple; `monthIndex` over transactions + stable `today`. Render branches: loading skeleton (tile skeletons + `DataTableSkeleton`) → `InlineNotification` kind="error" → `EmptyState` → full dashboard. IDENTITY_FX declared locally (not imported from CashFlowPage per spec). `todayYM` derived from `today.getUTCFullYear()` / `getUTCMonth()`.
+
+- **`src/components/charts/ProjectionLineChart.tsx`** — Carbon Charts `<LineChart>`. Yearly downsampling: indices 0, 12, 24, …, 360 (31 points × 3 scenarios = 93 data rows). Series labels: '15% growth', '17.5% growth', '20% growth'. Key labels: 'Yr N'. `toMajor` private function (copy, not shared, per karpathy). Returns null when all values zero.
+
+- **`app/page.tsx`** — Converted from placeholder to async server component. Reads `currency` + `theme` cookies in parallel via `Promise.all`. Wraps `DashboardPage` in `Grid` + `Column`. Mirrors `app/cash-flow/page.tsx` exactly.
+
+- **`e2e/dashboard.spec.ts`** — Three Playwright cases with `attachErrorGuard`:  (1) empty seed → empty state, (2) 3-transaction seed → KPI tiles + chart + table, (3) VND income → currency toggle reflows Contributed tile to USD.
+
+- **`docs/decisions/005_add-document-pictogram.md`** — ADR for `AddDocument` substitution.
+
+### Spec drift / discrepancies / things noticed
+
+- **`TaskAdd` pictogram does not exist** in `@carbon/pictograms-react@11.100.0`. Substituted `AddDocument` (semantically appropriate for "add your first transaction"). ADR 005 filed. Spec §2.5 should be updated.
+- **`<ClickableTile as={Link}>`** is not supported by the Carbon TypeScript type definition (ClickableTileProps does not include `as`). The implementation destructures `href` from props and renders a native `<a>` element, so `href` prop works correctly. Used `href` directly — full-page navigation, acceptable for MVP.
+- **`<Button as={Link}>`** is supported (Carbon Button uses `PolymorphicComponentPropWithRef`) and used in EmptyState and RecentTransactionsTable without TypeScript errors.
+- `app/page.tsx` spec shows a double-wrapped `<Grid>` (one in the server component, one in `DashboardPage`). The implementation follows the pattern from `app/cash-flow/page.tsx`: the server component adds the outer Grid+Column wrapper, and `DashboardPage` renders its own Grid for the internal row layout. This is the established pattern.
+
+### Quality gates
+
+| Gate | Result |
+|---|---|
+| `bunx tsc --noEmit` | ✓ 0 errors |
+| `bun run lint` | ✓ 0 errors, 1 pre-existing warning in app/layout.tsx |
+| `bun run test` | ✓ 133 passed, 1 skipped (was 128; +5 from currentMonthIndex spec) |
+| `bun run build` | ✓ all 7 routes build (/, /cash-flow, /reports, /settings, /simulation, /api/fx/latest, /_not-found) |
+| `bun run fallow:check` | ✓ 0 regressions (3 pre-existing devDependency warnings unchanged from baseline) |
+
+E2E not run in CI this session — requires dev server. Manual check recommended before PR merge.
+
+### Spec-specific notes — pictogram and ClickableTile
+
+`TaskAdd` was specified but is not exported from the installed pictogram package. This is a spec error, not an implementation gap. `AddDocument` is the corrected choice and is documented in ADR 005. The `ClickableTile as={Link}` constraint: Carbon React's type definition for `ClickableTile` correctly types `href` (used here) but does not expose `as`. Navigation works via native `<a href>` — the same semantic result, minus Next.js prefetching which is a performance-only concern irrelevant for the MVP.
+
+### Recommendation for next session
+
+**Phase 3 — Simulation page.** The KPI tiles at `/` now link to `/simulation`, which is a placeholder. Phase 3 delivers the Configuration region (ratio slider, ticker tiles), the 30-year `<AreaChart>` with thresholds at months 60/120/240/360, and the Milestone Tile grid (3 horizons × 3 scenarios). The projection engine and portfolio repository are already wired at the Dashboard; Phase 3 adds an editing surface for `portfolioConfig` (ratio + tickers), Finnhub integration for live price display, and the `<StructuredList>` summary below the milestone grid.
+
+## Session 21 — Phase 1.6: Settings page + fallow/font cleanups (2026-05-07)
+
+### What I asked the AI to do
+
+Ship the Settings page (`/settings`) with five tile sections (display currency, theme, Finnhub key, FX rates, data/reset), a `LocalStorageSettingsRepository` with cookie mirror for SSR, and a `useSettings` hook that becomes the single seam for both the page and the existing header toggles. Two small cleanups alongside: suppress three false-positive devDependency warnings in fallow (ESLint transitive deps), and migrate the Google Fonts CDN `<link>` to `next/font/google` to eliminate the ESLint `no-page-custom-font` warning.
+
+### What the AI did
+
+**Outcome 0a — Fallow devDep whitelist (`\`.fallowrc.json\`):**
+- Added `eslint.config.mjs` to `entry` list (entry-whitelist approach) — fallow still flagged the 3 devDeps because they are transitive dependencies of `eslint-config-next`, not direct imports in any source file.
+- Switched to `ignoreDependencies: ["@eslint/eslintrc", "@typescript-eslint/eslint-plugin", "@typescript-eslint/parser"]` — the correct fallow primitive for packages that can only be reached via a config file's own peer-dep chain.
+- Result: `bun run fallow:check` → `✓ No issues in 157 changed files (exit 0)`. Full dead-code scan: 0 unused_dependencies (was 3).
+
+**Outcome 0b — IBM Plex CDN → `next/font/google` (`app/layout.tsx`, `app/globals.scss`):**
+- Imported `IBM_Plex_Sans`, `IBM_Plex_Mono`, `IBM_Plex_Serif` from `next/font/google` with `weight: ['400','500','600']` and `variable` mode.
+- Removed the `<link rel="stylesheet" href="fonts.googleapis.com/...">` from `<head>`.
+- Applied all three font variable class names to `<html>`.
+- Added a targeted override to `globals.scss`: `body { font-family: var(--font-ibm-plex-sans, ...) }` and `code, pre { font-family: var(--font-ibm-plex-mono, ...) }`. Carbon's pre-compiled CSS sets `font-family` on `body` via its type-style mixin; component selectors inherit from `body` rather than declaring their own font-family. Overriding at body level redirects the entire type hierarchy to the locally-served next/font fonts.
+- Result: `bun run lint` → 0 warnings (was 1). `bun run build` shows no font-related warnings.
+
+**`src/lib/settings/schema.ts` (NEW):** Zod schema for `Settings` with `displayCurrency`, `theme`, `finnhubKey`, `fxAutoRefresh`, `schemaVersion: literal(1)`. Exports `Settings` and `Theme` types.
+
+**`src/lib/settings/repository.ts` (MODIFIED):** Full implementation of `createLocalStorageSettingsRepository()`. `set()` writes to LocalStorage via the existing storage adapter, then mirrors `theme` + `displayCurrency` to cookies (`flowstate-theme`, `flowstate-currency`) via `document.cookie` with `Path=/; Max-Age=31536000; SameSite=Lax`. `clear()` removes the LocalStorage key and expires both cookies. `typeof document === 'undefined'` guard prevents SSR crashes. `finnhubKey`, `fxAutoRefresh`, and `schemaVersion` are intentionally NOT mirrored to cookies per data model §1.3. Re-exports `Theme` and `Settings` for backward-compat (existing importers of `type { Theme } from '...repository'` continue to work).
+
+**`src/lib/settings/repository.spec.ts` (NEW):** 6 Vitest cases mirroring portfolio repo spec: empty → null, set/get round-trip, clear after set, invalid JSON → null, schema-invalid value (bad theme) → null, DEFAULT_SETTINGS parses.
+
+**`src/lib/settings/index.ts` (NEW):** Barrel exporting schema, types, repository, DEFAULT_SETTINGS, createLocalStorageSettingsRepository, settingsRepository.
+
+**`src/features/settings/useSettings.ts` (NEW):** Hook with `{ status, settings, error, set }`. `set()` is a stable `useCallback` that calls `settingsRepository.set()` and updates local state in one step. Pattern mirrors `usePortfolioConfig` for loading/ready/error states.
+
+**`src/features/settings/SettingsPage.tsx` (NEW):** `'use client'` orchestrator. Uses `useSettings`. Renders `<InlineLoading>` while loading, `<InlineNotification kind="error">` on error, or the five tile components. Wraps tiles in `<form aria-labelledby="settings-heading">` per spec §6.6.
+
+**`src/features/settings/DisplayCurrencyTile.tsx` (NEW):** `<RadioButtonGroup>` with VND / USD. Persists immediately on change via `onSet({ ...settings, displayCurrency: next })`.
+
+**`src/features/settings/ThemeTile.tsx` (NEW):** `<RadioButtonGroup>` with g90 / g100 / white. Same persistence pattern.
+
+**`src/features/settings/FinnhubKeyTile.tsx` (NEW):** `<TextInput type="password">` persisting on blur. "Test connection" button rendered `disabled` with helper text "Available once Live Tickers ship in Phase 3."
+
+**`src/features/settings/FxRatesTile.tsx` (NEW):** Loads FX snapshot via `createFxRepository()` on mount. Displays USD→VND rate + fetchedAt in a `<StructuredListWrapper isCondensed>`. "Refresh now" button calls `repo.refresh()`. `<Toggle>` for `fxAutoRefresh` persists immediately. Auto-refresh scheduler is explicitly deferred (documented in tile comment).
+
+**`src/features/settings/DataTile.tsx` (NEW):** Three buttons. Export/Import are rendered `disabled` with helper text explaining Phase 4 deferral. "Reset all data" opens a `<Modal danger>` with `primaryButtonDisabled={confirmText !== 'RESET'}`. On confirm: iterates localStorage and removes all `flowstate:v1:*` keys, expires both cookies, navigates to `/` (onboarding redirect deferred to Phase 3+).
+
+**`app/settings/page.tsx` (MODIFIED):** Replaced placeholder with server component that mounts `<SettingsPage>` centered at `lg={{ span: 8, offset: 4 }}` per spec §6.3.
+
+**`app/components/ThemeSwitcher.tsx` (MODIFIED):** Now uses `useSettings()`. Handler: `await set({ ...(settings ?? DEFAULT_SETTINGS), theme: next })` then `router.refresh()`. `writeCookie` import removed — cookie is written by `settingsRepository.set()` as a side-effect.
+
+**`app/components/CurrencySwitcher.tsx` (MODIFIED):** Same pattern. `writeCookie` import removed.
+
+**`e2e/settings.spec.ts` (NEW):** 3 Playwright cases with `attachErrorGuard`: (1) empty storage → default values (VND, g90, empty key, toggle on); (2) switch to USD → header reflects, reload → still USD; (3) reset flow with wrong text → confirm disabled, "RESET" → enabled, confirm → navigate to /, localStorage cleared.
+
+### Spec drift / discrepancies / things noticed
+
+- **`ignoreDependencies` vs `entry` whitelist.** The original task described "one-line fix adding `eslint.config.mjs` to the entry list." In practice, `@eslint/eslintrc` et al. are transitive dependencies of `eslint-config-next` — `eslint.config.mjs` does not import them directly. Fallow's `entry` whitelist traces explicit imports, not peer-dep chains. `ignoreDependencies` is the correct field. Both were added to `.fallowrc.json`; `ignoreDependencies` is what actually eliminates the warnings.
+- **`next/font` and Carbon's compiled CSS.** The task predicted "this is unlikely" to fail. The challenge: Carbon's pre-compiled CSS hardcodes `font-family: 'IBM Plex Sans'` in the `body` type-style, which `next/font/google` registers under a hashed internal name (not the literal family name). Resolution: override `body { font-family: var(--font-ibm-plex-sans) }` in `globals.scss`. Carbon component selectors inherit `font-family` from `body` rather than declaring it themselves, so this single override redirects the full Carbon type hierarchy to the next/font-served files.
+- **`StructuredList` → `StructuredListWrapper`.** The installed `@carbon/react@1.106.x` exports `StructuredListWrapper` (not `StructuredList`). The `condensed` prop is `isCondensed` in this version.
+- **`fxAutoRefresh` toggle — no consumer yet.** The toggle persists the preference. No scheduler exists to read it. Documented in a comment in `FxRatesTile.tsx`. Future hook/server-action will wire it.
+- **Reset redirect target.** Spec says redirect to `/onboarding`. Route doesn't exist yet (Phase 3+). Falling back to `/` as specified in the task. To be updated when Onboarding ships.
+- **`useSettings` in header switchers during loading state.** If the user clicks a header switcher before the hook resolves (< 1 ms since localStorage is sync), the code falls back to `DEFAULT_SETTINGS` as the base. This means `finnhubKey` etc. could be momentarily reset to null if the user is extremely fast. Acceptable for MVP given the sub-millisecond window.
+
+### Quality gates
+
+| Gate | Result |
+|---|---|
+| `bunx tsc --noEmit` | ✓ 0 errors |
+| `bun run lint` | ✓ 0 errors, 0 warnings (was 1 pre-existing `no-page-custom-font`) |
+| `bun run test` | ✓ 139 passed, 1 skipped (was 133; +6 settings repository spec) |
+| `bun run build` | ✓ all 7 routes build |
+| `bun run fallow:check` | ✓ No issues in 157 changed files (exit 0). Full devDep scan: 0 unused_dependencies (was 3) |
+
+E2E (`bun run e2e`) not run in CI this session — requires dev server. Target: 15 cases (was 12; +3 settings spec).
+
+### Recommendation for next session
+
+**Phase 3 — Simulation page.** The KPI tiles and projection chart at `/` already link to `/simulation`, which is still a placeholder. Phase 3 delivers the Configuration region (ratio slider, ticker tiles via Finnhub integration), the 30-year `<AreaChart>` with thresholds, and the Milestone Tile grid. The `finnhubKey` field in `Settings` is now persisted and available for the ticker route handler to read from the `X-Flowstate-Finnhub-Key` request header. The Onboarding redirect target for the Reset action should also be wired once that route ships.
 
 <!-- ──────────────────────────────────────────────────────────────────── -->
 <!-- APPEND NEW SESSION ENTRIES ABOVE THIS LINE.                          -->

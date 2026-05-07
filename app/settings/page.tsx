@@ -1,10 +1,11 @@
-import { Grid, Column } from '@carbon/react';
+import { Column, Grid } from '@carbon/react';
+import { SettingsPage } from '@/src/features/settings/SettingsPage';
 
-export default function SettingsPage() {
+export default function SettingsRoute() {
   return (
     <Grid>
-      <Column sm={4} md={8} lg={16}>
-        <h1 className="cds--type-productive-heading-04">Settings</h1>
+      <Column sm={4} md={8} lg={{ span: 8, offset: 4 }}>
+        <SettingsPage />
       </Column>
     </Grid>
   );

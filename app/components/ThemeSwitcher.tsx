@@ -3,7 +3,8 @@
 import { useRouter } from 'next/navigation';
 import { HeaderGlobalAction } from '@carbon/react';
 import { Asleep, Light } from '@carbon/icons-react';
-import { writeCookie } from '@/app/lib/cookies-client';
+import { useSettings } from '@/src/features/settings/useSettings';
+import { DEFAULT_SETTINGS } from '@/src/lib/settings';
 import type { Theme } from '@/src/lib/settings/repository';
 
 const NEXT_THEME: Record<Theme, Theme> = {
@@ -20,10 +21,14 @@ const LABEL: Record<Theme, string> = {
 
 export default function ThemeSwitcher({ current }: { current: Theme }) {
   const router = useRouter();
+  const { settings, set: setSettings } = useSettings();
 
-  function handleClick() {
+  async function handleClick() {
     const next = NEXT_THEME[current];
-    writeCookie('flowstate-theme', next);
+    // set() writes to LocalStorage AND mirrors theme to the flowstate-theme cookie.
+    // The cookie write is synchronous inside set(), so router.refresh() sees the
+    // updated cookie on the next server request.
+    await setSettings({ ...(settings ?? DEFAULT_SETTINGS), theme: next });
     router.refresh();
   }
 

@@ -5,7 +5,8 @@
     "app/**/layout.{ts,tsx}",
     "app/**/route.{ts,tsx}",
     "app/**/error.{ts,tsx}",
-    "app/**/not-found.{ts,tsx}"
+    "app/**/not-found.{ts,tsx}",
+    "eslint.config.mjs"
   ],
   "boundaries": {
     "zones": [
@@ -23,6 +24,11 @@
       { "from": "tests",      "allow": ["lib", "components", "features", "app", "tests"] }
     ]
   },
+  "ignoreDependencies": [
+    "@eslint/eslintrc",
+    "@typescript-eslint/eslint-plugin",
+    "@typescript-eslint/parser"
+  ],
   "rules": {
     "unused-files":         "warn",
     "unused-exports":       "warn",
