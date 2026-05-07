@@ -1,4 +1,12 @@
-import type { Money, YearMonth } from '../currency/types';
+import type { Currency, FxRateSnapshot, Money, YearMonth } from '../currency/types';
+import type { Transaction } from '../transactions/schema';
+
+export type ProjectionInput = {
+  transactions: Transaction[];
+  ratio: number;
+  displayCurrency: Currency;
+  fx: FxRateSnapshot;
+};
 
 export type MonthlyAggregate = {
   yearMonth: YearMonth;
