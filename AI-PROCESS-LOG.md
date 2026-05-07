@@ -48,6 +48,7 @@ The **pre-Carbon history** (V1 vanilla bento dashboard, Flowstate v0 hand-built 
 - Session 20 — Phase 2.2 — Dashboard wiring: KPI tiles, projection chart, recent transactions — 2026-05-07
 - Session 21 — Phase 1.6 — Settings page + fallow/font cleanups — 2026-05-07
 - Session 22 — Phase 1.6 — Theme refresh fix: useSettings.set() now invalidates the server layout — 2026-05-07
+- Session 23 — Phase 1.W2 — CLAUDE.md amendments + fallow skill condensation — 2026-05-07
 
 ---
 
@@ -1948,6 +1949,60 @@ E2E (`bun run e2e`) requires a running dev server — to be confirmed manually. 
 ### Recommendation for next session
 
 **Phase 3 — Simulation page.** The KPI tiles and projection chart at `/` already link to `/simulation`, which is still a placeholder. Phase 3 delivers the Configuration region (ratio slider, ticker tiles via Finnhub integration), the 30-year `<AreaChart>` with thresholds, and the Milestone Tile grid. The `finnhubKey` field in `Settings` is now persisted and available for the ticker route handler. The Onboarding redirect target for the Reset action should also be wired once that route ships.
+
+## Session 23 — Phase 1.W2: CLAUDE.md amendments + fallow skill condensation (2026-05-07)
+
+### What I asked the AI to do
+
+Workflow durability phase — no product code. Two outcomes: (1) four surgical additions to CLAUDE.md encoding patterns that recur across sessions (exploration budget, Vitest path alias, PR base-branch verification, process-log cross-reference); (2) condense the vendored fallow skill to Flowstate-relevant content only, trimming ≥40% of lines and writing ADR 006 to record the divergence from upstream.
+
+### What the AI did
+
+**`CLAUDE.md`**
+- Added exploration-budget bullet at top of "Before any task": cap ~5–8 file reads before producing a plan; prefer Glob/Grep; sessions that read everything before acting produce nothing.
+- Added Vitest path-alias caveat under Tests in "Stack quick reference": `@/` aliases are not resolved by Vitest; use relative imports in `*.spec.ts` files.
+- Added PR base-branch verification bullet in "Before marking work complete": verify base is `master` before creating PR; GitHub's UI can auto-select a wrong branch.
+- Updated process-log cross-reference bullet in "Before marking work complete": now references "the template, the append-marker rule, and the index-row rule" (was missing the index-row rule).
+
+**`.claude/skills/fallow/SKILL.md`**
+- Rewrote in-place. Kept: YAML frontmatter (bumped version to `1.0.0-flowstate`), all 8 Agent Rules verbatim, When to Use / When NOT to Use, trimmed Commands table (9 commands — removed `init`, `migrate`, `flags`, `license`, `coverage`, `schema`), full Issue Types table, core workflow recipes, exit codes, config schema, inline suppression, key gotchas.
+- Removed: Prerequisites/setup instructions, MCP tools section, Node.js bindings, monorepo workspace examples, watch-mode references, CI pipeline recipes. Added upstream pointer note.
+- **Before: 382 lines → After: 213 lines (44.2% reduction).**
+
+**`.claude/skills/fallow/references/patterns.md`**
+- Trimmed from 761 lines to ~100. Kept: full project audit, PR dead-code check, incremental baselines, safe auto-fix, production vs full audit, debugging false positives. Removed: CI pipeline YAML (GitHub Actions, GitLab CI), monorepo analysis, migration recipes, custom plugin setup, GitHub Code Scanning, git-push hook.
+
+**`docs/decisions/006_fallow-skill-condensation.md`**
+- New ADR. Context → Decision → Consequences shape. Documents what was kept/removed, before/after line counts, upstream pointer, and reconciliation note for future free-tier feature additions.
+
+**`AI-PROCESS-LOG.md`**
+- Session 23 entry appended above marker. Session Index row added.
+
+### Spec drift / discrepancies / things noticed
+
+- **1d already partially present.** The "Before marking work complete" bullet already referenced "the template and append rule." The index-row rule was missing from that cross-reference; updated to mention all three. Recorded in log as required.
+- **`references/cli-reference.md` and `references/gotchas.md` left untrimmed.** These are pure reference documents with no workflow recipes and no monorepo/CI/paid-feature content. Trimming them would remove genuinely useful debugging reference without reducing trigger-time token weight (they are not loaded unless the agent explicitly reads them).
+- No source code, tests, or configs touched in this session.
+
+### Quality gates
+
+| Gate | Result |
+|---|---|
+| `bunx tsc --noEmit` | ✓ 0 errors (no source changes) |
+| `bun run lint` | ✓ 0 errors (no source changes) |
+| `bun run test` | ✓ unchanged (no source changes) |
+| `bun run fallow:check` | ✓ 0 regressions (skill change does not affect binary) |
+
+### SKILL.md line counts
+
+| File | Before | After | Reduction |
+|------|--------|-------|-----------|
+| `SKILL.md` | 382 | 213 | 44.2% |
+| `references/patterns.md` | 761 | ~100 | ~87% |
+
+### Recommendation for next session
+
+**Phase 3 — Simulation page.** The KPI tiles and projection chart at `/` already link to `/simulation`, which is still a placeholder. Phase 3 delivers the Configuration region (ratio slider, ticker tiles via Finnhub integration), the 30-year `<AreaChart>` with thresholds, and the Milestone Tile grid. The `finnhubKey` field in `Settings` is persisted and available for the ticker route handler. The Onboarding redirect for the Reset action should also be wired once that route ships. Alternatively, a PostToolUse typecheck hook (deferred from this session per the task scope) would be a low-cost durability win before Phase 3.
 
 <!-- ──────────────────────────────────────────────────────────────────── -->
 <!-- APPEND NEW SESSION ENTRIES ABOVE THIS LINE.                          -->
