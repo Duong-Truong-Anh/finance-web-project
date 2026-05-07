@@ -22,6 +22,32 @@ The **pre-Carbon history** (V1 vanilla bento dashboard, Flowstate v0 hand-built 
 
 ---
 
+## Session Index
+
+- Session 1 — Spec creation under Carbon — 2026-04-28
+- Session 2 — Phase 0.1 — Next.js scaffold + Carbon install + g90 Dashboard — 2026-04-28
+- Session 3 — Phase 0.2 — ESLint boundary + Vitest + src/lib/ skeleton — 2026-04-28
+- Session 4 — Phase 0.3 — UI Shell: Header + SideNav + 5 route stubs — 2026-04-28
+- Session 5 — Phase 0.4 — Theme + currency persistence with SSR-correct first paint — 2026-04-29
+- Session 6 — Phase 1.1 — LocalStorage adapter + TransactionRepository impl — 2026-04-29
+- Session 7 — Phase 1.2a — Cash Flow page: Add transaction modal + DataTable + tabs — 2026-04-29
+- Session 8 — UI Shell bug fixes: SideNav rail + tooltip suppression — 2026-04-29
+- Session 9 — Phase 1.1.1 — Code review + simplification pass — 2026-04-29
+- Session 10 — Phase 1.2-bugfix — Nest Money end-to-end — 2026-04-29
+- Session 11 — Phase 1.2b — Edit, Delete, bulk Delete — 2026-04-29
+- Session 12 — Phase 1.2c — UX polish: 3 bug fixes — 2026-04-29
+- Session 13 — Phase 1.3 — FX integration: convert, format, FxRepository — 2026-04-30
+- Session 14 — Phase 1.4 — CSV import / export — 2026-05-01
+- Session 15 — Phase 1.X — Playwright smoke harness — 2026-05-02
+- Session 16 — Phase 1.5 — Monthly ComboChart + render-bug fix + e2e error guard — 2026-05-05
+  - Session 16 (addendum) — Phase 1.5 — Patch: @carbon/charts SecurityError — 2026-05-05
+  - Session 16 (addendum 2) — Phase 1.5 — Refactor: stacked-bar → grouped-bar — 2026-05-05
+- Session 17 — Phase 1.7 — fallow static analysis integration — 2026-05-06
+- Session 18 — Phase 2.1 — Projection engine + portfolio repository — 2026-05-07
+- Session 19 — Phase 1.W1 — Standardize AI-PROCESS-LOG format — 2026-05-07
+
+---
+
 ## Session 1 — Spec creation under Carbon (2026-04-28)
 
 ### What I asked the AI to do
@@ -1714,3 +1740,47 @@ GitHub Copilot generated 6 inline comments. Assessment and disposition:
 | 6 | `rates.ts:2` | JSDoc stripped | **Valid** | Comment was present before my edit and stripped unintentionally. Restored: `// (1 + annual)^(1/12) − 1. See docs/03_calculation_spec.md §4.` |
 
 **Fixes applied:** `set()` validation + JSDoc restore. Tests still 128 passing, tsc clean, lint clean.
+
+---
+
+## Session 19 — Phase 1.W1: Standardize AI-PROCESS-LOG format (2026-05-07)
+
+### What I asked the AI to do
+
+Standardize the AI-PROCESS-LOG so future implementer agents always know where to append (Session 18 was inserted inside Session 17's body before being corrected), what structure to follow (each session used different heading vocabulary), and how to navigate the log without scrolling. No product code changes, no new dependencies, no UI.
+
+### What the AI did
+
+- Read all 18 sessions (and 2 addenda) end-to-end to catalogue which fields appear where and identify the minimum shared structure already implicit in every session prompt's "When done" block.
+- Added `## Session Index` list at the top of `AI-PROCESS-LOG.md` — 21 rows covering Sessions 1–18 plus addenda, using `Session N — Phase X.Y — Short title — YYYY-MM-DD` format with addendum rows indented under their parent.
+- Added the `<!-- APPEND NEW SESSION ENTRIES ABOVE THIS LINE -->` HTML-comment block at the bottom of `AI-PROCESS-LOG.md` as an unambiguous append target for future sessions.
+- Added a new `## Updating AI-PROCESS-LOG.md` section to `CLAUDE.md` (between "Before marking work complete" and "Common pitfalls to avoid") containing: the canonical session template, the append rule, the index rule, and the addendum rule.
+- Updated the existing "Add the session entry to `AI-PROCESS-LOG.md`" bullet in CLAUDE.md's "Before marking work complete" checklist to reference the new section.
+- Wrote this Session 19 entry as the first entry under the new template (dogfooding).
+
+### Spec drift / discrepancies / things noticed
+
+Sessions 2 and 3 appear after Session 7 in the file body — they are out of file-order relative to their session numbers, a pre-existing artefact. The Session Index lists them in numerical (chronological) order; the file body is unchanged.
+
+Session 8 has no "Phase X.Y" designation in its title. Listed in the index without a phase (`Session 8 — UI Shell bug fixes: SideNav rail + tooltip suppression — 2026-04-29`).
+
+### Quality gates
+
+| Gate | Result |
+|---|---|
+| `bunx tsc --noEmit` | ✓ 0 errors (no source files changed) |
+| `bun run lint` | ✓ 0 errors (no source files changed) |
+| `bun run test` | ✓ 128 passed, 1 skipped (no source files changed) |
+| `bun run e2e` | ✓ 9/9 (no source files changed) |
+| `bun run build` | ✓ all 7 routes build (no source files changed) |
+| `bun run fallow:check` | ✓ 0 regressions (no source files changed) |
+
+### Recommendation for next session
+
+**Phase 2.2 — Dashboard wiring.** The projection engine and portfolio repository are complete and tested (Session 18). The integration contract is locked; Phase 2.2 consumes `computeProjection` and `portfolioRepository` directly from `@/src/lib/projection` and `@/src/lib/portfolio` without modifying the engine. Build KPI tiles (net flow this month, YTD, projected value at 10/20/30 years), the condensed 30-year `<LineChart>`, the recent-5 transaction `<DataTable>`, and the empty state on `app/page.tsx`.
+
+<!-- ──────────────────────────────────────────────────────────────────── -->
+<!-- APPEND NEW SESSION ENTRIES ABOVE THIS LINE.                          -->
+<!-- See CLAUDE.md § "Updating AI-PROCESS-LOG.md" for the session template -->
+<!-- and the rule for adding a row to the Session Index at the top.       -->
+<!-- ──────────────────────────────────────────────────────────────────── -->
