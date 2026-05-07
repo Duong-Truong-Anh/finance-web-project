@@ -97,3 +97,14 @@ test('reset flow: confirm button gated on exact "RESET" text, clears storage on 
   const storageLength = await page.evaluate(() => window.localStorage.length);
   expect(storageLength).toBe(0);
 });
+
+test('theme change applies immediately without page reload', async ({ page, context }) => {
+  await seedStorage(context);
+  await page.goto('/settings');
+
+  await page.getByRole('radio', { name: /g100/ }).click();
+  await expect(page.locator('html')).toHaveClass(/cds--g100/);
+
+  await page.getByRole('radio', { name: /White/ }).click();
+  await expect(page.locator('html')).toHaveClass(/cds--white/);
+});

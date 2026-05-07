@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import {
   HeaderGlobalAction,
   Popover,
@@ -16,17 +15,12 @@ import type { Currency as CurrencyType } from '@/src/lib/currency/types';
 
 export default function CurrencySwitcher({ current }: { current: CurrencyType }) {
   const [open, setOpen] = useState(false);
-  const router = useRouter();
   const { settings, set: setSettings } = useSettings();
 
   async function handleChange(value: string | number | undefined) {
     if (value !== 'VND' && value !== 'USD') return;
-    // set() writes to LocalStorage AND mirrors displayCurrency to the flowstate-currency
-    // cookie. The cookie write is synchronous inside set(), so router.refresh() sees the
-    // updated cookie on the next server request.
     await setSettings({ ...(settings ?? DEFAULT_SETTINGS), displayCurrency: value });
     setOpen(false);
-    router.refresh();
   }
 
   return (
