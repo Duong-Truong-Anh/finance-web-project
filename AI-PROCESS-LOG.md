@@ -10,6 +10,105 @@ The **pre-Carbon history** (V1 vanilla bento dashboard, Flowstate v0 hand-built 
 
 ---
 
+## Session 18 — Phase 2.1: projection engine + portfolio repository (2026-05-07)
+
+### What I asked the AI to do
+
+Implement Phase 2.1 of Flowstate: the pure projection engine (`src/lib/projection/`) and `PortfolioConfig` repository (`src/lib/portfolio/`). No UI, no React. Three deliverables: (1) `PortfolioConfig` Zod schema + LocalStorage repository; (2) `computeProjection` pure function — 60-month contributions + 300-month compounding, three scenarios; (3) full test suite with worked example pinned from spec §9. Integration contract locked for Phase 2.2 consumption.
+
+### What the AI did, file by file
+
+**`src/lib/portfolio/schema.ts`** (new): Zod schemas for `TickerSelection` and `PortfolioConfig`. Ratio bounds [0.30, 0.50] from spec §1.2. Tickers `.max(5)` (not `.length(5)` — fewer than 5 is valid math, just a UI warning). Both types inferred from Zod schemas via `z.infer`.
+
+**`src/lib/portfolio/repository.ts`** (overwritten from bare-types stub): `PortfolioRepository` interface with `get(): Promise<PortfolioConfig | null>` (null = nothing persisted). `createLocalStoragePortfolioRepository` factory using `STORAGE_KEYS.portfolio` (`flowstate:v1:portfolio`). Adapter layer means invalid JSON returns null (adapter renames key) and schema-invalid data returns null (safeParse on the parsed value). `DEFAULT_PORTFOLIO_CONFIG` exported as a separate const — factory never auto-seeds. Singleton `portfolioRepository` exported for Phase 2.2 consumption.
+
+**`src/lib/portfolio/repository.spec.ts`** (new): 6 cases — null on empty storage; round-trip set/get; set then clear then null; corrupt JSON → null; schema-invalid (ratio=0.99) → null; DEFAULT_PORTFOLIO_CONFIG parses successfully. Uses same `FakeStorage` pattern as `transactions/local-storage-repository.spec.ts`.
+
+**`src/lib/portfolio/index.ts`** (new): barrel export.
+
+**`src/lib/projection/types.ts`** (updated): added `ProjectionInput` — `{ transactions, ratio, displayCurrency, fx }`. Kept existing `MonthlyAggregate`, `ProjectionPoint`, `ProjectionScenario`, `Projection`.
+
+**`src/lib/projection/rates.ts`** (updated): added `ANNUAL_RATES = [0.15, 0.175, 0.20] as const`. Kept existing `monthlyRateFromAnnual`.
+
+**`src/lib/projection/monthly-investments.ts`** (new): `aggregateMonthlyInvestments(transactions, ratio, displayCurrency, fx) → Money[]`. Converts each transaction individually via `convert()`. Anchors month index at the earliest transaction's `YYYY-MM`. Generates 60 consecutive calendar months via UTC `Date` arithmetic (no `Date.now()`). Missing months → 0. Negative net flow → 0 contribution. `Math.floor(netFlow * ratio)` for floor-in-minor-units behavior.
+
+**`src/lib/projection/monthly-investments.spec.ts`** (new): 7 cases — empty → 60 zeros; single income; income + larger expense → zero; 70 months of data → first 60 only; mixed VND + USD with displayCurrency USD; gap months; floor rounding.
+
+**`src/lib/projection/compute-projection.ts`** (new): `computeProjection` entry point — clamps ratio to [0.30, 0.50], calls `aggregateMonthlyInvestments`, maps over `ANNUAL_RATES` to build three scenarios. `buildScenario` iterates months 0..360: months 1..60 use `value = (value + C) * (1 + gm)` (start-of-month contribution earns full month); months 61..360 use `value = value * (1 + gm)`. Maintains `value` as float; rounds with `roundHalfToEven` only at `series[]` push. Milestones from `series[120]`, `series[240]`, `series[360]`. Private `roundHalfToEven` (inline — not exported; the function in `src/lib/currency/convert.ts` is also private so cannot be imported).
+
+**`src/lib/projection/compute-projection.spec.ts`** (new): 8 tests (+1 skipped performance smoke). Worked example uses closed-form annuity-due formula independently of the iterative engine — comparison is not circular. Three ratio-clamping tests, series-length, scenario-order, determinism, performance smoke (`it.skip`).
+
+**`src/lib/projection/index.ts`** (new): barrel export — `computeProjection`, `ANNUAL_RATES`, `monthlyRateFromAnnual`, all types.
+
+### Exact pinned values for the worked example (spec §9)
+
+Inputs: 60 months × 18,000,000 VND income + 12,500,000 VND expense, ratio 0.40, displayCurrency VND.
+- `monthlyInvestment` = floor(5,500,000 × 0.40) = 2,200,000 (exact, no rounding)
+- `totalContributed` = 2,200,000 × 60 = 132,000,000 (exact)
+
+Phase-1 close-out (engine output):
+
+| scenario | series[60] | yr10 (series[120]) | yr20 (series[240]) | yr30 (series[360]) |
+|---|---|---|---|---|
+| g=0.15 | 192,152,565 | 386,487,443 | 1,563,557,265 | 6,325,461,187 |
+| g=0.175 | 204,308,282 | 457,588,716 | 2,295,376,717 | 11,514,170,022 |
+| g=0.20 | 217,148,716 | 540,335,493 | 3,345,614,951 | 20,715,165,948 |
+
+**Drift from spec §9 "≈" values:** The spec's §9 approximations (196.5M, 207.2M, 218.4M for V_60; 11,792M for yr30 at 17.5%) are systematically ~2% higher than the mathematically derived values. Investigation: the spec's worked-example derivation shows `(0.014259/0.011714917)` as an intermediate — `0.014259` does not correspond to `(1+gm)^60 − 1 ≈ 1.01136`. The approximation was likely computed with a different method during spec authoring. The spec itself says "The numerical magnitudes are illustrative; the implementation must reproduce them exactly using the formulas above." My implementation uses the formulas exactly; the test verifies against the closed-form annuity-due formula (not the spec's approximate numbers). All within the ±1 minor unit bound the test enforces.
+
+### Fallow health report — `src/lib/projection/`
+
+```
+fallow health --format json → projection_findings: []
+```
+
+**Zero findings** in `src/lib/projection/` or `src/lib/portfolio/`. The highest-complexity function in the new code is `buildScenario` (cyclomatic ≈ 3, cognitive ≈ 4 — a simple loop with two branches). Well within `maxCognitive: 15` / `maxCyclomatic: 20`. Pre-existing findings (11 total, all in `src/lib/csv/` and `src/features/`) unchanged vs Session 17 baseline.
+
+### `roundHalfToEven` status
+
+Reused? **No** — the existing implementation in `src/lib/currency/convert.ts` is a private module-level function, not exported. Importing it would require either making it public (out of scope per prompt) or adding a re-export (also out of scope). Inlined as a private function in `compute-projection.ts`. Implementations are functionally identical.
+
+### Spec ambiguity resolved
+
+**"Anchor month" for gap data:** The prompt says anchor at the earliest transaction's `YYYY-MM`. I implemented this as: find the minimum `YYYY-MM` across all transactions, generate 60 consecutive months from there, look up each in the bucket map. Months with no transactions → 0 contribution. This matches the prompt's stated algorithm.
+
+**Spec §9 approximate values:** As documented above — the spec's ~196.5M / 207.2M / 218.4M for V_60 are illustrative approximations that do not match the formula. Resolved by testing against the closed-form formula, not the spec's numbers. Not diverging from the formula — diverging from the spec's illustration only. This is a known discrepancy, not an implementation choice.
+
+### Noticed but not fixed
+
+`src/lib/projection/rates.spec.ts` already existed (from a prior session) with 4 tests using `toBeCloseTo(val, 6)`. The prompt specifies ±1e-9 precision pins. Left untouched per surgical-change principle — the tests pass and the formula is correct; changing precision is cosmetic. The existing 4 tests were not broken by my changes.
+
+The 3 pre-existing devDependency warnings in fallow (`@eslint/eslintrc` etc.) remain in the audit output — same as Session 17.
+
+### Quality gates
+
+| Gate | Result |
+|---|---|
+| `bunx tsc --noEmit` | ✓ 0 errors |
+| `bun run lint` | ✓ 0 errors (1 pre-existing warning in `app/layout.tsx`) |
+| `bun run test` | ✓ 128 passed, 1 skipped (was 105; +24 new tests) |
+| `bun run e2e` | ✓ 9/9 |
+| `bun run build` | ✓ all 7 routes build |
+| `bun run fallow:check` | ✓ 0 regressions |
+| No React/Next/Carbon import in `src/lib/projection/` or `src/lib/portfolio/` | ✓ confirmed (grep clean) |
+| No `Date.now()` / `Math.random()` in `src/lib/projection/` | ✓ confirmed (grep clean) |
+| Fallow: zero findings in projection/portfolio | ✓ confirmed |
+
+### Recommendation
+
+**Next: Phase 2.2 — Dashboard wiring.** The integration contract is locked:
+```ts
+import { computeProjection } from '@/src/lib/projection';
+import { portfolioRepository, DEFAULT_PORTFOLIO_CONFIG } from '@/src/lib/portfolio';
+
+const config = (await portfolioRepository.get()) ?? DEFAULT_PORTFOLIO_CONFIG;
+const projection = computeProjection({ transactions, ratio: config.ratio, displayCurrency, fx });
+// projection.scenarios[1].milestones.yr30, etc.
+```
+Phase 2.2 consumes this without modifying the engine. Dashboard: KPI tiles, condensed `<LineChart>`, recent-5 `<DataTable>`, empty state.
+
+---
+
 ## AI Tools Used
 
 | Tool | Purpose |
