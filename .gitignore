@@ -41,6 +41,7 @@ test-results/
 .agents/
 .claude/*
 !.claude/skills/
+!.claude/settings.json
 /skills/
 skills-lock.json
 .fallow/

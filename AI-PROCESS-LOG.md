@@ -51,6 +51,7 @@ The **pre-Carbon history** (V1 vanilla bento dashboard, Flowstate v0 hand-built 
 - Session 23 — Phase 1.W2 — CLAUDE.md amendments + fallow skill condensation — 2026-05-07
 - Session 24 — Phase 1.W3 — Vendor and configure impeccable design skill — 2026-05-08
 - Session 25 — Phase 1.6.1 — Settings UI polish: composition, hierarchy, theme parity — 2026-05-08
+- Session 26 — Phase 1.W4 — ADR 007: impeccable adoption receipt + frontend-design disable — 2026-05-08
 
 ---
 
@@ -2148,6 +2149,41 @@ Must-fix count: **0**. Nice-to-have count: **2**.
 ### Recommendation for next session
 
 The Settings page now has correct visual hierarchy, theme-safe tile boundaries, and proper disabled-affordance patterns. Three items from the original Prompt 3 bundle remain unstarted: (1) the gremlinsJS chaos E2E suite for all public routes; (2) console-log monitoring conventions in CLAUDE.md; (3) ADR 007 for the impeccable adoption decision. These are independent tasks that can proceed in any order on separate branches. The next natural milestone on the feature roadmap is Phase 3 (Live Ticker integration, now that the Finnhub key tile is correctly structured and the "Test connection" deferred-state pattern is established).
+
+## Session 26 — Phase 1.W4: ADR 007 — impeccable adoption receipt + frontend-design disable (2026-05-08)
+
+### What I asked the AI to do
+
+Write the documentation receipt for the Sessions 24–25 impeccable adoption decision. Two deliverables: (1) `docs/decisions/007_impeccable-design-skill-adoption.md` capturing the Context → Decision → Consequences, and (2) a project-scope disable of `frontend-design` in `.claude/settings.json` so its skill router doesn't compete with `impeccable` + `carbon-builder` on UI tasks.
+
+### What the AI did
+
+- Read ADRs 004 and 006 for prose register and structure, then read Sessions 24 and 25 from `AI-PROCESS-LOG.md` for the implementation evidence.
+- Wrote `docs/decisions/007_impeccable-design-skill-adoption.md` (~550 words across three sections). Context cites the Session 21 Settings-page failure mode as load-bearing evidence. Decision documents the two wizard runs (`/impeccable teach` → `PRODUCT.md`, `/impeccable document` → `DESIGN.md`) and the explicit rejection of `frontend-design` and the from-scratch skill alternative. Consequences list the maintenance posture, the `frontend-design` scope boundary (project-only), and `.impeccable/design.json` as a tracked configuration artifact.
+- Invoked `update-config` skill to determine the correct `skillOverrides` JSON field for disabling a skill at project scope. Created `.claude/settings.json` with `{ "skillOverrides": { "frontend-design": "off" } }`.
+- Created branch from `master` (after pulling Sessions 24+25 merges from origin). Note: initial branch was created from `phase-1.6/settings-ui-polish` before the pull; corrected by force-updating local master to `origin/master` and rebasing.
+- Split into two commits as specified: ADR 007 first, config second.
+- Appended Session 26 entry and Session Index row.
+
+### Spec drift / discrepancies / things noticed
+
+- Local `master` did not update after `git pull origin master` (local ref stayed at the pre-pull commit). Root cause likely a race condition between the pull and the branch checkout in the same command chain. Fixed by `git branch -f master origin/master`.
+- `frontend-design` appears in the system-reminder skill list as `frontend-design:frontend-design` (plugin:skill format), but `skillOverrides` keys are plain skill names. Used `"frontend-design"` as the key per the schema documentation.
+- The `<!-- APPEND NEW SESSION ENTRIES ABOVE THIS LINE -->` marker is at line 2153; Session 26 placed immediately above it per the append rule.
+
+### Quality gates
+
+| Gate | Result |
+|---|---|
+| No source files modified | ✓ `git diff master -- src/ app/ e2e/ package.json` empty |
+| JSON valid | ✓ `python -m json.tool .claude/settings.json` passed |
+| ADR word count | ✓ ~550 words, under 600 limit |
+
+TypeScript, lint, test, build, and fallow gates skipped — no source or config files that affect those pipelines were changed.
+
+### Recommendation for next session
+
+Two remaining items from the original Prompt 3 bundle: (1) the gremlinsJS chaos E2E suite for all public routes; (2) console-log monitoring conventions in CLAUDE.md. These are independent tasks that can proceed in any order on separate branches. The next feature milestone is Phase 3 (Live Ticker integration). Confirm whether to prioritize the chaos suite and console-log conventions before Phase 3, or skip directly to Live Tickers.
 
 <!-- ──────────────────────────────────────────────────────────────────── -->
 <!-- APPEND NEW SESSION ENTRIES ABOVE THIS LINE.                          -->
