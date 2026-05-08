@@ -1,0 +1,226 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-05-08T00:00:00.000Z",
+  "title": "Design System: Flowstate",
+  "extensions": {
+    "colorMeta": {
+      "graphite-base": {
+        "role": "neutral",
+        "displayName": "Graphite Base",
+        "canonical": "#262626",
+        "tonalRamp": ["#161616", "#262626", "#393939", "#525252", "#6f6f6f", "#8d8d8d", "#c6c6c6", "#f4f4f4"]
+      },
+      "graphite-raised": {
+        "role": "neutral",
+        "displayName": "Graphite Raised",
+        "canonical": "#393939",
+        "tonalRamp": ["#161616", "#262626", "#393939", "#525252", "#6f6f6f", "#8d8d8d", "#c6c6c6", "#f4f4f4"]
+      },
+      "graphite-elevated": {
+        "role": "neutral",
+        "displayName": "Graphite Elevated",
+        "canonical": "#525252",
+        "tonalRamp": ["#161616", "#262626", "#393939", "#525252", "#6f6f6f", "#8d8d8d", "#c6c6c6", "#f4f4f4"]
+      },
+      "signal-blue": {
+        "role": "primary",
+        "displayName": "Signal Blue",
+        "canonical": "#4589ff",
+        "tonalRamp": ["#002d9c", "#0043ce", "#0062fe", "#4589ff", "#78a9ff", "#a6c8ff", "#d0e2ff", "#edf5ff"]
+      },
+      "lunar-white": {
+        "role": "neutral",
+        "displayName": "Lunar White",
+        "canonical": "#f4f4f4",
+        "tonalRamp": ["#161616", "#262626", "#393939", "#525252", "#6f6f6f", "#8d8d8d", "#c6c6c6", "#f4f4f4"]
+      },
+      "ash-grey": {
+        "role": "neutral",
+        "displayName": "Ash Grey",
+        "canonical": "#c6c6c6",
+        "tonalRamp": ["#161616", "#262626", "#393939", "#525252", "#6f6f6f", "#8d8d8d", "#c6c6c6", "#f4f4f4"]
+      },
+      "smoke-grey": {
+        "role": "neutral",
+        "displayName": "Smoke Grey",
+        "canonical": "#8d8d8d",
+        "tonalRamp": ["#161616", "#262626", "#393939", "#525252", "#6f6f6f", "#8d8d8d", "#c6c6c6", "#f4f4f4"]
+      },
+      "alert-red": {
+        "role": "error",
+        "displayName": "Alert Red",
+        "canonical": "#ff8389",
+        "tonalRamp": ["#750e13", "#a2191f", "#da1e28", "#fa4d56", "#ff8389", "#ffb3b8", "#ffd7d9", "#fff1f1"]
+      },
+      "growth-green": {
+        "role": "success",
+        "displayName": "Growth Green",
+        "canonical": "#42be65",
+        "tonalRamp": ["#044317", "#0e6027", "#198038", "#24a148", "#42be65", "#6fdc8c", "#a7f0ba", "#defbe6"]
+      },
+      "caution-amber": {
+        "role": "warning",
+        "displayName": "Caution Amber",
+        "canonical": "#f1c21b",
+        "tonalRamp": ["#3e2c00", "#7d4e00", "#b28600", "#d4a109", "#f1c21b", "#f6d860", "#fce88d", "#fdf5c7"]
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "KPI values and 30-year milestone numbers. The largest element on screen is always a number." },
+      "headline": { "displayName": "Headline", "purpose": "Page-level section headings. One per major content zone." },
+      "title": { "displayName": "Title", "purpose": "Sub-section headings, modal titles, tile headers." },
+      "body": { "displayName": "Body", "purpose": "All prose, table content, form labels. Max 65-75ch in freeform blocks." },
+      "label": { "displayName": "Label", "purpose": "Input labels, helper text, column headers, muted metadata." },
+      "mono": { "displayName": "Mono", "purpose": "API key inputs and computed values requiring character-level precision." }
+    },
+    "shadows": [],
+    "motion": [
+      {
+        "name": "state-transition",
+        "value": "cubic-bezier(0, 0, 0.38, 0.9)",
+        "purpose": "Carbon's standard ease-out for state transitions (hover, focus, active). No bounce, no elastic."
+      }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "320px" },
+      { "name": "md", "value": "672px" },
+      { "name": "lg", "value": "1056px" },
+      { "name": "xlg", "value": "1312px" },
+      { "name": "max", "value": "1584px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Additive actions: Add Transaction, Import CSV, Save. Signal Blue background, zero radius.",
+      "html": "<button class=\"ds-btn-primary\">Add transaction</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: space-between; background: #4589ff; color: #f4f4f4; font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 14px; font-weight: 400; line-height: 20px; padding: 11px 63px 11px 15px; border: none; border-radius: 0; cursor: pointer; min-height: 40px; transition: background 70ms cubic-bezier(0,0,0.38,0.9); } .ds-btn-primary:hover { background: #0062fe; } .ds-btn-primary:focus-visible { outline: 2px solid #ffffff; outline-offset: -4px; }"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Secondary or cancel actions. Transparent background, Signal Blue text.",
+      "html": "<button class=\"ds-btn-ghost\">Export CSV</button>",
+      "css": ".ds-btn-ghost { display: inline-flex; align-items: center; justify-content: space-between; background: transparent; color: #4589ff; font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 14px; font-weight: 400; line-height: 20px; padding: 11px 63px 11px 15px; border: none; border-radius: 0; cursor: pointer; min-height: 40px; transition: background 70ms cubic-bezier(0,0,0.38,0.9); } .ds-btn-ghost:hover { background: rgba(141,141,141,0.12); } .ds-btn-ghost:focus-visible { outline: 2px solid #ffffff; outline-offset: -4px; }"
+    },
+    {
+      "name": "Danger Button",
+      "kind": "button",
+      "refersTo": "button-danger",
+      "description": "Destructive actions only (Delete, Reset Data). Always preceded by a confirmation step.",
+      "html": "<button class=\"ds-btn-danger\">Delete</button>",
+      "css": ".ds-btn-danger { display: inline-flex; align-items: center; justify-content: space-between; background: #ff8389; color: #262626; font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 14px; font-weight: 400; line-height: 20px; padding: 11px 63px 11px 15px; border: none; border-radius: 0; cursor: pointer; min-height: 40px; transition: background 70ms cubic-bezier(0,0,0.38,0.9); } .ds-btn-danger:hover { background: #da1e28; color: #f4f4f4; } .ds-btn-danger:focus-visible { outline: 2px solid #ffffff; outline-offset: -4px; }"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "input-default",
+      "description": "Standard text field. Graphite Raised background, bottom-border-only at rest, full Signal Blue border on focus.",
+      "html": "<div class=\"ds-field\"><label class=\"ds-field-label\" for=\"ds-input-1\">Transaction name</label><input class=\"ds-input\" id=\"ds-input-1\" type=\"text\" placeholder=\"e.g. Monthly salary\" /></div>",
+      "css": ".ds-field { display: flex; flex-direction: column; gap: 0; } .ds-field-label { font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 12px; font-weight: 400; line-height: 16px; letter-spacing: 0.32px; color: #c6c6c6; padding: 0 0 8px 0; display: block; } .ds-input { background: #393939; color: #f4f4f4; font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 14px; font-weight: 400; line-height: 20px; padding: 11px 40px 11px 16px; border: none; border-bottom: 1px solid #525252; border-radius: 0; width: 100%; min-height: 40px; outline: none; transition: border-color 70ms cubic-bezier(0,0,0.38,0.9); } .ds-input::placeholder { color: #8d8d8d; } .ds-input:focus { border: 2px solid #4589ff; padding: 10px 39px 10px 15px; } .ds-input:focus-visible { outline: none; }"
+    },
+    {
+      "name": "Tile",
+      "kind": "card",
+      "refersTo": "tile-default",
+      "description": "Primary content grouping surface. Used for KPI display and settings sections. Zero radius, Graphite Raised background, no shadow.",
+      "html": "<div class=\"ds-tile\"><p class=\"ds-tile-value\">124,500,000</p><p class=\"ds-tile-label\">Net cash flow · 12 months</p><p class=\"ds-tile-sub\">VND</p></div>",
+      "css": ".ds-tile { background: #393939; color: #f4f4f4; padding: 16px; border-radius: 0; border: 1px solid #525252; } .ds-tile-value { font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 32px; font-weight: 300; line-height: 40px; margin: 0 0 4px 0; } .ds-tile-label { font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 14px; font-weight: 400; line-height: 20px; color: #c6c6c6; margin: 0 0 2px 0; } .ds-tile-sub { font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 12px; font-weight: 400; line-height: 16px; color: #8d8d8d; margin: 0; }"
+    },
+    {
+      "name": "Income Tag",
+      "kind": "chip",
+      "refersTo": "tag-income",
+      "description": "Transaction category label. Color and icon always together; never color alone.",
+      "html": "<span class=\"ds-tag ds-tag--income\"><svg class=\"ds-tag-icon\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 16 16\" width=\"12\" height=\"12\" fill=\"currentColor\"><path d=\"M8 3L13 8 12 9 8.5 5.5 8.5 13 7.5 13 7.5 5.5 4 9 3 8z\"/></svg>Income</span>",
+      "css": ".ds-tag { display: inline-flex; align-items: center; gap: 4px; font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 12px; font-weight: 400; line-height: 16px; letter-spacing: 0.32px; padding: 2px 8px; border-radius: 9999px; border: 1px solid currentColor; background: transparent; } .ds-tag--income { color: #42be65; } .ds-tag-icon { flex-shrink: 0; }"
+    },
+    {
+      "name": "Expense Tag",
+      "kind": "chip",
+      "refersTo": "tag-expense",
+      "description": "Transaction category label for expenses. Alert Red with ArrowDown icon.",
+      "html": "<span class=\"ds-tag ds-tag--expense\"><svg class=\"ds-tag-icon\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 16 16\" width=\"12\" height=\"12\" fill=\"currentColor\"><path d=\"M8 13L3 8 4 7 7.5 10.5 7.5 3 8.5 3 8.5 10.5 12 7 13 8z\"/></svg>Expense</span>",
+      "css": ".ds-tag { display: inline-flex; align-items: center; gap: 4px; font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 12px; font-weight: 400; line-height: 16px; letter-spacing: 0.32px; padding: 2px 8px; border-radius: 9999px; border: 1px solid currentColor; background: transparent; } .ds-tag--expense { color: #ff8389; } .ds-tag-icon { flex-shrink: 0; }"
+    },
+    {
+      "name": "SideNav Rail Link",
+      "kind": "nav",
+      "refersTo": null,
+      "description": "Navigation link in collapsed rail mode. Icon-first, label visible on expand. Active state: Signal Blue left indicator.",
+      "html": "<nav class=\"ds-sidenav\"><a class=\"ds-nav-link ds-nav-link--active\" href=\"#\"><svg class=\"ds-nav-icon\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 32 32\" width=\"20\" height=\"20\" fill=\"currentColor\"><path d=\"M16 2L2 14h4v16h8v-8h4v8h8V14h4L16 2z\"/></svg><span class=\"ds-nav-label\">Dashboard</span></a><a class=\"ds-nav-link\" href=\"#\"><svg class=\"ds-nav-icon\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 32 32\" width=\"20\" height=\"20\" fill=\"currentColor\"><path d=\"M16 4v24M8 12v12M24 8v16\"/></svg><span class=\"ds-nav-label\">Cash Flow</span></a></nav>",
+      "css": ".ds-sidenav { background: #262626; width: 48px; height: 100%; overflow: hidden; } .ds-nav-link { display: flex; align-items: center; gap: 16px; padding: 0 0 0 14px; height: 48px; color: #8d8d8d; text-decoration: none; font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 14px; font-weight: 400; line-height: 20px; position: relative; transition: background 70ms cubic-bezier(0,0,0.38,0.9), color 70ms; white-space: nowrap; } .ds-nav-link:hover { background: #393939; color: #f4f4f4; } .ds-nav-link--active { color: #f4f4f4; background: #393939; } .ds-nav-link--active::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 2px; background: #4589ff; } .ds-nav-icon { flex-shrink: 0; } .ds-nav-label { opacity: 0; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Long Exposure",
+    "overview": "Flowstate is designed like a long-exposure photograph: the result of sustained attention accumulated over time. The interface does not animate to attract; it reveals through use. Where most financial tools compete for the user's attention, Flowstate steps back, letting the numbers speak in measured tones. The aesthetic is dark by circumstance (a person sitting with their finances in a quiet hour, reviewing a 30-year projection by the light of a single screen) and precise by commitment.\n\nThe design system is built entirely on IBM Carbon's g90 dark theme. This choice is not decorative; it is structural. Carbon's token discipline means the interface shifts cleanly between g90, g100, and white without a line of bespoke CSS. The discipline of the system is the integrity signal: when every component behaves as it should, the user can trust the numbers behind it.\n\nWhat this system explicitly rejects: the consumer warmth of retail fintech with its pastels, progress streaks, and motivational copy; the noise of crypto dashboards with their neon on black and ticker-tape anxiety; the hollow impressiveness of generic SaaS analytics with hero-metric cards and gradient numbers; and the information overload of investment-bank terminals with their monospace everything and zero breathing room.",
+    "keyCharacteristics": [
+      "Carbon g90 dark as default: composed, focused, unhurried",
+      "Zero custom CSS beyond font variable injection; the system is the spec",
+      "Tonal depth through layered grays, never drop shadows",
+      "IBM Plex Sans and Plex Mono as the sole type pairing",
+      "Signal Blue (#4589ff) as the one interactive accent",
+      "Status communicated through color and icon together, never color alone"
+    ],
+    "rules": [
+      {
+        "name": "The CSS Custom Property Rule",
+        "body": "Every color in this system resolves through a CSS custom property (--cds-*). Hex values in this document are the g90 resolved defaults for documentation. Never hardcode hex in source. If a component looks wrong in the white theme, the root cause is always a hardcoded color.",
+        "section": "colors"
+      },
+      {
+        "name": "The Signal Rule",
+        "body": "Signal Blue appears on no more than 10% of any given screen surface. It marks what can be acted on. When everything is blue, nothing is interactive.",
+        "section": "colors"
+      },
+      {
+        "name": "The Productive Scale Rule",
+        "body": "Use Carbon's productive type styles exclusively. Do not use the expressive styles (cds--type-expressive-*). Those belong to marketing surfaces; this is a tool.",
+        "section": "typography"
+      },
+      {
+        "name": "The Label-Not-Heading Rule",
+        "body": "KPI tiles carry a large number (Display weight) and a small label (Label style). The number leads; the label identifies. The hierarchy is never inverted.",
+        "section": "typography"
+      },
+      {
+        "name": "The Tonal Depth Rule",
+        "body": "When a surface needs to feel above its parent, shift one Gray step lighter. Never introduce a drop shadow. If the step shift does not communicate the hierarchy, the layout needs restructuring, not a shadow.",
+        "section": "elevation"
+      },
+      {
+        "name": "The No-Shadow Rule",
+        "body": "Drop shadows are prohibited. They belong to a different aesthetic register. This system reads depth through tone alone.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do use --cds-* CSS custom properties for every color, spacing, and type value.",
+      "Do pair every status color with an icon or glyph.",
+      "Do use <Tag renderIcon={...}> for any categorical or status label.",
+      "Do use Carbon's productive type scale for all UI text.",
+      "Do lay out every page with Carbon Grid (<Grid> + <Column>).",
+      "Do use <InlineNotification> for warnings and errors.",
+      "Do use <ComposedModal> for multi-field forms; <Modal> for single-decision confirmations.",
+      "Do give empty states a Carbon pictogram, a short heading, and one primary CTA only."
+    ],
+    "donts": [
+      "Don't hardcode any hex value in source code; it will break in the white theme.",
+      "Don't use drop shadows; depth is tonal.",
+      "Don't design like retail fintech (Mint, YNAB): no pastels, no motivational copy, no gamification badges, no progress streaks.",
+      "Don't design like a crypto dashboard: no neon on black, no candlestick overload, no ticker-tape anxiety.",
+      "Don't use the hero-metric template: big number, small label, gradient accent.",
+      "Don't build identical card grids (icon + heading + body text, repeated).",
+      "Don't use border-left greater than 1px as a colored accent stripe.",
+      "Don't use gradient text (background-clip: text with a gradient).",
+      "Don't import shadcn, Radix, Material-UI, or Tailwind.",
+      "Don't call localStorage directly from UI code; use Repository interfaces.",
+      "Don't put the Finnhub API key in client-readable code.",
+      "Don't mistake Bloomberg terminal density for seriousness."
+    ]
+  }
+}

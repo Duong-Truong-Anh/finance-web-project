@@ -49,6 +49,7 @@ The **pre-Carbon history** (V1 vanilla bento dashboard, Flowstate v0 hand-built 
 - Session 21 — Phase 1.6 — Settings page + fallow/font cleanups — 2026-05-07
 - Session 22 — Phase 1.6 — Theme refresh fix: useSettings.set() now invalidates the server layout — 2026-05-07
 - Session 23 — Phase 1.W2 — CLAUDE.md amendments + fallow skill condensation — 2026-05-07
+- Session 24 — Phase 1.W3 — Vendor and configure impeccable design skill — 2026-05-08
 
 ---
 
@@ -2003,6 +2004,54 @@ Workflow durability phase — no product code. Two outcomes: (1) four surgical a
 ### Recommendation for next session
 
 **Phase 3 — Simulation page.** The KPI tiles and projection chart at `/` already link to `/simulation`, which is still a placeholder. Phase 3 delivers the Configuration region (ratio slider, ticker tiles via Finnhub integration), the 30-year `<AreaChart>` with thresholds, and the Milestone Tile grid. The `finnhubKey` field in `Settings` is persisted and available for the ticker route handler. The Onboarding redirect for the Reset action should also be wired once that route ships. Alternatively, a PostToolUse typecheck hook (deferred from this session per the task scope) would be a low-cost durability win before Phase 3.
+
+## Session 24 — Phase 1.W3: Vendor and configure impeccable design skill (2026-05-08)
+
+### What I asked the AI to do
+
+Vendor the impeccable design skill (`pbakaus/impeccable`) into `.claude/skills/`, configure it with Flowstate's product and Carbon context via `/impeccable teach`, and capture the existing visual system via `/impeccable document`. The goal is to layer impeccable's anti-slop critique on top of `carbon-builder`'s discipline so future UI surfaces (Phase 3 Simulation, plus a deferred Settings polish) get composition / hierarchy / care critique rather than just token-correctness checks.
+
+### What the AI did
+
+- Cloned `pbakaus/impeccable` into a temp folder, ran `bun run build:skills` to populate the `dist/` directory (the README's `cp -r dist/claude-code/.claude` instruction assumes a pre-populated `dist/` that is in fact `.gitignore`'d build output — discovered after a first attempt failed with "path not found").
+- Used `robocopy .impeccable-tmp\dist\claude-code\.claude .claude /E` on Windows cmd to merge the skill files into the project's existing `.claude/skills/` tree. No collisions with `karpathy-guidelines/`, `fallow/`, `carbon-builder/`, or other existing skills. Vendor commit: `b264097`.
+- Ran `/impeccable teach` with four configuration tabs:
+  - **Register:** Product-only.
+  - **Personality:** "Clear, honest, unhurried" — chosen over "Precise, calm, trustworthy" because the 30-year horizon defines a contemplation tool, not a precision tool. The "Focused, austere, disciplined" option was rejected as too cold; Carbon discipline already provides austere.
+  - **Anti-references:** All four — retail fintech (Mint/YNAB), crypto dashboard, generic SaaS analytics, investment-bank terminal. The SaaS-analytics anti-ref directly addresses the failure mode that hit the Settings page in Session 21 (hero-metric-card drift, identical icon+heading+text tile grids).
+  - **A11y:** Carbon defaults are fine — Flowstate's grading rubric requires Lighthouse a11y ≥ 95, which Carbon AA clears comfortably. WCAG AAA was rejected as it would require overriding Carbon's AA-tuned color tokens.
+  - Output: `PRODUCT.md` at repo root with five strategic principles (Numbers deserve trust / Long view over anxiety / Density serves comprehension / IBM discipline, personal scale / Transparency over persuasion).
+- Ran `/impeccable document` with three configuration tabs:
+  - **North Star:** "The Long Exposure" — chosen for its alignment with the calm-long-termism personality and the 30-year horizon. "Instrument Panel" was rejected as too reactive; "Well-Kept Ledger" was a close runner-up.
+  - **Components:** "Structured confidence" — chosen for the IBM-product Button feel. "Calibrated restraint" was close but tipped too cold; "Deliberate and flat" undersold Carbon's hover/focus states.
+  - **Elevation:** "Depth through tone, not shadow" (Recommended) — exactly Carbon's actual behavior with `background → layer-01 → layer-02` lightness steps.
+  - Output: `DESIGN.md` at repo root capturing the resolved Carbon vocabulary as YAML frontmatter plus six prose sections (Overview, Colors, Typography, Elevation, Components, Do's and Don'ts).
+- Verified both `PRODUCT.md` and `DESIGN.md` against `docs/05_design_system_spec.md` for accuracy. PRODUCT.md adds strategic framing (audience, anti-references, principles) that complements the existing spec. DESIGN.md adds tactical anti-pattern rules — the Signal Rule (Blue at ≤10% surface area), the No-Shadow Rule, the Productive Scale Rule, the Label-Not-Heading Rule for KPI tiles, and a Don'ts section that captures the hard rules from `CLAUDE.md` (no hex in source, no shadcn/Radix/Material/Tailwind, no direct `localStorage` calls, no Finnhub key in client code).
+
+No source code changes. No `CLAUDE.md` changes — cross-references to PRODUCT.md and DESIGN.md will fold into Phase 3's prompt rather than landing in this chore.
+
+### Spec drift / discrepancies / things noticed
+
+- **README install instructions are misleading.** `cp -r dist/claude-code/.claude your-project/` assumes `dist/` is committed; it is `.gitignore`'d build output. The `bun run build:skills` step is required first but not mentioned in the install section. Worth filing upstream as a doc improvement.
+- **`frontend-design` skill is also installed** (visible in the skill list, official Anthropic). Its description triggers on basically any UI task and prescribes aesthetics that conflict with Carbon's component-first, token-first discipline (custom fonts, asymmetric layouts, atmospheric effects). Recommend disabling it project-only via plugin config before Phase 3, otherwise the implementer's skill router may consult its reference files and pull toward incompatible aesthetic prescriptions.
+- **`PRODUCT.md` and `DESIGN.md` live at repo root** (not under `docs/`). This matches impeccable's convention. They sit alongside `CLAUDE.md` and `AI-PROCESS-LOG.md` as project-level context files.
+- **`.impeccable/design.json`** (~17KB) is impeccable's persistence file from `/document`. Tracking it in git so contributors get the same teach/document state without re-running the wizards.
+- **`temp-insights.md` at repo root** remains untracked — separate cleanup decision (archive to `docs/archive/` vs delete). Not bundled here.
+
+### Quality gates
+
+| Gate | Result |
+|---|---|
+| No source code modified | ✓ verified via `git status` |
+| `bun run fallow:check` | ✓ 0 issues in 62 changed files (skill vendor + PRODUCT.md + DESIGN.md) |
+
+Heavier gates (`tsc`, `lint`, `test`, `e2e`, `build`) were skipped — this PR touches only `.claude/skills/impeccable/`, `.impeccable/`, and two root-level markdown files. None can affect TypeScript, lint, runtime tests, or build output.
+
+### Recommendation for next session
+
+**Phase 3 prompt is unblocked.** Strategist (Opus) is preparing Prompt 3 which combines: (1) Settings UI redo invoking `carbon-builder` + `/impeccable audit` + `/impeccable polish` per tile, with screenshot-in-three-themes audit; (2) gremlinsJS chaos suite for `e2e/` — each public route, `attachErrorGuard`, ~150 random actions, errors empty; (3) console-log monitoring conventions for Next dev terminal + browser console; (4) ADR 007 capturing the impeccable adoption decision and the `frontend-design` disable rationale.
+
+User-side action before Prompt 3 is sent: disable `frontend-design` for this project (via `update-config` skill or plugin manager) so its skill router doesn't compete with `carbon-builder` + `impeccable`. Optionally, decide the fate of `temp-insights.md` (archive or delete).
 
 <!-- ──────────────────────────────────────────────────────────────────── -->
 <!-- APPEND NEW SESSION ENTRIES ABOVE THIS LINE.                          -->
