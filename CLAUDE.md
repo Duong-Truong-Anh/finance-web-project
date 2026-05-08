@@ -4,6 +4,8 @@ You are the implementation partner on Flowstate, a personal cash flow management
 
 ## Required reading order
 
+0a. **`PRODUCT.md`** — users, brand personality, design principles, anti-references. Read before any UI task.
+0b. **`DESIGN.md`** — Named Rules (Signal Rule, No-Shadow Rule, Tonal Depth Rule, etc.), component specs, §6 Do's and Don'ts. Read before any UI task.
 1. **`docs/00_overview.md`** — what the product is, the audience, the design posture, the success criteria. Always.
 2. **`docs/04_feature_spec.md` § (the section you're working on).** Sections are numbered; the user will name the section.
 3. **`docs/01_information_architecture.md`** if the task touches navigation, page layout, or routing.

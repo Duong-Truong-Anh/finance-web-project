@@ -2,7 +2,6 @@
 import { useState } from 'react';
 import {
   Button,
-  FormGroup,
   Modal,
   TextInput,
   Tile,
@@ -45,50 +44,68 @@ export function DataTile() {
 
   return (
     <>
-      <Tile style={{ marginBlockEnd: 'var(--cds-spacing-07)' }}>
-        <FormGroup legendText="Data">
+      <Tile style={{ border: '1px solid var(--cds-border-subtle-01)' }}>
+        {/* Deferred data controls */}
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'flex-start',
+            gap: 'var(--cds-spacing-05)',
+            marginBlockEnd: 'var(--cds-spacing-07)',
+          }}
+        >
           <div
             style={{
               display: 'flex',
               flexDirection: 'column',
-              gap: 'var(--cds-spacing-04)',
               alignItems: 'flex-start',
+              gap: 'var(--cds-spacing-03)',
             }}
           >
-            <div>
-              <Button kind="tertiary" size="sm" disabled>
-                Export all data (CSV bundle)
-              </Button>
-              <p
-                className="cds--label"
-                style={{
-                  marginBlockStart: 'var(--cds-spacing-02)',
-                  color: 'var(--cds-text-helper)',
-                }}
-              >
-                Use the Export CSV button on Cash Flow. Cross-feature bundle ships in Reports
-                (Phase 4).
-              </p>
-            </div>
-            <div>
-              <Button kind="tertiary" size="sm" disabled>
-                Import a CSV bundle
-              </Button>
-              <p
-                className="cds--label"
-                style={{
-                  marginBlockStart: 'var(--cds-spacing-02)',
-                  color: 'var(--cds-text-helper)',
-                }}
-              >
-                Cross-feature import ships in Reports (Phase 4).
-              </p>
-            </div>
-            <Button kind="danger" size="sm" onClick={openModal}>
-              Reset all data
+            <Button kind="tertiary" size="sm" disabled>
+              Export all data (CSV bundle)
             </Button>
+            <p className="cds--label" style={{ color: 'var(--cds-text-helper)' }}>
+              Use the Export CSV button on Cash Flow. Cross-feature bundle ships in Reports
+              (Phase 4).
+            </p>
           </div>
-        </FormGroup>
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'flex-start',
+              gap: 'var(--cds-spacing-03)',
+            }}
+          >
+            <Button kind="tertiary" size="sm" disabled>
+              Import a CSV bundle
+            </Button>
+            <p className="cds--label" style={{ color: 'var(--cds-text-helper)' }}>
+              Cross-feature import ships in Reports (Phase 4).
+            </p>
+          </div>
+        </div>
+
+        {/* Danger zone — separated from deferred controls */}
+        <div
+          style={{
+            borderBlockStart: '1px solid var(--cds-border-subtle-01)',
+            paddingBlockStart: 'var(--cds-spacing-05)',
+          }}
+        >
+          <p
+            className="cds--body-01"
+            style={{ marginBlockEnd: 'var(--cds-spacing-05)', color: 'var(--cds-text-secondary)' }}
+          >
+            Resetting all data permanently deletes all transactions, portfolio configuration, and
+            settings. There is no undo. Export your data first if you want to keep a backup.
+          </p>
+          <Button kind="danger" size="sm" onClick={openModal}>
+            Reset all data
+          </Button>
+        </div>
       </Tile>
 
       <Modal

@@ -1,5 +1,5 @@
 'use client';
-import { FormGroup, RadioButton, RadioButtonGroup, Tile } from '@carbon/react';
+import { RadioButton, RadioButtonGroup, Tile } from '@carbon/react';
 import type { Settings, Theme } from '@/src/lib/settings';
 
 interface Props {
@@ -20,19 +20,26 @@ export function ThemeTile({ settings, onSet }: Props) {
   }
 
   return (
-    <Tile style={{ marginBlockEnd: 'var(--cds-spacing-07)' }}>
-      <FormGroup legendText="Theme">
-        <RadioButtonGroup
-          name="app-theme"
-          valueSelected={settings.theme}
-          onChange={handleChange}
-          orientation="vertical"
-        >
-          {(['g90', 'g100', 'white'] as const).map((t) => (
-            <RadioButton key={t} id={`theme-${t}`} value={t} labelText={THEME_LABELS[t]} />
-          ))}
-        </RadioButtonGroup>
-      </FormGroup>
+    <Tile style={{ border: '1px solid var(--cds-border-subtle-01)' }}>
+      {/* Visible heading; RadioButtonGroup's legendText provides the sr-only accessible label */}
+      <p
+        aria-hidden="true"
+        className="cds--type-productive-heading-01"
+        style={{ marginBlockEnd: 'var(--cds-spacing-04)' }}
+      >
+        Theme
+      </p>
+      <RadioButtonGroup
+        legendText="Theme"
+        name="app-theme"
+        valueSelected={settings.theme}
+        onChange={handleChange}
+        orientation="vertical"
+      >
+        {(['g90', 'g100', 'white'] as const).map((t) => (
+          <RadioButton key={t} id={`theme-${t}`} value={t} labelText={THEME_LABELS[t]} />
+        ))}
+      </RadioButtonGroup>
     </Tile>
   );
 }

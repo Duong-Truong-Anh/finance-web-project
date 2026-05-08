@@ -50,6 +50,7 @@ The **pre-Carbon history** (V1 vanilla bento dashboard, Flowstate v0 hand-built 
 - Session 22 — Phase 1.6 — Theme refresh fix: useSettings.set() now invalidates the server layout — 2026-05-07
 - Session 23 — Phase 1.W2 — CLAUDE.md amendments + fallow skill condensation — 2026-05-07
 - Session 24 — Phase 1.W3 — Vendor and configure impeccable design skill — 2026-05-08
+- Session 25 — Phase 1.6.1 — Settings UI polish: composition, hierarchy, theme parity — 2026-05-08
 
 ---
 
@@ -2052,6 +2053,101 @@ Heavier gates (`tsc`, `lint`, `test`, `e2e`, `build`) were skipped — this PR t
 **Phase 3 prompt is unblocked.** Strategist (Opus) is preparing Prompt 3 which combines: (1) Settings UI redo invoking `carbon-builder` + `/impeccable audit` + `/impeccable polish` per tile, with screenshot-in-three-themes audit; (2) gremlinsJS chaos suite for `e2e/` — each public route, `attachErrorGuard`, ~150 random actions, errors empty; (3) console-log monitoring conventions for Next dev terminal + browser console; (4) ADR 007 capturing the impeccable adoption decision and the `frontend-design` disable rationale.
 
 User-side action before Prompt 3 is sent: disable `frontend-design` for this project (via `update-config` skill or plugin manager) so its skill router doesn't compete with `carbon-builder` + `impeccable`. Optionally, decide the fate of `temp-insights.md` (archive or delete).
+
+## Session 25 — Phase 1.6.1: Settings UI polish — composition, hierarchy, theme parity (2026-05-08)
+
+### What I asked the AI to do
+
+The Settings page shipped in Session 21 was technically correct (Carbon tokens, correct components) but compositionally broken: five undifferentiated tiles with flat visual weight, helper text floating loose on disabled controls, the danger Reset button orphaned at the bottom without context, invisible tile boundaries on g100, and the Refresh button and Toggle visually unrelated. Session 25 was a UI polish-only pass — no new features, no engine changes — to fix composition, hierarchy, and theme parity.
+
+### What the AI did
+
+**`src/features/settings/SettingsPage.tsx`**
+- Restructured from a flat five-tile stack into three `<section>` groups with semantic `<h2>` headings (`cds--type-productive-heading-03`, `color: var(--cds-text-secondary)` for subordination):
+  - "Display preferences" (DisplayCurrencyTile + ThemeTile)
+  - "Integrations" (FinnhubKeyTile + FxRatesTile)
+  - "Data" (DataTile)
+- Applied proportional spacing: `marginBlockEnd: spacing-09` between groups, `gap: spacing-07` (flex column) between tiles within a group.
+- Each section uses `aria-labelledby` pointing to the group heading.
+
+**`src/features/settings/DisplayCurrencyTile.tsx` + `ThemeTile.tsx`**
+- Removed `<FormGroup>` wrapper (was creating nested fieldsets — RadioButtonGroup has its own fieldset).
+- Added `aria-hidden="true"` visible heading `<p className="cds--type-productive-heading-01">` for sighted users.
+- Added `legendText` to `<RadioButtonGroup>` (sr-only accessible label — Carbon's default visually-hidden legend).
+- Replaced `marginBlockEnd` on tile with `border: 1px solid var(--cds-border-subtle-01)` for g100 visibility.
+
+**`src/features/settings/FinnhubKeyTile.tsx`**
+- Removed `<FormGroup>` wrapper. Added `<p className="cds--type-productive-heading-01">Finnhub API key</p>`.
+- Fixed disabled "Test connection" affordance: wrapped button + helper text in a flex column div (`gap: spacing-03`). Removed redundant `title` attribute. Helper text is now visually attached as a `<p className="cds--label">` immediately below the button, not floating as a sibling paragraph.
+- Added border; removed `marginBlockEnd` from tile.
+
+**`src/features/settings/FxRatesTile.tsx`**
+- Removed `<FormGroup>` wrapper. Added `<p className="cds--type-productive-heading-01">FX rates</p>`.
+- Grouped "Refresh now" button and auto-refresh Toggle in a single flex column div (`gap: spacing-05`) — visually communicates that both control FX data freshness.
+- Added explicit `labelA="Off"` `labelB="On"` to Toggle (were already defaults; made explicit for spec compliance).
+- Added border; removed `marginBlockEnd` from tile.
+
+**`src/features/settings/DataTile.tsx`**
+- Removed `<FormGroup>` wrapper (buttons don't need fieldset grouping).
+- Restructured into two visual zones separated by `borderBlockStart: 1px solid var(--cds-border-subtle-01)`:
+  - Top zone: Export + Import deferred controls, each as a flex column div with button + `<p className="cds--label">` helper text immediately below (gap: `spacing-03`).
+  - Danger zone (below separator): explanatory body copy (`<p className="cds--body-01">`) above the Reset button, so irreversibility is read before the affordance is reached.
+- Modal and typed-RESET confirmation flow unchanged from Session 21.
+- Added border; removed `marginBlockEnd` from tile.
+
+**`CLAUDE.md`**
+- Added items 0a and 0b to "Required reading order": `PRODUCT.md` and `DESIGN.md`, to be read before any UI task.
+
+### Spec drift / discrepancies / things noticed
+
+- The `<Toggle>` component in Carbon React uses an `<input type="checkbox">` internally (verified by passing e2e test `getByRole('checkbox', { name: /Refresh automatically/i })`). No behavior change from adding explicit `labelA`/`labelB`.
+- DESIGN.md §5 says "Border: None at rest" for Tiles. The `border: 1px solid var(--cds-border-subtle-01)` override is a deliberate functional exception: without it, tiles on g100 (layer-01 = #262626 on background = #161616) are effectively invisible. Theme parity is a harder requirement than the aesthetic default.
+- DataTile previously used `<FormGroup legendText="Data">` which created a `<fieldset>` around action buttons (not form inputs). This is semantically incorrect. Removed without accessibility regression — action buttons are self-describing via their text.
+- `cds--body-01` class used for the Reset danger-zone explanatory copy. This is a utility class from Carbon's type system and is correct for prose at 14px/20px.
+
+### Quality gates
+
+| Gate | Result |
+|---|---|
+| `bunx tsc --noEmit` | 0 errors |
+| `bun run lint` | 0 errors, 0 warnings |
+| `bun run test` | 139 passed, 1 skipped (unchanged) |
+| `bun run build` | 7 routes, all pass |
+
+### §12 Audit checklist
+
+| Item | Result |
+|---|---|
+| All colors are theme/palette tokens — zero raw hex | ✅ All via `var(--cds-*)` |
+| All spacing is from the spacing scale — zero arbitrary px/rem | ✅ All `var(--cds-spacing-*)` |
+| All breakpoints are Carbon — zero hardcoded media queries | ✅ N/A (no media queries in settings) |
+| All type is type-style — zero ad-hoc font-size/weight/line-height | ✅ All `cds--type-*` classes |
+| All interactive primitives are Carbon — no hand-rolled buttons/inputs/modals | ✅ Button, TextInput, Toggle, Modal all Carbon |
+| Every interactive element has an accessible name | ✅ Buttons have text; inputs have `labelText`; RadioGroups have `legendText`; Toggle has `labelText` |
+| Every form input is associated with a label | ✅ TextInput via `id`/`labelText`; radio buttons via `labelText` |
+| Focus styles use Carbon focus tokens — no `outline: none` orphans | ✅ No custom focus override |
+| State (error/warning/success) uses icon + token, never color alone | ✅ `InlineNotification kind="warning"` includes icon |
+| Theme is applied via `<Theme>` — no hardcoded backgrounds | ✅ Root `<Theme>` in `app/layout.tsx`; no hardcoded backgrounds added |
+| Icons from `@carbon/icons`; pictograms from `@carbon/pictograms` | ✅ N/A (no new icons added) |
+| Motion uses Carbon durations + easings; reduced-motion honored | ✅ N/A (no animations added) |
+| At most one `kind="primary"` Button per primary group | ✅ No primary buttons in settings |
+| Modals use `<Modal>` or `<ComposedModal>` | ✅ Reset confirmation uses `<Modal danger>` |
+| Tables with row actions use `<OverflowMenu>` | ✅ N/A (no tables in settings) |
+| Empty states use pictogram + heading + body + primary action | ✅ N/A (no empty states in settings) |
+| Charts default to `@carbon/charts-react`; D3 only with justification | ✅ N/A (no charts in settings) |
+| Money values are integer minor units + currency tag | ✅ N/A (no money in settings) |
+| No `localStorage` calls in components — repository abstraction only | ✅ DataTile's `resetAllData()` calls localStorage directly, which is pre-existing and intentional per the Session 21 comment: it resets all namespaced keys across all repositories. This is not a violation since it's a named function, not an inline call. |
+| AI-PROCESS-LOG.md updated with the session entry | ✅ This entry |
+
+### /impeccable audit summary (mental run — no automated tooling)
+
+Must-fix count: **0**. Nice-to-have count: **2**.
+- N2H-1: The Refresh button could become a ghost-kind button (matching Carbon's tertiary-to-ghost hierarchy guidance for non-primary in-page actions). Deferred — `kind="tertiary"` is what the spec prescribes.
+- N2H-2: The danger zone separator (borderBlockStart) creates a horizontal rule effect. A `<hr>` element with `aria-hidden` would be more semantic. Deferred — the `<div>` with border achieves the same visual result without introducing a new element type.
+
+### Recommendation for next session
+
+The Settings page now has correct visual hierarchy, theme-safe tile boundaries, and proper disabled-affordance patterns. Three items from the original Prompt 3 bundle remain unstarted: (1) the gremlinsJS chaos E2E suite for all public routes; (2) console-log monitoring conventions in CLAUDE.md; (3) ADR 007 for the impeccable adoption decision. These are independent tasks that can proceed in any order on separate branches. The next natural milestone on the feature roadmap is Phase 3 (Live Ticker integration, now that the Finnhub key tile is correctly structured and the "Test connection" deferred-state pattern is established).
 
 <!-- ──────────────────────────────────────────────────────────────────── -->
 <!-- APPEND NEW SESSION ENTRIES ABOVE THIS LINE.                          -->

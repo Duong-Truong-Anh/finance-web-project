@@ -34,11 +34,45 @@ export function SettingsPage() {
       >
         Settings
       </h1>
-      <DisplayCurrencyTile settings={settings} onSet={set} />
-      <ThemeTile settings={settings} onSet={set} />
-      <FinnhubKeyTile settings={settings} onSet={set} />
-      <FxRatesTile settings={settings} onSet={set} />
-      <DataTile />
+
+      <section aria-labelledby="settings-group-display" style={{ marginBlockEnd: 'var(--cds-spacing-09)' }}>
+        <h2
+          id="settings-group-display"
+          className="cds--type-productive-heading-03"
+          style={{ marginBlockEnd: 'var(--cds-spacing-05)', color: 'var(--cds-text-secondary)' }}
+        >
+          Display preferences
+        </h2>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--cds-spacing-07)' }}>
+          <DisplayCurrencyTile settings={settings} onSet={set} />
+          <ThemeTile settings={settings} onSet={set} />
+        </div>
+      </section>
+
+      <section aria-labelledby="settings-group-integrations" style={{ marginBlockEnd: 'var(--cds-spacing-09)' }}>
+        <h2
+          id="settings-group-integrations"
+          className="cds--type-productive-heading-03"
+          style={{ marginBlockEnd: 'var(--cds-spacing-05)', color: 'var(--cds-text-secondary)' }}
+        >
+          Integrations
+        </h2>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--cds-spacing-07)' }}>
+          <FinnhubKeyTile settings={settings} onSet={set} />
+          <FxRatesTile settings={settings} onSet={set} />
+        </div>
+      </section>
+
+      <section aria-labelledby="settings-group-data">
+        <h2
+          id="settings-group-data"
+          className="cds--type-productive-heading-03"
+          style={{ marginBlockEnd: 'var(--cds-spacing-05)', color: 'var(--cds-text-secondary)' }}
+        >
+          Data
+        </h2>
+        <DataTile />
+      </section>
     </form>
   );
 }

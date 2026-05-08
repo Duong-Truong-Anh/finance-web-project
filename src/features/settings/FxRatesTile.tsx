@@ -2,7 +2,6 @@
 import { useEffect, useState } from 'react';
 import {
   Button,
-  FormGroup,
   InlineLoading,
   InlineNotification,
   StructuredListWrapper,
@@ -69,52 +68,67 @@ export function FxRatesTile({ settings, onSet }: Props) {
       : null;
 
   return (
-    <Tile style={{ marginBlockEnd: 'var(--cds-spacing-07)' }}>
-      <FormGroup legendText="FX rates">
-        {fxState.status === 'loading' && <InlineLoading description="Loading FX rates…" />}
-        {fxState.status === 'error' && (
-          <InlineNotification
-            kind="warning"
-            title="FX rates unavailable."
-            subtitle="Click Refresh now to try again."
-            hideCloseButton
-            style={{ marginBlockEnd: 'var(--cds-spacing-05)' }}
-          />
-        )}
-        {fxState.status === 'ready' && (
-          <StructuredListWrapper isCondensed style={{ marginBlockEnd: 'var(--cds-spacing-05)' }}>
-            <StructuredListBody>
-              <StructuredListRow>
-                <StructuredListCell>USD → VND</StructuredListCell>
-                <StructuredListCell>
-                  {fxState.snapshot.rates.VND.toLocaleString('vi-VN')} ₫
-                </StructuredListCell>
-              </StructuredListRow>
-              <StructuredListRow>
-                <StructuredListCell>Fetched at</StructuredListCell>
-                <StructuredListCell>{fetchedAt}</StructuredListCell>
-              </StructuredListRow>
-            </StructuredListBody>
-          </StructuredListWrapper>
-        )}
+    <Tile style={{ border: '1px solid var(--cds-border-subtle-01)' }}>
+      <p className="cds--type-productive-heading-01" style={{ marginBlockEnd: 'var(--cds-spacing-05)' }}>
+        FX rates
+      </p>
+
+      {fxState.status === 'loading' && <InlineLoading description="Loading FX rates…" />}
+      {fxState.status === 'error' && (
+        <InlineNotification
+          kind="warning"
+          title="FX rates unavailable."
+          subtitle="Click Refresh now to try again."
+          hideCloseButton
+          style={{ marginBlockEnd: 'var(--cds-spacing-05)' }}
+        />
+      )}
+      {fxState.status === 'ready' && (
+        <StructuredListWrapper isCondensed style={{ marginBlockEnd: 'var(--cds-spacing-05)' }}>
+          <StructuredListBody>
+            <StructuredListRow>
+              <StructuredListCell>USD → VND</StructuredListCell>
+              <StructuredListCell>
+                {fxState.snapshot.rates.VND.toLocaleString('vi-VN')} ₫
+              </StructuredListCell>
+            </StructuredListRow>
+            <StructuredListRow>
+              <StructuredListCell>Fetched at</StructuredListCell>
+              <StructuredListCell>{fetchedAt}</StructuredListCell>
+            </StructuredListRow>
+          </StructuredListBody>
+        </StructuredListWrapper>
+      )}
+
+      {/* Refresh controls: button and auto-refresh toggle are visually grouped
+          because both govern FX data freshness */}
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'flex-start',
+          gap: 'var(--cds-spacing-05)',
+        }}
+      >
         <Button
           kind="tertiary"
           size="sm"
           onClick={handleRefresh}
           disabled={refreshing}
-          style={{ marginBlockEnd: 'var(--cds-spacing-05)' }}
         >
           {refreshing ? 'Refreshing…' : 'Refresh now'}
         </Button>
         <Toggle
           id="fx-auto-refresh"
           labelText="Refresh automatically once a day"
+          labelA="Off"
+          labelB="On"
           toggled={settings.fxAutoRefresh}
           onToggle={handleToggle}
         />
         {/* Auto-refresh scheduler not yet implemented — the toggle persists the preference
             only. A future hook or server action will read fxAutoRefresh and schedule refresh. */}
-      </FormGroup>
+      </div>
     </Tile>
   );
 }
