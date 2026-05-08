@@ -10,6 +10,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "e2e": "playwright test",
+    "e2e:chaos": "playwright test --config playwright.chaos.config.ts",
     "e2e:ui": "playwright test --ui",
     "fallow": "fallow",
     "fallow:check": "fallow audit --fail-on-regression",
@@ -42,6 +43,7 @@
     "eslint": "^9",
     "eslint-config-next": "^16.2.4",
     "fallow": "^2.66.0",
+    "gremlins.js": "^2.2.0",
     "happy-dom": "^20.9.0",
     "typescript": "^5",
     "vitest": "^4.1.5"
