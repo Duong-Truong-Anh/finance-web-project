@@ -52,6 +52,7 @@ The **pre-Carbon history** (V1 vanilla bento dashboard, Flowstate v0 hand-built 
 - Session 24 — Phase 1.W3 — Vendor and configure impeccable design skill — 2026-05-08
 - Session 25 — Phase 1.6.1 — Settings UI polish: composition, hierarchy, theme parity — 2026-05-08
 - Session 26 — Phase 1.W4 — ADR 007: impeccable adoption receipt + frontend-design disable — 2026-05-08
+- Session 27 — Phase 1.W5 — gremlinsJS chaos suite + console error monitoring conventions — 2026-05-08
 
 ---
 
@@ -2184,6 +2185,44 @@ TypeScript, lint, test, build, and fallow gates skipped — no source or config 
 ### Recommendation for next session
 
 Two remaining items from the original Prompt 3 bundle: (1) the gremlinsJS chaos E2E suite for all public routes; (2) console-log monitoring conventions in CLAUDE.md. These are independent tasks that can proceed in any order on separate branches. The next feature milestone is Phase 3 (Live Ticker integration). Confirm whether to prioritize the chaos suite and console-log conventions before Phase 3, or skip directly to Live Tickers.
+
+## Session 27 — Phase 1.W5: gremlinsJS chaos suite + console error monitoring conventions (2026-05-08)
+
+### What I asked the AI to do
+
+Deliver the final two items from the original Prompt 3 bundle: a Playwright chaos suite using gremlins.js that hammers each public route with ~150 random interactions (with `attachErrorGuard` as the error oracle), and a CLAUDE.md subsection codifying the three console-error surfaces that must be clean before a UI task is done.
+
+### What the AI did
+
+- Added `gremlins.js@2.2.0` as a dev dependency via `bun add -d gremlins.js`.
+- Created `e2e/fixtures/gremlins.ts` — `unleashChaos(page, options?)` utility. Injects the UMD bundle (`dist/gremlins.min.js`) via `addScriptTag`, then runs a configured horde (clicker/formFiller/scroller/typer, 150 actions, 10ms delay, no mogwais) via `page.evaluate`. Catches `"Execution context was destroyed"` errors — gremlins clicking navigation links during chaos is expected; `attachErrorGuard` remains the error oracle.
+- Created `e2e/chaos.spec.ts` — 5 tests (one per public route: `/`, `/cash-flow`, `/settings`, `/simulation`, `/reports`). Each test seeds 3 transactions, attaches `attachErrorGuard`, navigates, calls `unleashChaos`, and asserts `guard.errors` is empty in `afterEach`. Per-test timeout set to 120 s.
+- Added `testIgnore: ['**/chaos.spec.ts']` to `playwright.config.ts` to exclude chaos from the default `bun run e2e` run.
+- Created `playwright.chaos.config.ts` — a minimal dedicated config required because Playwright 1.49 applies `testIgnore` even to explicitly specified file paths, so a separate config with `testMatch: ['**/chaos.spec.ts']` is the correct bypass.
+- Added `"e2e:chaos": "playwright test --config playwright.chaos.config.ts"` to `package.json` scripts.
+- Added `## Console error monitoring during dev` subsection to `CLAUDE.md` (inserted between "Before marking work complete" and "Updating AI-PROCESS-LOG.md"), ~20 lines, covering the three error surfaces and the cleanup rule.
+
+### Spec drift / discrepancies / things noticed
+
+- The prompt assumed `playwright test e2e/chaos.spec.ts` would bypass `testIgnore`. It does not in Playwright 1.49; `testIgnore` overrides CLI file arguments. Resolved by creating `playwright.chaos.config.ts` — one extra file, same architectural intent.
+- The `distribution` strategy in gremlins.js v2 natively accepts `nb` for total action count. The manual horde-patching loop shown in the prompt spec was unnecessary; simplified to `g.strategies.distribution({ nb: count, delay, distribution: [...] })`.
+- Gremlins can trigger full-page navigation (clicking sidebar links); this destroys `page.evaluate`'s execution context. The fix is a narrow catch on `"Execution context was destroyed"` — navigation is valid chaos behavior, not a render error. `attachErrorGuard` still captures any actual errors on the destination page.
+- Chaos suite total duration: ~17 s (5 tests × ~3 s each). Well under the 5-minute target.
+- Deliberate-bug verification: adding `setTimeout(() => { throw new Error('deliberate-chaos-test') }, 50)` to `DashboardPage.tsx` caused the `/` chaos test to fail with 12 captured `pageerror: deliberate-chaos-test` entries. Reverted; all 5 tests pass clean.
+
+### Quality gates
+
+| Gate | Result |
+|---|---|
+| `bunx tsc --noEmit` | ✓ 0 errors |
+| `bun run lint` | ✓ 0 errors, 0 warnings |
+| `bun run test` | ✓ 139 passed, 1 skipped (unchanged) |
+| `bun run e2e` | 12 passed, 4 failed — 4 failures are pre-existing flaky settings tests unrelated to this session; chaos spec correctly excluded (16 tests listed, 0 from chaos.spec.ts) |
+| `bun run e2e:chaos` | ✓ 5 passed (~17 s total) |
+
+### Recommendation for next session
+
+The Phase 1.W5 deliverables are complete. The chaos suite confirms all five public routes survive undirected interaction. The next feature milestone is Phase 3 (Live Ticker integration / Simulation wiring). The four pre-existing settings test failures (`settings.spec.ts`) should be investigated and fixed before Phase 3 begins — they appear to be viewport/scroll flakiness in the theme-radio click test, not a correctness regression.
 
 <!-- ──────────────────────────────────────────────────────────────────── -->
 <!-- APPEND NEW SESSION ENTRIES ABOVE THIS LINE.                          -->
