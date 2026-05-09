@@ -72,7 +72,7 @@ Three surfaces emit errors. All three must be clean before a UI task is marked d
 
 Before marking any UI task complete:
 - All three surfaces clean during manual interaction with the touched route.
-- `bun run e2e` passes (default 15 tests with `attachErrorGuard` active).
+- `bun run e2e` passes (all default tests with `attachErrorGuard` active).
 - For surfaces with high interactivity surface area (forms, modals, multi-state pages): `bun run e2e:chaos` passes — the gremlinsJS suite hammers each public route with ~150 random interactions to surface transient render bugs that pre-canned tests miss.
 
 A pre-canned e2e test that asserts visible DOM is necessary but not sufficient — by the time `expect(...).toBeVisible()` settles, transient errors have already cleaned up. The error guard + chaos suite catch what stable-DOM assertions miss.

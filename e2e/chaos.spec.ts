@@ -56,7 +56,7 @@ test.describe('chaos', () => {
       test.setTimeout(120_000);
       await page.goto(route);
       await page.waitForLoadState('networkidle');
-      await unleashChaos(page);
+      await unleashChaos(page, { count: 150 });
     });
   }
 });
