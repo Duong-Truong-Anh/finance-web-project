@@ -50,8 +50,8 @@ You are continuing implementation on Flowstate. [State of master in 1-2 sentence
 [Phase scoping note: what's IN, what's OUT, why this scope and not bigger.]
 
 **Skills to invoke:**
-- `karpathy-guidelines` (`.claude\skills\karpathy-guidelines`) — [why for this phase].
-- [Other skills as needed: carbon-builder, impeccable, fallow, etc., each with .claude\skills\... path and a one-line reason.]
+- `karpathy-guidelines` (`.claude/skills/karpathy-guidelines`) — [why for this phase].
+- [Other skills as needed: carbon-builder, impeccable, fallow, etc., each with .claude/skills/... path and a one-line reason.]
 - **No `[skill]`.** [Why excluded if relevant.]
 
 ## Required reading (in order)
