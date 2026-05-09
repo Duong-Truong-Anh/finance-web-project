@@ -55,6 +55,7 @@ The **pre-Carbon history** (V1 vanilla bento dashboard, Flowstate v0 hand-built 
 - Session 27 — Phase 1.W5 — gremlinsJS chaos suite + console error monitoring conventions — 2026-05-08
   - Session 27 (addendum) — Phase 1.W5 — Copilot PR review triage — 2026-05-09
 - Session 28 — Phase 1.W6 — Strategist durability: flowstate-strategist skill — 2026-05-09
+- Session 29 — Phase 1.W7 — "What I learned" section in canonical session template — 2026-05-09
 
 ---
 
@@ -2204,6 +2205,12 @@ Deliver the final two items from the original Prompt 3 bundle: a Playwright chao
 - Added `"e2e:chaos": "playwright test --config playwright.chaos.config.ts"` to `package.json` scripts.
 - Added `## Console error monitoring during dev` subsection to `CLAUDE.md` (inserted between "Before marking work complete" and "Updating AI-PROCESS-LOG.md"), ~20 lines, covering the three error surfaces and the cleanup rule.
 
+### What I learned
+
+- **Playwright 1.49 `testIgnore` overrides CLI file arguments** — `playwright test e2e/chaos.spec.ts` does not bypass `testIgnore` patterns; the config-level exclusion wins unconditionally. Resolved by creating a dedicated `playwright.chaos.config.ts` with `testMatch` instead of relying on a CLI flag.
+- **Gremlins.js v2's `distribution` strategy accepts `nb` natively** — the total-action count is a first-class parameter on the strategy, not a property to patch onto the horde object. The manual patching loop suggested in the prompt spec was unnecessary; `g.strategies.distribution({ nb: count, ... })` is the correct API.
+- **Browser navigation during `page.evaluate` destroys the execution context** — gremlins clicking navigation links mid-chaos triggers a `"Execution context was destroyed"` error; this is expected behavior, not a render failure. The fix is a narrow catch on that string; `attachErrorGuard` (bound to the `page` object, not the frame) survives navigation and remains the authoritative error oracle.
+
 ### Spec drift / discrepancies / things noticed
 
 - The prompt assumed `playwright test e2e/chaos.spec.ts` would bypass `testIgnore`. It does not in Playwright 1.49; `testIgnore` overrides CLI file arguments. Resolved by creating `playwright.chaos.config.ts` — one extra file, same architectural intent.
@@ -2287,6 +2294,41 @@ Next is the AI-PROCESS-LOG canonical-template addition: a "What I understand / l
 
 The `frontend-design` disable issue should be diagnosed in parallel — possibly a separate ~10-minute branch before Phase 3.
 
+## Session 29 — Phase 1.W7: "What I learned" section in canonical session template (2026-05-09)
+
+### What I asked the AI to do
+
+Add a required `### What I learned` section to the canonical session-log template in `CLAUDE.md`, positioned between `### What the AI did` and `### Spec drift / discrepancies / things noticed`. Backfill Session 27 by extracting its already-documented gap-closures into the new section. Append Session 29 as a dogfood of the new template.
+
+### What the AI did
+
+- Inserted `### What I learned` heading and placeholder body into the canonical template fenced code block in `CLAUDE.md`, between `### What the AI did` and `### Spec drift / discrepancies / things noticed`.
+- Added an explanatory paragraph immediately after the template block in `CLAUDE.md` defining the section's purpose, the required-not-optional rule, and the "Nothing new" escape hatch.
+- Inserted a `### What I learned` section into Session 27 in `AI-PROCESS-LOG.md`, between its "What the AI did" and "Spec drift" sections — 3 bullets extracted from the existing "Spec drift" prose (Playwright 1.49 `testIgnore`, gremlins.js v2 `nb` parameter, navigation-caused context destruction).
+- Added Session 29 row to the Session Index.
+- Appended this Session 29 entry above the append marker.
+
+### What I learned
+
+Nothing new — this was a straightforward execution of the prompt. Session 27's "Spec drift" section was already a clean enumeration of gap-closures; the backfill required extraction and reformatting only, with no new gaps to surface.
+
+### Spec drift / discrepancies / things noticed
+
+- Session 28's "Recommendation for next session" described the upcoming section as "a separate *optional* section" — the final implementation made it **required**. The word "optional" is historical (pre-decision framing); Session 28 is not backfilled per the no-rewrite rule.
+
+### Quality gates
+
+| Gate | Result |
+|---|---|
+| `bunx tsc --noEmit` | ✓ 0 errors (no source code changed) |
+| `bun run lint` | ✓ 0 errors, 0 warnings |
+| `bun run fallow:check` | ✓ 0 regressions |
+
+Heavier gates (`test`, `e2e`, `build`) skipped — this PR cannot affect them.
+
+### Recommendation for next session
+
+Phase 1.W7 is complete. The canonical session template now has a required "What I learned" section; the convention is live. Two items remain before Phase 3: (1) diagnose the `frontend-design` disable issue flagged in Session 28 — confirm whether `skillOverrides` in `.claude/settings.json` is the correct field name for this Claude Code version, and whether the skill router actually respects it; (2) fix the 4 pre-existing flaky `settings.spec.ts` failures (viewport/scroll issue on the theme-radio click test). After both land, the strategist will deliver the Phase 3 prompt.
 <!-- ──────────────────────────────────────────────────────────────────── -->
 <!-- APPEND NEW SESSION ENTRIES ABOVE THIS LINE.                          -->
 <!-- See CLAUDE.md § "Updating AI-PROCESS-LOG.md" for the session template -->
