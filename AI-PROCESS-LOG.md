@@ -54,6 +54,8 @@ The **pre-Carbon history** (V1 vanilla bento dashboard, Flowstate v0 hand-built 
 - Session 26 — Phase 1.W4 — ADR 007: impeccable adoption receipt + frontend-design disable — 2026-05-08
 - Session 27 — Phase 1.W5 — gremlinsJS chaos suite + console error monitoring conventions — 2026-05-08
   - Session 27 (addendum) — Phase 1.W5 — Copilot PR review triage — 2026-05-09
+- Session 28 — Phase 1.W6 — Strategist durability: flowstate-strategist skill — 2026-05-09
+- Session 29 — Phase 1.W7 — "What I learned" section in canonical session template — 2026-05-09
 
 ---
 
@@ -2203,6 +2205,12 @@ Deliver the final two items from the original Prompt 3 bundle: a Playwright chao
 - Added `"e2e:chaos": "playwright test --config playwright.chaos.config.ts"` to `package.json` scripts.
 - Added `## Console error monitoring during dev` subsection to `CLAUDE.md` (inserted between "Before marking work complete" and "Updating AI-PROCESS-LOG.md"), ~20 lines, covering the three error surfaces and the cleanup rule.
 
+### What I learned
+
+- **Playwright 1.49 `testIgnore` overrides CLI file arguments** — `playwright test e2e/chaos.spec.ts` does not bypass `testIgnore` patterns; the config-level exclusion wins unconditionally. Resolved by creating a dedicated `playwright.chaos.config.ts` with `testMatch` instead of relying on a CLI flag.
+- **Gremlins.js v2's `distribution` strategy accepts `nb` natively** — the total-action count is a first-class parameter on the strategy, not a property to patch onto the horde object. The manual patching loop suggested in the prompt spec was unnecessary; `g.strategies.distribution({ nb: count, ... })` is the correct API.
+- **Browser navigation during `page.evaluate` destroys the execution context** — gremlins clicking navigation links mid-chaos triggers a `"Execution context was destroyed"` error; this is expected behavior, not a render failure. The fix is a narrow catch on that string; `attachErrorGuard` (bound to the `page` object, not the frame) survives navigation and remains the authoritative error oracle.
+
 ### Spec drift / discrepancies / things noticed
 
 - The prompt assumed `playwright test e2e/chaos.spec.ts` would bypass `testIgnore`. It does not in Playwright 1.49; `testIgnore` overrides CLI file arguments. Resolved by creating `playwright.chaos.config.ts` — one extra file, same architectural intent.
@@ -2252,6 +2260,75 @@ None.
 
 PR #23 is ready to merge. Investigate the 4 pre-existing flaky settings spec failures (`settings.spec.ts` — viewport scroll issue on the theme-radio click test) before starting Phase 3.
 
+## Session 28 — Phase 1.W6: Strategist durability — flowstate-strategist skill (2026-05-09)
+
+### What I asked the AI to do
+
+The `/insights` retrospective from Session ~21 surfaced a recurring failure mode: the strategist (Opus) role boundary, prompt template, decision philosophy, and conversation conventions live entirely in long-running conversation context. After a `/compact` or session reset, those conventions are reconstructed from scratch — slowly, sometimes wrongly. Authoring a project-level `flowstate-strategist` skill captures the methodology durably so any future strategist agent (Opus, Sonnet acting in strategist mode, etc.) can pick up the role without re-deriving it.
+
+### What the AI did
+
+- Authored `.claude/skills/flowstate-strategist/SKILL.md` (~250 lines) covering: cold-start pickup protocol, role boundary, phase numbering convention, the canonical implementer-prompt template (verbatim, with annotations), decision philosophy, communication conventions, common pitfalls, tooling map, reading-session-logs-critically guidance, the Phase 3 readiness gate, and an explicit "what this skill is NOT" section disambiguating against the four other source-of-truth files (`docs/`, `CLAUDE.md`, `DESIGN.md`, `PRODUCT.md`).
+- Skill description triggers on phrases like "next phase", "write the prompt", "what's next", "phase 3", and review of session logs / PR messages — auto-loads when the strategist role is being invoked, no manual `Skill` call needed.
+- The skill is purely methodology — *how* to use the four canonical sources, not a substitute for them.
+- No CLAUDE.md cross-reference added. The skill auto-discovers via its description; CLAUDE.md doesn't need to advertise it.
+- Authored directly by the strategist (Opus) in this conversation rather than via implementer prompt — first-person methodology can't be authored authentically by a generic implementer.
+
+### Spec drift / discrepancies / things noticed
+
+- **`frontend-design:frontend-design` is still listed as an active skill** despite the `.claude/settings.json` `skillOverrides: { "frontend-design": "off" }` set in Phase 1.W4 (Session 26). The disable may not be respected by the current Claude Code skill router, or `skillOverrides` may not be the correct field name for this version. Worth investigating before Phase 3 — if frontend-design is genuinely active during UI tasks, it'll compete with `carbon-builder` + `impeccable` despite ADR 007's intent.
+- **Branch state on local master was 12 commits behind origin/master** at the start of this session (the user's recent merges hadn't been pulled). Resolved via `git pull` before branching. Worth flagging in the skill as a cold-start protocol step (already covered: "git log --oneline -10 master").
+
+### Quality gates
+
+| Gate | Result |
+|---|---|
+| No source code modified | ✓ verified — only `.claude/skills/flowstate-strategist/SKILL.md` and `AI-PROCESS-LOG.md` |
+| Skill auto-discovery | ✓ confirmed — `flowstate-strategist` appears in the live skill list immediately after file creation |
+
+Heavier gates (`tsc`, `lint`, `test`, `e2e`, `build`, `fallow:check`) skipped — this PR cannot affect any of those pipelines.
+
+### Recommendation for next session
+
+Next is the AI-PROCESS-LOG canonical-template addition: a "What I understand / learned" section that documents the implementer's gap-closures during the session (mental model corrections, tool-version surprises, framework idiom discoveries). Currently those land scattered across "Spec drift" or "What the AI did" or get lost. Codifying a separate optional section makes the gap-closure trace explicit and gives an implicit scope of what the session was really about. Small CLAUDE.md edit + one backfill of the most recent session as the exemplar. Phase 3 (Simulation) waits until that lands.
+
+The `frontend-design` disable issue should be diagnosed in parallel — possibly a separate ~10-minute branch before Phase 3.
+
+## Session 29 — Phase 1.W7: "What I learned" section in canonical session template (2026-05-09)
+
+### What I asked the AI to do
+
+Add a required `### What I learned` section to the canonical session-log template in `CLAUDE.md`, positioned between `### What the AI did` and `### Spec drift / discrepancies / things noticed`. Backfill Session 27 by extracting its already-documented gap-closures into the new section. Append Session 29 as a dogfood of the new template.
+
+### What the AI did
+
+- Inserted `### What I learned` heading and placeholder body into the canonical template fenced code block in `CLAUDE.md`, between `### What the AI did` and `### Spec drift / discrepancies / things noticed`.
+- Added an explanatory paragraph immediately after the template block in `CLAUDE.md` defining the section's purpose, the required-not-optional rule, and the "Nothing new" escape hatch.
+- Inserted a `### What I learned` section into Session 27 in `AI-PROCESS-LOG.md`, between its "What the AI did" and "Spec drift" sections — 3 bullets extracted from the existing "Spec drift" prose (Playwright 1.49 `testIgnore`, gremlins.js v2 `nb` parameter, navigation-caused context destruction).
+- Added Session 29 row to the Session Index.
+- Appended this Session 29 entry above the append marker.
+
+### What I learned
+
+Nothing new — this was a straightforward execution of the prompt. Session 27's "Spec drift" section was already a clean enumeration of gap-closures; the backfill required extraction and reformatting only, with no new gaps to surface.
+
+### Spec drift / discrepancies / things noticed
+
+None.
+
+### Quality gates
+
+| Gate | Result |
+|---|---|
+| `bunx tsc --noEmit` | ✓ 0 errors (no source code changed) |
+| `bun run lint` | ✓ 0 errors, 0 warnings |
+| `bun run fallow:check` | ✓ 0 regressions |
+
+Heavier gates (`test`, `e2e`, `build`) skipped — this PR cannot affect them.
+
+### Recommendation for next session
+
+Phase 1.W7 is complete. The canonical session template now has a required "What I learned" section; the convention is live. Two items remain before Phase 3: (1) diagnose the `frontend-design` disable issue flagged in Session 28 — confirm whether `skillOverrides` in `.claude/settings.json` is the correct field name for this Claude Code version, and whether the skill router actually respects it; (2) fix the 4 pre-existing flaky `settings.spec.ts` failures (viewport/scroll issue on the theme-radio click test). After both land, the strategist will deliver the Phase 3 prompt.
 <!-- ──────────────────────────────────────────────────────────────────── -->
 <!-- APPEND NEW SESSION ENTRIES ABOVE THIS LINE.                          -->
 <!-- See CLAUDE.md § "Updating AI-PROCESS-LOG.md" for the session template -->
