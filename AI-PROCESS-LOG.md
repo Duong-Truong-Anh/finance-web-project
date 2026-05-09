@@ -53,6 +53,7 @@ The **pre-Carbon history** (V1 vanilla bento dashboard, Flowstate v0 hand-built 
 - Session 25 — Phase 1.6.1 — Settings UI polish: composition, hierarchy, theme parity — 2026-05-08
 - Session 26 — Phase 1.W4 — ADR 007: impeccable adoption receipt + frontend-design disable — 2026-05-08
 - Session 27 — Phase 1.W5 — gremlinsJS chaos suite + console error monitoring conventions — 2026-05-08
+- Session 28 — Phase 1.W6 — Strategist durability: flowstate-strategist skill — 2026-05-09
   - Session 27 (addendum) — Phase 1.W5 — Copilot PR review triage — 2026-05-09
 
 ---
@@ -2251,6 +2252,40 @@ None.
 ### Recommendation for next session
 
 PR #23 is ready to merge. Investigate the 4 pre-existing flaky settings spec failures (`settings.spec.ts` — viewport scroll issue on the theme-radio click test) before starting Phase 3.
+
+## Session 28 — Phase 1.W6: Strategist durability — flowstate-strategist skill (2026-05-09)
+
+### What I asked the AI to do
+
+The `/insights` retrospective from Session ~21 surfaced a recurring failure mode: the strategist (Opus) role boundary, prompt template, decision philosophy, and conversation conventions live entirely in long-running conversation context. After a `/compact` or session reset, those conventions are reconstructed from scratch — slowly, sometimes wrongly. Authoring a project-level `flowstate-strategist` skill captures the methodology durably so any future strategist agent (Opus, Sonnet acting in strategist mode, etc.) can pick up the role without re-deriving it.
+
+### What the AI did
+
+- Authored `.claude/skills/flowstate-strategist/SKILL.md` (~250 lines) covering: cold-start pickup protocol, role boundary, phase numbering convention, the canonical implementer-prompt template (verbatim, with annotations), decision philosophy, communication conventions, common pitfalls, tooling map, reading-session-logs-critically guidance, the Phase 3 readiness gate, and an explicit "what this skill is NOT" section disambiguating against the four other source-of-truth files (`docs/`, `CLAUDE.md`, `DESIGN.md`, `PRODUCT.md`).
+- Skill description triggers on phrases like "next phase", "write the prompt", "what's next", "phase 3", and review of session logs / PR messages — auto-loads when the strategist role is being invoked, no manual `Skill` call needed.
+- The skill is purely methodology — *how* to use the four canonical sources, not a substitute for them.
+- No CLAUDE.md cross-reference added. The skill auto-discovers via its description; CLAUDE.md doesn't need to advertise it.
+- Authored directly by the strategist (Opus) in this conversation rather than via implementer prompt — first-person methodology can't be authored authentically by a generic implementer.
+
+### Spec drift / discrepancies / things noticed
+
+- **`frontend-design:frontend-design` is still listed as an active skill** despite the `.claude/settings.json` `skillOverrides: { "frontend-design": "off" }` set in Phase 1.W4 (Session 26). The disable may not be respected by the current Claude Code skill router, or `skillOverrides` may not be the correct field name for this version. Worth investigating before Phase 3 — if frontend-design is genuinely active during UI tasks, it'll compete with `carbon-builder` + `impeccable` despite ADR 007's intent.
+- **Branch state on local master was 12 commits behind origin/master** at the start of this session (the user's recent merges hadn't been pulled). Resolved via `git pull` before branching. Worth flagging in the skill as a cold-start protocol step (already covered: "git log --oneline -10 master").
+
+### Quality gates
+
+| Gate | Result |
+|---|---|
+| No source code modified | ✓ verified — only `.claude/skills/flowstate-strategist/SKILL.md` and `AI-PROCESS-LOG.md` |
+| Skill auto-discovery | ✓ confirmed — `flowstate-strategist` appears in the live skill list immediately after file creation |
+
+Heavier gates (`tsc`, `lint`, `test`, `e2e`, `build`, `fallow:check`) skipped — this PR cannot affect any of those pipelines.
+
+### Recommendation for next session
+
+Next is the AI-PROCESS-LOG canonical-template addition: a "What I understand / learned" section that documents the implementer's gap-closures during the session (mental model corrections, tool-version surprises, framework idiom discoveries). Currently those land scattered across "Spec drift" or "What the AI did" or get lost. Codifying a separate optional section makes the gap-closure trace explicit and gives an implicit scope of what the session was really about. Small CLAUDE.md edit + one backfill of the most recent session as the exemplar. Phase 3 (Simulation) waits until that lands.
+
+The `frontend-design` disable issue should be diagnosed in parallel — possibly a separate ~10-minute branch before Phase 3.
 
 <!-- ──────────────────────────────────────────────────────────────────── -->
 <!-- APPEND NEW SESSION ENTRIES ABOVE THIS LINE.                          -->
