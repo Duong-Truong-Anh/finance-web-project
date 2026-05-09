@@ -2314,7 +2314,7 @@ Nothing new — this was a straightforward execution of the prompt. Session 27's
 
 ### Spec drift / discrepancies / things noticed
 
-None.
+- Session 28's "Recommendation for next session" described the upcoming section as "a separate *optional* section" — the final implementation made it **required**. The word "optional" is historical (pre-decision framing); Session 28 is not backfilled per the no-rewrite rule.
 
 ### Quality gates
 
