@@ -118,6 +118,10 @@ _User's framing in 2–3 sentences._
 
 _Bulleted list of changes, grouped by file or concern._
 
+### What I learned
+
+_Gap-closures: tool-version surprises, README inaccuracies, framework idiom discoveries, edge cases that behaved differently than expected. Write "Nothing new — this was a straightforward execution of the prompt." if nothing applies._
+
 ### Spec drift / discrepancies / things noticed
 
 _Ambiguities resolved, implementation divergences, or things observed but not fixed. Write "None." if nothing applies._
@@ -143,6 +147,8 @@ _(Omit rows for gates that don't apply to this session.)_
 
 _One paragraph. Always present. Always last._
 ```
+
+The **"What I learned"** section captures gap-closures: tool-version surprises, README inaccuracies, framework idiom discoveries, edge cases that turned out to behave differently than expected. It is required, not optional — if no gap-closures occurred this session, write "Nothing new — this was a straightforward execution of the prompt." This section is the load-bearing record of what the session was *really* about, separate from what was nominally asked. Do not bury gap-closures inside "Spec drift" (which is about project/spec observations) or "What the AI did" (which is about execution).
 
 ### Addendum rule
 
