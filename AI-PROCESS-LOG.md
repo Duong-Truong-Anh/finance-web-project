@@ -53,8 +53,8 @@ The **pre-Carbon history** (V1 vanilla bento dashboard, Flowstate v0 hand-built 
 - Session 25 — Phase 1.6.1 — Settings UI polish: composition, hierarchy, theme parity — 2026-05-08
 - Session 26 — Phase 1.W4 — ADR 007: impeccable adoption receipt + frontend-design disable — 2026-05-08
 - Session 27 — Phase 1.W5 — gremlinsJS chaos suite + console error monitoring conventions — 2026-05-08
-- Session 28 — Phase 1.W6 — Strategist durability: flowstate-strategist skill — 2026-05-09
   - Session 27 (addendum) — Phase 1.W5 — Copilot PR review triage — 2026-05-09
+- Session 28 — Phase 1.W6 — Strategist durability: flowstate-strategist skill — 2026-05-09
 
 ---
 
