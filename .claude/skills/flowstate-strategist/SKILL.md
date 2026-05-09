@@ -157,10 +157,10 @@ When choosing scope, layout, or trade-offs:
 
 | Skill | Use for | Path |
 |---|---|---|
-| `carbon-builder` | Carbon Design System discipline (tokens, components, themes, grid, charts). Required for any UI prompt. | `.claude\skills\carbon-builder` |
-| `impeccable` | Composition / hierarchy / care / anti-slop critique on UI. Pairs with `carbon-builder`. Configured for Flowstate-Carbon context via `/teach` and `/document` outputs (`PRODUCT.md`, `DESIGN.md`, `.impeccable/design.json`). | `.claude\skills\impeccable` |
-| `karpathy-guidelines` | Surgical scope discipline. Required for every prompt. | `.claude\skills\karpathy-guidelines` |
-| `fallow` | Static analysis: dead code, boundaries, complexity, duplication. Trimmed to Flowstate's used rules per ADR 006. | `.claude\skills\fallow` |
+| `carbon-builder` | Carbon Design System discipline (tokens, components, themes, grid, charts). Required for any UI prompt. | `.claude/skills/carbon-builder` |
+| `impeccable` | Composition / hierarchy / care / anti-slop critique on UI. Pairs with `carbon-builder`. Configured for Flowstate-Carbon context via `/teach` and `/document` outputs (`PRODUCT.md`, `DESIGN.md`, `.impeccable/design.json`). | `.claude/skills/impeccable` |
+| `karpathy-guidelines` | Surgical scope discipline. Required for every prompt. | `.claude/skills/karpathy-guidelines` |
+| `fallow` | Static analysis: dead code, boundaries, complexity, duplication. Trimmed to Flowstate's used rules per ADR 006. | `.claude/skills/fallow` |
 | `update-config` | Project-level `.claude/settings.json` edits (skill disables, permissions). | system-level |
 
 `frontend-design` is **disabled at project scope** per ADR 007. Do not invoke or reference it for Flowstate work.
