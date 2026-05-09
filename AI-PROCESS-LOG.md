@@ -53,6 +53,7 @@ The **pre-Carbon history** (V1 vanilla bento dashboard, Flowstate v0 hand-built 
 - Session 25 — Phase 1.6.1 — Settings UI polish: composition, hierarchy, theme parity — 2026-05-08
 - Session 26 — Phase 1.W4 — ADR 007: impeccable adoption receipt + frontend-design disable — 2026-05-08
 - Session 27 — Phase 1.W5 — gremlinsJS chaos suite + console error monitoring conventions — 2026-05-08
+  - Session 27 (addendum) — Phase 1.W5 — Copilot PR review triage — 2026-05-09
 
 ---
 
@@ -2223,6 +2224,33 @@ Deliver the final two items from the original Prompt 3 bundle: a Playwright chao
 ### Recommendation for next session
 
 The Phase 1.W5 deliverables are complete. The chaos suite confirms all five public routes survive undirected interaction. The next feature milestone is Phase 3 (Live Ticker integration / Simulation wiring). The four pre-existing settings test failures (`settings.spec.ts`) should be investigated and fixed before Phase 3 begins — they appear to be viewport/scroll flakiness in the theme-radio click test, not a correctness regression.
+
+## Session 27 (addendum) — Phase 1.W5: Copilot PR review triage (2026-05-09)
+
+### What I asked the AI to do
+
+Assess the 4 inline comments left by GitHub Copilot on PR #23, assuming Copilot got it wrong unless the code or architecture proved otherwise.
+
+### What the AI did
+
+Fetched all 4 inline comments via `gh api`, evaluated each against the project's architecture and the scope of the chaos suite, then applied fixes for the valid ones in a single commit (`0086fad`).
+
+### PR review triage
+
+| # | File | Comment | Verdict | Action |
+|---|---|---|---|---|
+| 1 | `playwright.chaos.config.ts:16` | `trace: 'on-first-retry'` is a no-op with `retries: 0` | **Valid** | Changed to `trace: 'retain-on-failure'` |
+| 2 | `e2e/fixtures/gremlins.ts:49` | Navigation stops chaos early; inject via `context.addInitScript` or retry until `count` actions fire | **Wrong** | No change. `attachErrorGuard` survives navigation on the `page` object. The goal is error detection, not guaranteeing exactly 150 actions. |
+| 3 | `e2e/chaos.spec.ts:59` | Test title hard-codes "150" but relies on the `unleashChaos` default | **Partially valid** | Passed `{ count: 150 }` explicitly at call site. Skipped the shared-constant suggestion — one use, no abstraction warranted. |
+| 4 | `CLAUDE.md:75` | "15 tests" hard-coded count is already stale (suite has 16) | **Valid** | Replaced with "all default tests" to survive future suite growth. |
+
+### Spec drift / discrepancies / things noticed
+
+None.
+
+### Recommendation for next session
+
+PR #23 is ready to merge. Investigate the 4 pre-existing flaky settings spec failures (`settings.spec.ts` — viewport scroll issue on the theme-radio click test) before starting Phase 3.
 
 <!-- ──────────────────────────────────────────────────────────────────── -->
 <!-- APPEND NEW SESSION ENTRIES ABOVE THIS LINE.                          -->
