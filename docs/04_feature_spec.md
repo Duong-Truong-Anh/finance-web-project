@@ -199,9 +199,11 @@ Validation uses the Zod schema; field-level `invalid` + `invalidText` props are 
 
 ## 4. Simulation (`/simulation`)
 
+> **Spec correction (post-Phase-1.W7 — teacher clarification 2026-05-10).** This section was authored against the old single-asset stocks-only model with a 30–50% slider. The teacher's clarification mandates a fixed five-asset allocation (stocks 50%, savings 10%, cash 10%, gold 10%, USD 10%); the slider is removed entirely. The page now displays the fixed allocation as read-only context, the five ticker pickers (still), the per-asset breakdown alongside the total, and milestone tiles for the total + a per-asset drill-down view. Sub-sections §4.2 / §4.3 / §4.4 below describe the **old** layout and stay as historical reference until Phase 3.2 ships the rewritten Simulation page; the **new** layout is described in `docs/03_calculation_spec.md` §3–§7 and will land in feature spec form alongside the Phase 3.2 implementation. Implementer agents working on Phase 3.x: trust the calculation spec over §4.2–§4.4 below.
+
 ### 4.1 Goal
 
-Configure and visualize the 30-year projection. The user sets the investment ratio, picks the five tickers, and reads the milestone outcomes. The page is dense by design — this is the assignment's centerpiece.
+Configure and visualize the 30-year projection. The user picks the five tickers (stock allocation is fixed at 50%) and reads the milestone outcomes for both the total portfolio and the per-asset breakdown. The page is dense by design — this is the assignment's centerpiece.
 
 ### 4.2 Carbon composition
 

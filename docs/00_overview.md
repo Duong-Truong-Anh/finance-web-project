@@ -6,7 +6,9 @@
 
 Flowstate is a personal cash flow management website with a long-term stock-investment simulator. It is built to satisfy a graded university assignment ("Using AI Software to Build a Cash Flow Management Website and Simulate Long-Term Stock Investment") while looking and behaving like a real, shippable IBM-product-grade tool.
 
-A user enters their monthly income and expense items for the first five years of their plan. Flowstate computes the monthly net cash flow, splits a user-set 30–50% of that flow into a 5-stock portfolio, and projects forward to the 10-, 20-, and 30-year horizons under three deterministic growth scenarios (15%, 17.5%, 20% annualized). Charts and Tiles show the trajectory and the milestone values. Real ticker symbols come from a live financial data API; growth rates remain the assignment-mandated assumption.
+A user enters their monthly income and expense items for the first five years of their plan. Flowstate computes the monthly net cash flow and allocates it across **five asset classes** per the assignment brief: 50% to stocks (split equally across 5 user-selected tickers), 10% to savings, 10% to cash, 10% to gold, and 10% to USD. The portfolio projects forward to the 10-, 20-, and 30-year horizons. The stock portion compounds at three deterministic growth scenarios (15%, 17.5%, 20% annualized — the assignment-mandated band); non-stock asset classes use single deterministic rates per the asset's typical long-term profile (see `docs/03_calculation_spec.md`). Charts and Tiles show the trajectory, the per-asset breakdown, and the milestone values. Real ticker symbols come from a live financial data API; growth rates remain the assignment-mandated assumption.
+
+> **Spec correction (post-Phase-1.W7 — teacher clarification 2026-05-10).** The earlier draft of this overview described a user-controlled investment ratio (a 30–50% slider) and a single asset class (stocks). The teacher's clarification mandates a fixed five-asset allocation. The slider is removed; allocation is fixed; non-stock asset growth rates are listed in the calculation spec as defaults pending confirmation against the teacher's reference documents. Sessions 18 and 20 shipped under the old model; the existing `PortfolioConfig` and `Projection` types in `src/lib/` will be refactored in Phase 3.1.
 
 ## 2. Audience
 
@@ -72,10 +74,10 @@ Flowstate is "done" when all of the following are true:
 - [ ] User can enter income and expense items with name, amount, date, and notes.
 - [ ] System computes total monthly inflow, outflow, and net cash flow.
 - [ ] Monthly net flow displays both as a table and as a chart.
-- [ ] User can set the investment ratio (slider, 30–50%, default 40%).
-- [ ] Monthly investment splits equally across 5 user-selectable stocks.
-- [ ] Three projection lines (15% / 17.5% / 20%) render across the 30-year horizon.
-- [ ] 10-, 20-, and 30-year milestone values display in Tiles, per growth scenario.
+- [ ] Net cash flow allocates across five asset classes per the brief: stocks 50%, savings 10%, cash 10%, gold 10%, USD 10%.
+- [ ] Stock portion (50% of net flow) splits equally across 5 user-selected tickers — 10% of net flow per ticker.
+- [ ] Three projection lines (15% / 17.5% / 20%) render across the 30-year horizon for the **total** portfolio (stock-rate variation drives the spread; non-stock assets use single rates).
+- [ ] 10-, 20-, and 30-year milestone values display in Tiles, per growth scenario, with optional per-asset breakdown.
 - [ ] A growth chart shows the trajectory.
 - [ ] Source code is commented and explainable.
 - [ ] `AI-PROCESS-LOG.md` documents AI usage per session.
@@ -93,12 +95,12 @@ Flowstate is "done" when all of the following are true:
 
 ## 8. Glossary
 
-- **Contribution phase.** Months 1–60 (years 1–5). User enters real income/expenses; net flow × ratio funds the portfolio.
-- **Compounding phase.** Months 61–360 (years 6–30). No new contributions; portfolio compounds at the chosen growth rate.
-- **Milestone.** A snapshot at month 120 (Yr10), 240 (Yr20), or 360 (Yr30). Three milestones × three growth rates = nine portfolio-value Tiles.
-- **Growth scenario.** One of {15%, 17.5%, 20%} annualized. The user does not pick a single scenario; all three are shown simultaneously.
-- **Net flow.** `inflow − outflow` for a given month. May be negative; if so, that month contributes 0 to the portfolio.
-- **Investment ratio.** A 30–50% slider value. Applied only to non-negative net flow months.
-- **Per-stock allocation.** `(net flow × ratio) ÷ 5`, since the brief mandates equal distribution across 5 tickers.
+- **Contribution phase.** Months 1–60 (years 1–5). User enters real income/expenses; the full net flow funds the 5-asset portfolio per the fixed allocation.
+- **Compounding phase.** Months 61–360 (years 6–30). No new contributions; each asset class compounds at its respective growth rate.
+- **Milestone.** A snapshot at month 120 (Yr10), 240 (Yr20), or 360 (Yr30). Three milestones × three stock-growth scenarios = nine total-portfolio Tiles. Per-asset breakdown computed at render time.
+- **Growth scenario.** One of {15%, 17.5%, 20%} annualized — applied to the **stock portion only**. Non-stock asset classes use single deterministic rates. The user does not pick a scenario; all three render simultaneously.
+- **Asset allocation.** Fixed split per the brief: stocks 50%, savings 10%, cash 10%, gold 10%, USD 10%. Not user-configurable.
+- **Net flow.** `inflow − outflow` for a given month. May be negative; if so, that month contributes 0 to every asset class.
+- **Per-stock allocation.** `net flow × 0.10`, since the stock portion is 50% of net flow split equally across 5 tickers.
 - **Display currency.** The currency the user is currently viewing in. Independent of the **stored currency** of any individual transaction.
 - **Stored currency.** The currency a transaction was entered in. Persisted forever; never mutated by display switches.
