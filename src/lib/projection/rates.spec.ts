@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { monthlyRateFromAnnual } from './rates';
+import { monthlyRateFromAnnual, ASSET_RATES } from './rates';
 
 describe('monthlyRateFromAnnual', () => {
   it('matches calc-spec §4 for 15% annual', () => {
@@ -16,5 +16,20 @@ describe('monthlyRateFromAnnual', () => {
   });
   it('returns 0 for a 0 annual rate', () => {
     expect(monthlyRateFromAnnual(0)).toBe(0);
+  });
+});
+
+describe('ASSET_RATES', () => {
+  it('savings rate is 0.05 (5% annual)', () => {
+    expect(ASSET_RATES.savings).toBe(0.05);
+  });
+  it('cash rate is 0.00 (no growth)', () => {
+    expect(ASSET_RATES.cash).toBe(0.00);
+  });
+  it('gold rate is 0.07 (7% annual)', () => {
+    expect(ASSET_RATES.gold).toBe(0.07);
+  });
+  it('usd rate is 0.00 (held flat in stored currency)', () => {
+    expect(ASSET_RATES.usd).toBe(0.00);
   });
 });
