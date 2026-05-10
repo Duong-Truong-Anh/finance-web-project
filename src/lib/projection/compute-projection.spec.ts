@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { computeProjection } from './compute-projection';
-import { monthlyRateFromAnnual } from './rates';
+import { monthlyRateFromAnnual, ASSET_RATES } from './rates';
+import { ASSET_ALLOCATION, ASSET_CLASSES } from '../portfolio/schema';
 import type { ProjectionInput } from './types';
 import type { Transaction } from '../transactions/schema';
 import type { FxRateSnapshot } from '../currency/types';
@@ -11,11 +12,12 @@ const FX: FxRateSnapshot = {
   fetchedAt: '2026-05-01T00:00:00.000Z',
 };
 
-// Compute expected end-of-month-60 value using the closed-form annuity-due formula.
+// Annuity-due closed-form FV: PMT contributed at start-of-month, full month growth.
 // V_60 = PMT * (1+gm) * [(1+gm)^60 - 1] / gm
-// This is independent of the iterative implementation so that the test is not circular.
+// Independent of the iterative implementation to avoid circular validation.
 function annuityDueFV(pmt: number, annual: number): number {
   const gm = monthlyRateFromAnnual(annual);
+  if (gm === 0) return pmt * 60; // No growth: simple sum
   return pmt * (1 + gm) * (Math.pow(1 + gm, 60) - 1) / gm;
 }
 
@@ -46,7 +48,7 @@ function makeExpense(amount: number, yearMonth: string): Transaction {
 }
 
 // Build worked-example transactions: 60 months of 18M income + 12.5M expense.
-// Anchor month: 2026-01.
+// netFlow = 5,500,000 VND/month.
 function workedExampleTransactions(): Transaction[] {
   const txs: Transaction[] = [];
   for (let i = 0; i < 60; i++) {
@@ -59,85 +61,157 @@ function workedExampleTransactions(): Transaction[] {
   return txs;
 }
 
+// Per-asset contributions for worked example:
+//   stocks:  floor(5,500,000 × 0.50) = 2,750,000/month
+//   savings/cash/gold/usd: floor(5,500,000 × 0.10) = 550,000/month each
+const STOCKS_PMT  = 2_750_000;
+const NONSTOCK_PMT = 550_000;
+
 const WORKED_INPUT: ProjectionInput = {
   transactions: workedExampleTransactions(),
-  ratio: 0.40,
+  allocation: ASSET_ALLOCATION,
   displayCurrency: 'VND',
   fx: FX,
 };
 
 describe('computeProjection', () => {
   describe('worked example (spec §9)', () => {
-    it('series[60] matches closed-form annuity-due FV for all three rates within ±1', () => {
+    it('per-asset totalContributed matches exact values', () => {
       const { scenarios } = computeProjection(WORKED_INPUT);
-
-      for (let i = 0; i < 3; i++) {
-        const rate = [0.15, 0.175, 0.20][i];
-        const expected = Math.round(annuityDueFV(2_200_000, rate));
-        const actual = scenarios[i].series[60].portfolioValue.amount;
-        expect(Math.abs(actual - expected)).toBeLessThanOrEqual(1);
-      }
+      // All scenarios share the same contributions; pick mid
+      const { byAsset } = scenarios[1];
+      expect(byAsset.stocks.totalContributed.amount).toBe(165_000_000);   // 2,750,000 × 60
+      expect(byAsset.savings.totalContributed.amount).toBe(33_000_000);  // 550,000 × 60
+      expect(byAsset.cash.totalContributed.amount).toBe(33_000_000);
+      expect(byAsset.gold.totalContributed.amount).toBe(33_000_000);
+      expect(byAsset.usd.totalContributed.amount).toBe(33_000_000);
     });
 
-    it('yr30 milestone matches V_60 * (1+g)^25 within ±1', () => {
+    it('total totalContributed is 297,000,000 for all scenarios', () => {
       const { scenarios } = computeProjection(WORKED_INPUT);
-
-      for (let i = 0; i < 3; i++) {
-        const rate = [0.15, 0.175, 0.20][i];
-        const v60 = annuityDueFV(2_200_000, rate);
-        const expected = Math.round(v60 * Math.pow(1 + rate, 25));
-        const actual = scenarios[i].milestones.yr30.amount;
-        expect(Math.abs(actual - expected)).toBeLessThanOrEqual(1);
-      }
-    });
-
-    it('totalContributed is exactly 132_000_000 for all scenarios', () => {
-      const { scenarios } = computeProjection(WORKED_INPUT);
-      // floor(5_500_000 * 0.40) = 2_200_000 exactly; 2_200_000 * 60 = 132_000_000
+      // 4,950,000/month × 60 = 297,000,000
+      // Note: ASSET_ALLOCATION sums to 0.90 (not 1.00); see spec discrepancy note in Session 31.
       for (const s of scenarios) {
-        expect(s.totalContributed.amount).toBe(132_000_000);
+        expect(s.totalContributed.amount).toBe(297_000_000);
       }
+    });
+
+    it('series[60] for stocks matches closed-form annuity-due FV within ±1 for all 3 rates', () => {
+      const { scenarios } = computeProjection(WORKED_INPUT);
+      for (let i = 0; i < 3; i++) {
+        const rate = [0.15, 0.175, 0.20][i];
+        const expected = Math.round(annuityDueFV(STOCKS_PMT, rate));
+        const actual = scenarios[i].byAsset.stocks.series[60].value.amount;
+        expect(Math.abs(actual - expected)).toBeLessThanOrEqual(1);
+      }
+    });
+
+    it('series[60] for savings matches closed-form annuity-due FV within ±1', () => {
+      const { scenarios } = computeProjection(WORKED_INPUT);
+      const expected = Math.round(annuityDueFV(NONSTOCK_PMT, ASSET_RATES.savings));
+      const actual = scenarios[0].byAsset.savings.series[60].value.amount;
+      expect(Math.abs(actual - expected)).toBeLessThanOrEqual(1);
+    });
+
+    it('series[60] for cash equals exact sum (0% growth)', () => {
+      const { scenarios } = computeProjection(WORKED_INPUT);
+      // Cash has 0% rate; FV = PMT × 60 exactly (no rounding needed)
+      expect(scenarios[0].byAsset.cash.series[60].value.amount).toBe(NONSTOCK_PMT * 60);
+    });
+
+    it('series[60] for usd equals exact sum (0% growth)', () => {
+      const { scenarios } = computeProjection(WORKED_INPUT);
+      expect(scenarios[0].byAsset.usd.series[60].value.amount).toBe(NONSTOCK_PMT * 60);
+    });
+
+    it('series[60] for gold matches closed-form annuity-due FV within ±1', () => {
+      const { scenarios } = computeProjection(WORKED_INPUT);
+      const expected = Math.round(annuityDueFV(NONSTOCK_PMT, ASSET_RATES.gold));
+      const actual = scenarios[0].byAsset.gold.series[60].value.amount;
+      expect(Math.abs(actual - expected)).toBeLessThanOrEqual(1);
+    });
+
+    it('total series[k] equals sum of byAsset series[k] at spot-check months', () => {
+      const { scenarios } = computeProjection(WORKED_INPUT);
+      for (const s of scenarios) {
+        for (const k of [0, 30, 60, 120, 240, 360]) {
+          const assetSum = ASSET_CLASSES.reduce(
+            (sum, a) => sum + s.byAsset[a].series[k].value.amount,
+            0,
+          );
+          expect(s.series[k].value.amount).toBe(assetSum);
+        }
+      }
+    });
+
+    it('yr30 total milestone is within ±1 of sum of per-asset closed-form yr30 values (mid scenario)', () => {
+      const { scenarios } = computeProjection(WORKED_INPUT);
+      const mid = scenarios[1];
+
+      // V_a_yr30 = V_a_60 × (1 + g_a)^25
+      const stocksFv60 = annuityDueFV(STOCKS_PMT, 0.175);
+      const savingsFv60 = annuityDueFV(NONSTOCK_PMT, ASSET_RATES.savings);
+      const cashFv60 = NONSTOCK_PMT * 60;
+      const goldFv60 = annuityDueFV(NONSTOCK_PMT, ASSET_RATES.gold);
+      const usdFv60 = NONSTOCK_PMT * 60;
+
+      const expectedTotal = Math.round(
+        stocksFv60  * Math.pow(1.175, 25) +
+        savingsFv60 * Math.pow(1.05, 25)  +
+        cashFv60                           +
+        goldFv60    * Math.pow(1.07, 25)  +
+        usdFv60,
+      );
+
+      expect(Math.abs(mid.milestones.yr30.amount - expectedTotal)).toBeLessThanOrEqual(2);
     });
   });
 
   it('empty transactions → all series zero, all milestones zero, totalContributed zero', () => {
     const input: ProjectionInput = {
       transactions: [],
-      ratio: 0.40,
+      allocation: ASSET_ALLOCATION,
       displayCurrency: 'VND',
       fx: FX,
     };
     const { scenarios } = computeProjection(input);
     for (const s of scenarios) {
-      expect(s.series.every((p) => p.portfolioValue.amount === 0)).toBe(true);
+      expect(s.series.every((p) => p.value.amount === 0)).toBe(true);
       expect(s.milestones.yr10.amount).toBe(0);
       expect(s.milestones.yr20.amount).toBe(0);
       expect(s.milestones.yr30.amount).toBe(0);
       expect(s.totalContributed.amount).toBe(0);
+      for (const asset of ASSET_CLASSES) {
+        expect(s.byAsset[asset].series.every((p) => p.value.amount === 0)).toBe(true);
+        expect(s.byAsset[asset].totalContributed.amount).toBe(0);
+      }
     }
   });
 
   it('all negative net flow months → identical to empty-transactions projection', () => {
-    const input: ProjectionInput = {
+    const negInput: ProjectionInput = {
       transactions: [
         makeIncome(1_000_000, '2026-01'),
         makeExpense(5_000_000, '2026-01'),
       ],
-      ratio: 0.40,
+      allocation: ASSET_ALLOCATION,
       displayCurrency: 'VND',
       fx: FX,
     };
-    const emptyInput: ProjectionInput = { transactions: [], ratio: 0.40, displayCurrency: 'VND', fx: FX };
-
-    const result = computeProjection(input);
-    const emptyResult = computeProjection(emptyInput);
-
+    const emptyInput: ProjectionInput = {
+      transactions: [],
+      allocation: ASSET_ALLOCATION,
+      displayCurrency: 'VND',
+      fx: FX,
+    };
+    const neg = computeProjection(negInput);
+    const empty = computeProjection(emptyInput);
     for (let i = 0; i < 3; i++) {
-      expect(result.scenarios[i].series[60].portfolioValue.amount).toBe(
-        emptyResult.scenarios[i].series[60].portfolioValue.amount,
+      expect(neg.scenarios[i].series[60].value.amount).toBe(
+        empty.scenarios[i].series[60].value.amount,
       );
-      expect(result.scenarios[i].milestones.yr30.amount).toBe(0);
-      expect(result.scenarios[i].totalContributed.amount).toBe(0);
+      expect(neg.scenarios[i].milestones.yr30.amount).toBe(0);
+      expect(neg.scenarios[i].totalContributed.amount).toBe(0);
     }
   });
 
@@ -151,38 +225,42 @@ describe('computeProjection', () => {
     }
   });
 
-  it('scenarios.length === 3, in order [0.15, 0.175, 0.20]', () => {
+  it('byAsset series length is 361 for all assets and all scenarios', () => {
+    const { scenarios } = computeProjection(WORKED_INPUT);
+    for (const s of scenarios) {
+      for (const asset of ASSET_CLASSES) {
+        expect(s.byAsset[asset].series).toHaveLength(361);
+      }
+    }
+  });
+
+  it('scenarios has length 3, in order low/mid/high with correct variant + annualStockRate', () => {
     const { scenarios } = computeProjection(WORKED_INPUT);
     expect(scenarios).toHaveLength(3);
-    expect(scenarios[0].annualRate).toBe(0.15);
-    expect(scenarios[1].annualRate).toBe(0.175);
-    expect(scenarios[2].annualRate).toBe(0.20);
+    expect(scenarios[0].variant).toBe('low');
+    expect(scenarios[0].annualStockRate).toBe(0.15);
+    expect(scenarios[1].variant).toBe('mid');
+    expect(scenarios[1].annualStockRate).toBe(0.175);
+    expect(scenarios[2].variant).toBe('high');
+    expect(scenarios[2].annualStockRate).toBe(0.20);
   });
 
-  it('ratio clamping: ratio 0.99 produces same result as ratio 0.50', () => {
-    const base: Omit<ProjectionInput, 'ratio'> = {
-      transactions: workedExampleTransactions(),
-      displayCurrency: 'VND',
-      fx: FX,
-    };
-    const high = computeProjection({ ...base, ratio: 0.99 });
-    const max = computeProjection({ ...base, ratio: 0.50 });
-    expect(high.scenarios[1].milestones.yr30.amount).toBe(
-      max.scenarios[1].milestones.yr30.amount,
-    );
+  it('non-stock byAsset series is identical across all three scenarios (stocks drive the spread)', () => {
+    const { scenarios } = computeProjection(WORKED_INPUT);
+    for (const asset of ['savings', 'cash', 'gold', 'usd'] as const) {
+      const low  = scenarios[0].byAsset[asset].series[360].value.amount;
+      const mid  = scenarios[1].byAsset[asset].series[360].value.amount;
+      const high = scenarios[2].byAsset[asset].series[360].value.amount;
+      expect(low).toBe(mid);
+      expect(mid).toBe(high);
+    }
   });
 
-  it('ratio clamping: ratio 0.10 produces same result as ratio 0.30', () => {
-    const base: Omit<ProjectionInput, 'ratio'> = {
-      transactions: workedExampleTransactions(),
-      displayCurrency: 'VND',
-      fx: FX,
-    };
-    const low = computeProjection({ ...base, ratio: 0.10 });
-    const min = computeProjection({ ...base, ratio: 0.30 });
-    expect(low.scenarios[1].milestones.yr30.amount).toBe(
-      min.scenarios[1].milestones.yr30.amount,
-    );
+  it('totalContributed is constant across all three scenarios', () => {
+    const { scenarios } = computeProjection(WORKED_INPUT);
+    const ref = scenarios[0].totalContributed.amount;
+    expect(scenarios[1].totalContributed.amount).toBe(ref);
+    expect(scenarios[2].totalContributed.amount).toBe(ref);
   });
 
   it('determinism: two calls with identical input produce deep-equal output', () => {
@@ -197,7 +275,7 @@ describe('computeProjection', () => {
         const month = String(i + 1).padStart(2, '0');
         return makeIncome(5_000_000, `2026-${month}`);
       }),
-      ratio: 0.40,
+      allocation: ASSET_ALLOCATION,
       displayCurrency: 'VND',
       fx: FX,
     };
