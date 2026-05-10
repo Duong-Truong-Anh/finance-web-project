@@ -6,6 +6,7 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: path.resolve(__dirname),
   },
+  allowedDevOrigins: ['project.configurationplayground.dpdns.org'],
 };
 
 export default nextConfig;
