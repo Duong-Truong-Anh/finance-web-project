@@ -2361,7 +2361,7 @@ Fix the cross-origin dev warning for the tunneled hostname `project.configuratio
 | `bunx tsc --noEmit` | ✓ 0 errors |
 | `bun run lint` | ✓ 0 errors, 0 warnings |
 
-Heavier gates (`test`, `e2e`, `build`, `fallow:check`) skipped — no source code or boundary-affecting files changed.
+Heavier gates (`test`, `e2e`, `build`, `fallow:check`) skipped — this session only touched docs/process records plus a Next.js config file (`next.config.ts`); no application source behavior was intentionally changed.
 
 ### Recommendation for next session
 
