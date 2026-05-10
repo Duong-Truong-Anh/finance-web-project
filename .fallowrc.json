@@ -27,7 +27,8 @@
   "ignoreDependencies": [
     "@eslint/eslintrc",
     "@typescript-eslint/eslint-plugin",
-    "@typescript-eslint/parser"
+    "@typescript-eslint/parser",
+    "gremlins.js"
   ],
   "rules": {
     "unused-files":         "warn",

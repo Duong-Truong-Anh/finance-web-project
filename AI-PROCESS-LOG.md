@@ -57,6 +57,8 @@ The **pre-Carbon history** (V1 vanilla bento dashboard, Flowstate v0 hand-built 
 - Session 28 — Phase 1.W6 — Strategist durability: flowstate-strategist skill — 2026-05-09
 - Session 29 — Phase 1.W7 — "What I learned" section in canonical session template — 2026-05-09
 - Session 30 — Phase 1.W8 — allowedDevOrigins fix + frontend-design skill audit — 2026-05-10
+- Session 31 — Phase 3.1 — Multi-asset projection engine + PortfolioConfig refactor — 2026-05-10
+  - Session 31 (addendum) — Phase 3.1 — Copilot review triage + ADR 008 — 2026-05-10
 
 ---
 
@@ -2366,6 +2368,119 @@ Heavier gates (`test`, `e2e`, `build`, `fallow:check`) skipped — this session 
 ### Recommendation for next session
 
 Session 30 closes the two pre-Phase-3 workflow items. The project is now ready for Phase 3 (Simulation wiring / Live Ticker integration) — wait for the strategist to deliver the Phase 3 prompt. The 4 pre-existing flaky `settings.spec.ts` failures (viewport/scroll on theme-radio click) should be investigated before the first Phase 3 UI task lands.
+
+## Session 31 — Phase 3.1: Multi-asset projection engine + PortfolioConfig refactor (2026-05-10)
+
+### What I asked the AI to do
+
+Replace the Phase 2.1 stocks-only projection engine and single-`ratio` PortfolioConfig with the teacher-mandated five-asset model. The spec PR (Phase 1.W7) had already landed with the new data model and calculation docs. This session ships the three implementation deliverables: (1) new PortfolioConfig schema with `allocation: AssetAllocation` enforced by Zod literals and migration handling, (2) refactored projection engine producing per-asset series/milestones/totalContributed plus summed totals, and (3) a minimal Dashboard consumer update to rename `portfolioValue → value`.
+
+### What the AI did
+
+**`src/lib/portfolio/`**
+- `schema.ts`: Replaced `ratio: z.number().min(0.30).max(0.50)` with `ASSET_CLASSES`, `AssetClass`, `AssetAllocation`, `ASSET_ALLOCATION` constant, and `assetAllocationSchema` using `z.literal()` for each asset's exact value. Used `as const satisfies AssetAllocation` so the constant carries literal types compatible with the Zod-inferred type.
+- `repository.ts`: Updated `DEFAULT_PORTFOLIO_CONFIG` to use `allocation: ASSET_ALLOCATION`. Removed `ratio` field.
+- `index.ts`: Added re-exports for `ASSET_CLASSES`, `ASSET_ALLOCATION`, `AssetClass`, `AssetAllocation`.
+- `repository.spec.ts`: Replaced `VALID_CONFIG` (had `ratio: 0.40`) with new shape. Added three migration-specific cases: old `ratio`-shaped record → `get()` returns null; tampered allocation literals → null; `DEFAULT_PORTFOLIO_CONFIG` parses cleanly.
+
+**`src/lib/projection/`**
+- `types.ts`: Replaced `ProjectionInput.ratio` with `allocation: AssetAllocation`. Replaced `MonthlyAggregate.monthlyInvestment` with `byAsset: Record<AssetClass, Money>`. Added `AssetMilestones`, `AssetSeries` types. Expanded `ProjectionScenario` with `variant`, `annualStockRate` (renamed from `annualRate`), `byAsset`, and updated `milestones`. Renamed `ProjectionPoint.portfolioValue → value`.
+- `rates.ts`: Added `ASSET_RATES: Record<Exclude<AssetClass, 'stocks'>, number>` with `savings: 0.05, cash: 0.00, gold: 0.07, usd: 0.00`.
+- `monthly-investments.ts`: Renamed `aggregateMonthlyInvestments → aggregateMonthlyContributions`. Changed signature from `(txs, ratio, ...) → Money[]` to `(txs, allocation, ...) → Record<AssetClass, Money[]>`. Iterates all 5 asset classes per month.
+- `compute-projection.ts`: Extracted `buildAssetSeries` helper (runs the iterative FV loop for one asset). `buildScenario` now iterates all 5 assets (stocks uses per-scenario rate; non-stocks use `ASSET_RATES[asset]`), then sums across assets to produce the total `series`. Removed `clamp()` — allocation is now schema-enforced. Removed `VARIANTS` → inline constant.
+- `rates.spec.ts`: Added 4 ASSET_RATES value cases.
+- `monthly-investments.spec.ts`: Rewrote all cases to use the `Record<AssetClass, Money[]>` return shape. Added worked-example case asserting per-asset split.
+- `compute-projection.spec.ts`: Complete rewrite. Worked example now pins: per-asset totalContributed, total totalContributed (297,000,000), series[60] vs closed-form annuity-due ±1 for stocks (all 3 rates), savings, cash, gold, usd. Spot-check that `series[k].value === sum of byAsset series[k]`. yr30 total vs closed-form ±2. Preserved: empty-transactions, negative-net-flow, series length, scenarios ordering, non-stock identical across scenarios, determinism, performance smoke (skipped).
+
+**`src/features/dashboard/DashboardPage.tsx`**
+- Replaced `ratio: cfgState.config.ratio` with `allocation: cfgState.config.allocation`.
+- Renamed 3 occurrences of `.portfolioValue` → `.value` in the KPI value computations.
+
+**`src/components/charts/ProjectionLineChart.tsx`**
+- Renamed 2 occurrences of `.portfolioValue` → `.value`.
+
+### What I learned
+
+**`as const satisfies T` pattern needed for literal-typed constants.** Defining `ASSET_ALLOCATION: AssetAllocation = { stocks: 0.50, ... }` (where `AssetAllocation = Record<AssetClass, number>`) widens the type to `number`, which is not assignable to Zod's inferred `0.5 | 0.1` literal types on `PortfolioConfig.allocation`. The fix is `as const satisfies AssetAllocation` — this preserves the literal types while still verifying the object satisfies the structural constraint. TypeScript caught this immediately on the first `tsc --noEmit` run.
+
+**Spec arithmetic error: ASSET_ALLOCATION sums to 0.90, not 1.00.** The teacher clarification spec (docs/02_data_model.md §1.2, docs/03_calculation_spec.md §1) explicitly states "sums to 1.00" for `{ stocks: 0.50, savings: 0.10, cash: 0.10, gold: 0.10, usd: 0.10 }`. The actual sum is 0.90 (50% + 4 × 10%). As a result, the spec's worked-example `totalContributed = 330,000,000` (which assumes 100% allocation, i.e. `5,500,000 × 60`) is wrong; the correct pinned value is `297,000,000` (`4,950,000 × 60`). The schema was implemented as given (with the 0.90 sum), and the tests pin the mathematically correct values. This should be brought to the teacher's attention — most likely a typo where one non-stock asset was intended to be 20% (to sum to 100%), or the spec comment is wrong and the intent was all-in (no leftover outside the 5 classes).
+
+**Fallow health: zero findings in projection/portfolio modules.** `buildAssetSeries` (the most complex new function) has cognitive complexity well below 15 — the helper extraction is clean enough. `DashboardPage` exceeds thresholds but that is a pre-existing finding unrelated to this session.
+
+### Spec drift / discrepancies / things noticed
+
+- **ASSET_ALLOCATION sum is 0.90, not 1.00.** Detailed in "What I learned." The spec says "no remainder stays uninvested" but with 0.90 sum, 10% of net flow is never invested (not attributed to any asset class). This is a spec error that needs teacher resolution before Phase 3.2 references the worked-example numbers.
+- **totalContributed per-spec (330,000,000) vs implemented (297,000,000).** Directly downstream of the 0.90 sum issue.
+- **`annualRate` renamed to `annualStockRate` + `variant` added.** All existing consumers updated. The old `annualRate` tests updated to `annualStockRate`.
+- **Ratio-clamping tests removed.** The old `computeProjection` had `clamp(ratio, 0.30, 0.50)`. The new engine receives a validated allocation; no clamping is needed. The two ratio-clamping tests were removed rather than converted to equivalent allocation tests (schema parse enforcement is tested at the repository layer, not the engine layer).
+
+### Quality gates
+
+| Gate | Result |
+|---|---|
+| `bunx tsc --noEmit` | ✅ 0 errors |
+| `bun run lint` | ✅ 0 errors, 0 warnings |
+| `bun run test` | ✅ 154 passed, 1 skipped (was 139 + 1 skipped; +15 new) |
+| `bun run fallow:check` | ✅ 0 regressions (1 inherited gremlins.js finding excluded) |
+
+### Fallow health report
+
+No function in `src/lib/projection/` or `src/lib/portfolio/` exceeded the cognitive complexity threshold (maxCognitive: 15) or cyclomatic threshold (maxCyclomatic: 20). The top pre-existing offender is `DashboardPage` (cognitive: 20, cyclomatic: 24) — unrelated to this session.
+
+### Pinned worked-example values
+
+Inputs: 60 months × 18,000,000 VND income + 12,500,000 VND expense; fixed `ASSET_ALLOCATION`; VND display currency.
+
+| Asset | Monthly contribution (VND) | Total contributed (VND) |
+|---|---|---|
+| stocks | 2,750,000 | 165,000,000 |
+| savings | 550,000 | 33,000,000 |
+| cash | 550,000 | 33,000,000 |
+| gold | 550,000 | 33,000,000 |
+| usd | 550,000 | 33,000,000 |
+| **total** | **4,950,000** | **297,000,000** |
+
+Per-asset series[60] pinned via closed-form annuity-due ±1 minor unit. Total yr30 mid milestone pinned via closed-form ±2 minor units (extra tolerance because floating-point compounding accumulates across 5 independent series).
+
+### Migration verification
+
+A manually-injected `{ ratio: 0.40, tickers: [], updatedAt: ... }` record stored at `STORAGE_KEYS.portfolio` causes `portfolioRepository.get()` to return `null`. Consumer (`usePortfolioConfig`) falls back to `DEFAULT_PORTFOLIO_CONFIG`. No data is destroyed (no writes occur on read-path).
+
+### Recommendation for next session
+
+Phase 3.1 lands the integration contract that Phase 3.2 will consume. Before delivering the Phase 3.2 (Simulation page) prompt, the strategist should (1) flag the ASSET_ALLOCATION sum discrepancy to the teacher and get a resolution — either a corrected allocation (e.g., one non-stock at 20%, or all non-stocks at 12.5%) or explicit confirmation that 10% stays uninvested; (2) verify the 4 pre-existing `settings.spec.ts` flaky failures are still not blocking green CI. Phase 3.2 scope: Simulation page with ticker picker, per-asset milestone tiles, ratio-slider removal (already gone from schema), and the three-line + per-asset chart view. The integration contract is locked — no further changes to `computeProjection`'s input/output shape until Phase 3.2 ships.
+
+## Session 31 (addendum) — Phase 3.1: Copilot review triage + ADR 008 (2026-05-10)
+
+### What I asked the AI to do
+
+Assess the 2 inline comments left by GitHub Copilot on PR #28, assuming Copilot wrong unless code or architecture proved otherwise. Apply any valid fixes.
+
+### What the AI did
+
+- Fetched both inline Copilot comments via `gh api`.
+- Triaged Comment 1 (`schema.ts` — 0.90 sum discrepancy): observation valid, all three proposed remedies rejected (can't change teacher-mandated literals unilaterally; can't add a 6th asset class; can't update spec without teacher sign-off). Already documented in ADR 008.
+- Triaged Comment 2 (`compute-projection.spec.ts:93` — opaque "Session 31" reference): concern valid, suggested fix rejected (pointing at `docs/03_calculation_spec.md` would send readers to the wrong information — spec says 1.00). Applied correct fix: replaced "Session 31" with "ADR 008 (`docs/decisions/008_asset-allocation-sum-discrepancy.md`)".
+- Committed and pushed both the ADR 008 file and the one-line spec comment fix.
+
+### What I learned
+
+Nothing new — straightforward triage execution.
+
+### Spec drift / discrepancies / things noticed
+
+None beyond what ADR 008 already records.
+
+### PR review triage — Copilot comments on PR #28
+
+| # | File | Copilot concern | Verdict | Action taken |
+|---|------|-----------------|---------|--------------|
+| 1 | `src/lib/portfolio/schema.ts:7–16` | 0.90 sum contradicts spec §1+§3 ("Sums to 1.00") | Observation valid; all three remedies rejected — teacher-mandated literals, no 6th asset, no unilateral spec update | No code change — discrepancy documented in ADR 008 |
+| 2 | `src/lib/projection/compute-projection.spec.ts:93` | "Session 31" is opaque, won't be meaningful to future maintainers | Partially valid — concern correct; suggested fix (point at spec) wrong (spec says 1.00) | Replaced "Session 31" with "ADR 008" pointer — commit `9320cf1` |
+
+### Recommendation for next session
+
+No change to prior Session 31 recommendation. PR #28 is ready to merge. Before Phase 3.2 prompt, teacher must resolve the ASSET_ALLOCATION sum (ADR 008).
 
 <!-- ──────────────────────────────────────────────────────────────────── -->
 <!-- APPEND NEW SESSION ENTRIES ABOVE THIS LINE.                          -->
