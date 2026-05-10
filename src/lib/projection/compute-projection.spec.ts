@@ -90,7 +90,7 @@ describe('computeProjection', () => {
     it('total totalContributed is 297,000,000 for all scenarios', () => {
       const { scenarios } = computeProjection(WORKED_INPUT);
       // 4,950,000/month × 60 = 297,000,000
-      // Note: ASSET_ALLOCATION sums to 0.90 (not 1.00); see spec discrepancy note in Session 31.
+      // Note: ASSET_ALLOCATION sums to 0.90 (not 1.00); see ADR 008 (docs/decisions/008_asset-allocation-sum-discrepancy.md).
       for (const s of scenarios) {
         expect(s.totalContributed.amount).toBe(297_000_000);
       }
