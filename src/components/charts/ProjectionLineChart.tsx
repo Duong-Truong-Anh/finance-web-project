@@ -21,7 +21,7 @@ function toMajor(amount: number, currency: Currency): number {
 
 export default function ProjectionLineChart({ projection, displayCurrency, theme }: Props) {
   const allZero = projection.scenarios.every((s) =>
-    YEARLY_INDICES.every((k) => s.series[k].portfolioValue.amount === 0),
+    YEARLY_INDICES.every((k) => s.series[k].value.amount === 0),
   );
   if (allZero) return null;
 
@@ -29,7 +29,7 @@ export default function ProjectionLineChart({ projection, displayCurrency, theme
     YEARLY_INDICES.map((k, yi) => ({
       group: SCENARIO_LABELS[si],
       key: `Yr ${yi}`,
-      value: toMajor(scenario.series[k].portfolioValue.amount, displayCurrency),
+      value: toMajor(scenario.series[k].value.amount, displayCurrency),
     })),
   );
 

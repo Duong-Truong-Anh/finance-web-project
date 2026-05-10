@@ -52,7 +52,7 @@ export default function DashboardPage({ initialCurrency, initialTheme }: Props) 
     if (txState.status !== 'ready' || cfgState.status !== 'ready') return null;
     return computeProjection({
       transactions: txState.transactions,
-      ratio: cfgState.config.ratio,
+      allocation: cfgState.config.allocation,
       displayCurrency: initialCurrency,
       fx,
     });
@@ -170,17 +170,17 @@ export default function DashboardPage({ initialCurrency, initialTheme }: Props) 
 
   const todayValue =
     projReady && projection.scenarios[1].series[safeMonthIndex]
-      ? format(projection.scenarios[1].series[safeMonthIndex].portfolioValue, locale)
+      ? format(projection.scenarios[1].series[safeMonthIndex].value, locale)
       : '—';
 
   const todayLow =
     projReady && projection.scenarios[0].series[safeMonthIndex]
-      ? format(projection.scenarios[0].series[safeMonthIndex].portfolioValue, locale)
+      ? format(projection.scenarios[0].series[safeMonthIndex].value, locale)
       : '—';
 
   const todayHigh =
     projReady && projection.scenarios[2].series[safeMonthIndex]
-      ? format(projection.scenarios[2].series[safeMonthIndex].portfolioValue, locale)
+      ? format(projection.scenarios[2].series[safeMonthIndex].value, locale)
       : '—';
 
   const yr30Value = projReady
