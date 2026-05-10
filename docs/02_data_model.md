@@ -44,19 +44,37 @@ The combination of `kind` and a positive `amount` matters because:
 ### 1.2 `PortfolioConfig`
 
 ```ts
+type AssetClass = 'stocks' | 'savings' | 'cash' | 'gold' | 'usd';
+
+type AssetAllocation = Record<AssetClass, number>;
+
+// Fixed allocation per the teacher's clarification (2026-05-10). Field exists for
+// forward-compat and persistence schema, but the runtime value MUST equal ASSET_ALLOCATION.
+// Validation (Zod) enforces this; user cannot override.
+const ASSET_ALLOCATION: AssetAllocation = {
+  stocks:  0.50,
+  savings: 0.10,
+  cash:    0.10,
+  gold:    0.10,
+  usd:     0.10,
+};
+
 type PortfolioConfig = {
-  ratio: number;                 // 0.30 <= ratio <= 0.50. Step 0.01 in the slider.
-  tickers: TickerSelection[];    // Length === 5. Fewer than 5 = portfolio incomplete; simulation page warns.
+  allocation: AssetAllocation;       // Must equal ASSET_ALLOCATION at runtime.
+  tickers: TickerSelection[];        // Length === 5. Funds the stocks portion (50% of net flow).
+                                     // Fewer than 5 = portfolio incomplete; Simulation page warns.
   updatedAt: IsoDateTime;
 };
 
 type TickerSelection = {
-  symbol: string;                // 'AAPL', 'VNM.HM', etc. Vendor-format-preserving.
-  description: string;           // 'Apple Inc.' — captured at pick time, displayed even if Finnhub is offline.
-  exchange: string | null;       // 'NASDAQ', 'HOSE', etc. From Finnhub /search.
+  symbol: string;                    // 'AAPL', 'VNM.HM', etc. Vendor-format-preserving.
+  description: string;               // 'Apple Inc.' — captured at pick time, displayed even if Finnhub is offline.
+  exchange: string | null;           // 'NASDAQ', 'HOSE', etc. From Finnhub /search.
   pickedAt: IsoDateTime;
 };
 ```
+
+> **Spec correction (post-Phase-1.W7 — teacher clarification 2026-05-10).** The earlier draft used `ratio: number` (a single 0.30–0.50 value driving a stock-only portfolio). The teacher mandates a fixed five-asset allocation. The `ratio` field is removed; `allocation` replaces it. Phase 3.1 ships the LocalStorage migration: existing persisted records with `ratio` are dropped (`get()` returns null on shape mismatch), the consumer falls back to `DEFAULT_PORTFOLIO_CONFIG`. Per Phase 2.1's auto-seed-no-persist convention, no destructive writes occur during migration.
 
 Live price is **not** stored. It is fetched on demand and cached in memory only — never persisted. The simulation does not depend on it.
 
@@ -95,11 +113,13 @@ type YearMonth = `${number}-${number}`;   // 'YYYY-MM'
 
 type MonthlyAggregate = {
   yearMonth: YearMonth;
-  inflow: Money;                 // Sum of incomes for that month, in display currency.
-  outflow: Money;                // Sum of expenses for that month, in display currency.
-  netFlow: Money;                // inflow - outflow. Can be negative.
-  monthlyInvestment: Money;      // max(0, netFlow * ratio). Zero if netFlow < 0.
-  perStockInvestment: Money;     // monthlyInvestment / 5. Floor-divided in minor units.
+  inflow: Money;                          // Sum of incomes for that month, display currency.
+  outflow: Money;                         // Sum of expenses for that month, display currency.
+  netFlow: Money;                         // inflow - outflow. Can be negative.
+  // Per-asset monthly contribution. Each is max(0, floor(netFlow × ASSET_ALLOCATION[asset])).
+  // All zero if netFlow < 0.
+  byAsset: Record<AssetClass, Money>;
+  perStockInvestment: Money;              // byAsset.stocks / 5. Floor-divided in minor units.
 };
 ```
 
@@ -107,25 +127,43 @@ type MonthlyAggregate = {
 
 ```ts
 type Projection = {
-  scenarios: ProjectionScenario[];   // Length 3. Rates: 0.15, 0.175, 0.20.
+  scenarios: ProjectionScenario[];        // Length 3. Variants: 'low' (15%) | 'mid' (17.5%) | 'high' (20%).
   contributionMonths: 60;
   totalMonths: 360;
 };
 
 type ProjectionScenario = {
-  annualRate: 0.15 | 0.175 | 0.20;
-  series: ProjectionPoint[];      // Length 361 (months 0..360). Sampled monthly.
-  milestones: { yr10: Money; yr20: Money; yr30: Money };
-  totalContributed: Money;        // Constant across scenarios. Sum of monthlyInvestment over months 1..60.
+  variant: 'low' | 'mid' | 'high';
+  annualStockRate: 0.15 | 0.175 | 0.20;   // Drives the spread; non-stock rates are constant.
+  // Total portfolio (sum across all 5 assets), end-of-month, months 0..360.
+  series: ProjectionPoint[];
+  milestones: AssetMilestones;            // For total portfolio.
+  totalContributed: Money;                // Sum of contributions across all 5 assets, months 1..60.
+                                          // Constant across scenarios.
+  byAsset: Record<AssetClass, AssetSeries>;  // Per-asset breakdown.
+};
+
+type AssetSeries = {
+  series: ProjectionPoint[];              // Length 361. Per-asset value over time.
+  milestones: AssetMilestones;            // Per-asset.
+  totalContributed: Money;                // Per-asset contribution sum across months 1..60.
+};
+
+type AssetMilestones = {
+  yr10: Money;                            // Month 120
+  yr20: Money;                            // Month 240
+  yr30: Money;                            // Month 360
 };
 
 type ProjectionPoint = {
-  monthIndex: number;             // 0..360
-  portfolioValue: Money;
+  monthIndex: number;                     // 0..360
+  value: Money;                           // Was `portfolioValue` pre-Phase-3.1; renamed for clarity.
 };
 ```
 
-Per-stock breakdown at the milestones is `milestones.yr10 ÷ 5` etc. — computed at render time, not stored.
+Per-ticker breakdown at the milestones is `byAsset.stocks.milestones.yr10 ÷ 5` etc. — computed at render time, not stored.
+
+> **Spec correction (post-Phase-1.W7).** Pre-Phase-3.1, `Projection` was stocks-only with a single `series` per scenario and a single rate. The new shape adds `byAsset` per scenario. The Dashboard reads `scenarios[1].milestones.yr30` (mid scenario, total) — that path still resolves but now refers to the total portfolio across all 5 assets, which is the correct upgrade. The `portfolioValue` field on `ProjectionPoint` is renamed to `value`; one rename across the codebase.
 
 ## 2. Money discipline
 
