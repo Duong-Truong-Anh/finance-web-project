@@ -58,6 +58,7 @@ The **pre-Carbon history** (V1 vanilla bento dashboard, Flowstate v0 hand-built 
 - Session 29 — Phase 1.W7 — "What I learned" section in canonical session template — 2026-05-09
 - Session 30 — Phase 1.W8 — allowedDevOrigins fix + frontend-design skill audit — 2026-05-10
 - Session 31 — Phase 3.1 — Multi-asset projection engine + PortfolioConfig refactor — 2026-05-10
+  - Session 31 (addendum) — Phase 3.1 — Copilot review triage + ADR 008 — 2026-05-10
 
 ---
 
@@ -2448,6 +2449,38 @@ A manually-injected `{ ratio: 0.40, tickers: [], updatedAt: ... }` record stored
 ### Recommendation for next session
 
 Phase 3.1 lands the integration contract that Phase 3.2 will consume. Before delivering the Phase 3.2 (Simulation page) prompt, the strategist should (1) flag the ASSET_ALLOCATION sum discrepancy to the teacher and get a resolution — either a corrected allocation (e.g., one non-stock at 20%, or all non-stocks at 12.5%) or explicit confirmation that 10% stays uninvested; (2) verify the 4 pre-existing `settings.spec.ts` flaky failures are still not blocking green CI. Phase 3.2 scope: Simulation page with ticker picker, per-asset milestone tiles, ratio-slider removal (already gone from schema), and the three-line + per-asset chart view. The integration contract is locked — no further changes to `computeProjection`'s input/output shape until Phase 3.2 ships.
+
+## Session 31 (addendum) — Phase 3.1: Copilot review triage + ADR 008 (2026-05-10)
+
+### What I asked the AI to do
+
+Assess the 2 inline comments left by GitHub Copilot on PR #28, assuming Copilot wrong unless code or architecture proved otherwise. Apply any valid fixes.
+
+### What the AI did
+
+- Fetched both inline Copilot comments via `gh api`.
+- Triaged Comment 1 (`schema.ts` — 0.90 sum discrepancy): observation valid, all three proposed remedies rejected (can't change teacher-mandated literals unilaterally; can't add a 6th asset class; can't update spec without teacher sign-off). Already documented in ADR 008.
+- Triaged Comment 2 (`compute-projection.spec.ts:93` — opaque "Session 31" reference): concern valid, suggested fix rejected (pointing at `docs/03_calculation_spec.md` would send readers to the wrong information — spec says 1.00). Applied correct fix: replaced "Session 31" with "ADR 008 (`docs/decisions/008_asset-allocation-sum-discrepancy.md`)".
+- Committed and pushed both the ADR 008 file and the one-line spec comment fix.
+
+### What I learned
+
+Nothing new — straightforward triage execution.
+
+### Spec drift / discrepancies / things noticed
+
+None beyond what ADR 008 already records.
+
+### PR review triage — Copilot comments on PR #28
+
+| # | File | Copilot concern | Verdict | Action taken |
+|---|------|-----------------|---------|--------------|
+| 1 | `src/lib/portfolio/schema.ts:7–16` | 0.90 sum contradicts spec §1+§3 ("Sums to 1.00") | Observation valid; all three remedies rejected — teacher-mandated literals, no 6th asset, no unilateral spec update | No code change — discrepancy documented in ADR 008 |
+| 2 | `src/lib/projection/compute-projection.spec.ts:93` | "Session 31" is opaque, won't be meaningful to future maintainers | Partially valid — concern correct; suggested fix (point at spec) wrong (spec says 1.00) | Replaced "Session 31" with "ADR 008" pointer — commit `9320cf1` |
+
+### Recommendation for next session
+
+No change to prior Session 31 recommendation. PR #28 is ready to merge. Before Phase 3.2 prompt, teacher must resolve the ASSET_ALLOCATION sum (ADR 008).
 
 <!-- ──────────────────────────────────────────────────────────────────── -->
 <!-- APPEND NEW SESSION ENTRIES ABOVE THIS LINE.                          -->
