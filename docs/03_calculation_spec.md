@@ -9,7 +9,7 @@ The projection is a pure function of:
 | Input | Symbol | Source / Value |
 |---|---|---|
 | Transactions | `T` | `TransactionRepository.list()` |
-| Asset allocation | `A` | Fixed per teacher's brief: `{ stocks: 0.50, savings: 0.10, cash: 0.10, gold: 0.10, usd: 0.10 }`. Sums to 1.00. |
+| Asset allocation | `A` | Fixed per teacher's brief (resolution recorded in ADR 008): `{ stocks: 0.50, savings: 0.20, cash: 0.10, gold: 0.10, usd: 0.10 }`. Sums to 1.00. |
 | Display currency | `c_disp` | `Settings.displayCurrency` |
 | FX snapshot | `fx` | `FxRateSnapshot` |
 | Stock annual growth scenarios | `G_stocks` | Fixed: `{0.15, 0.175, 0.20}` (low / mid / high). |
@@ -148,7 +148,7 @@ The FX snapshot is read once at the top of `computeProjection(...)` and threaded
 Inputs (all values in VND minor units; VND minor = 1 đồng):
 
 - Months 1..60: constant inflow 18,000,000; constant outflow 12,500,000.
-- Asset allocation: stocks 50%, savings 10%, cash 10%, gold 10%, USD 10% (fixed).
+- Asset allocation: stocks 50%, savings 20%, cash 10%, gold 10%, USD 10% (fixed).
 - Stock growth scenarios: 15%, 17.5%, 20%.
 - Non-stock rates (defaults — confirm against teacher's documents): savings 5%, cash 0%, gold 7%, USD 0%.
 
@@ -159,7 +159,7 @@ netFlow(m)                       = 18,000,000 − 12,500,000   = 5,500,000  (con
 
 Per-asset monthly contributions (each = floor(netFlow × A[a])):
   monthlyContribution(m, stocks)   = floor(5,500,000 × 0.50)   = 2,750,000
-  monthlyContribution(m, savings)  = floor(5,500,000 × 0.10)   =   550,000
+  monthlyContribution(m, savings)  = floor(5,500,000 × 0.20)   = 1,100,000
   monthlyContribution(m, cash)     = floor(5,500,000 × 0.10)   =   550,000
   monthlyContribution(m, gold)     = floor(5,500,000 × 0.10)   =   550,000
   monthlyContribution(m, usd)      = floor(5,500,000 × 0.10)   =   550,000
@@ -178,15 +178,15 @@ Stocks (three scenarios):
   V_stocks_60(0.20)   ≈  273,000,000
 
 Non-stock (single rate each, constant across stock scenarios):
-  V_savings_60(0.05)  ≈   37,393,000
+  V_savings_60(0.05)  ≈   74,786,000   (PMT 1,100,000 × annuity-due FV factor at 5%)
   V_cash_60(0.00)     =   33,000,000   (no growth — exact: 550,000 × 60)
   V_gold_60(0.07)     ≈   39,365,000
   V_usd_60(0.00)      =   33,000,000   (held flat in stored currency)
 
 Total at end of Phase 1:
-  V_total_low_60   ≈  245.6M + 37.4M + 33.0M + 39.4M + 33.0M  ≈  388,400,000
-  V_total_mid_60   ≈  259.0M + 37.4M + 33.0M + 39.4M + 33.0M  ≈  401,800,000
-  V_total_high_60  ≈  273.0M + 37.4M + 33.0M + 39.4M + 33.0M  ≈  415,800,000
+  V_total_low_60   ≈  245.6M + 74.8M + 33.0M + 39.4M + 33.0M  ≈  425,800,000
+  V_total_mid_60   ≈  259.0M + 74.8M + 33.0M + 39.4M + 33.0M  ≈  439,200,000
+  V_total_high_60  ≈  273.0M + 74.8M + 33.0M + 39.4M + 33.0M  ≈  453,200,000
 
 Phase-2 compounding (k − 60 months from V_a_60, per asset):
   V_a(k, g_a) = V_a_60(g_a) × (1 + g_a)^((k − 60) / 12)
@@ -195,14 +195,14 @@ Per-scenario totals (stocks vary across low/mid/high; non-stocks contribute the 
 
 Yr10  (k = 120):
   Stocks:    V_low ≈ 245.6M × 1.15^5  ≈   494M    V_mid ≈ 259.0M × 1.175^5  ≈   582M    V_high ≈ 273.0M × 1.20^5  ≈   679M
-  Savings:   ≈ 47.7M (37.4M × 1.05^5)
+  Savings:   ≈ 95.5M (74.8M × 1.05^5)
   Cash:      33.0M (no growth)
   Gold:      ≈ 55.2M (39.4M × 1.07^5)
   USD:       33.0M (held flat)
-  Total Yr10 low ≈ 663M  /  mid ≈ 751M  /  high ≈ 848M
+  Total Yr10 low ≈ 711M  /  mid ≈ 799M  /  high ≈ 896M
 
-Yr20  (k = 240):  Total ≈ {  2,058M  /   2,825M  /   3,847M  }
-Yr30  (k = 360):  Total ≈ {  6,925M  /  12,229M  /  21,303M  }   *(approximate; pin via implementation)*
+Yr20  (k = 240):  Total ≈ {  2,136M  /   2,903M  /   3,925M  }
+Yr30  (k = 360):  Total ≈ {  7,052M  /  12,356M  /  21,430M  }   *(approximate; pin via implementation)*
 ```
 
 The numerical magnitudes above are illustrative — the formulas in §3–§7 are the source of truth. The implementation reproduces them exactly using the new five-asset model, and the unit test in `src/lib/projection/compute-projection.spec.ts` pins the expected milestones to within ±1 minor unit on the worked-example inputs (refresh after Phase 3.1 ships; the old pinned values from Phase 2.1 are stocks-only and need to be replaced).
