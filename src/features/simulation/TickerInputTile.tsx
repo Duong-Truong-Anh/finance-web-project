@@ -54,9 +54,14 @@ export default function TickerInputTile({
 }: Props) {
   const search = useTickerSearch(finnhubKey);
   const [items, setItems] = useState<TickerSearchResult[]>([]);
-  const inputValueRef = useRef<string>(selection?.symbol ?? '');
+  const inputValueRef = useRef<string>(
+    selection ? itemToString({ ...selection, type: '' }) : '',
+  );
 
-  const selectedItem = useMemo<TickerSearchResult | null>(
+  // Synthesized once at mount; parent re-keys the tile on commit so external
+  // selection changes are picked up by remount, not by controlled-prop sync
+  // (which provokes Downshift to fire onChange during reconciliation).
+  const initialSelectedItem = useMemo<TickerSearchResult | null>(
     () =>
       selection
         ? {
@@ -66,7 +71,8 @@ export default function TickerInputTile({
             type: '',
           }
         : null,
-    [selection],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
   );
 
   const handleInputChange = useDebouncedCallback(async (input: string) => {
@@ -83,16 +89,23 @@ export default function TickerInputTile({
     }
   }, 300);
 
+  // Defer parent state updates so they don't fire during Downshift's render
+  // phase (Downshift dispatches onChange synchronously from its reducer when
+  // allowCustomValue commits on blur).
+  function deferCommit(next: TickerSelection | null): void {
+    queueMicrotask(() => onCommit(next));
+  }
+
   function commitFreeText(raw: string): void {
     // Strip itemToString formatting if Downshift synced the input to "SYM  ·  Desc".
     const symbolPart = raw.split('  ·  ')[0] ?? '';
     const next = symbolPart.trim().toUpperCase();
     if (!next) {
-      if (selection) onCommit(null);
+      if (selection) deferCommit(null);
       return;
     }
     if (next === selection?.symbol && selection.description === '') return;
-    onCommit({
+    deferCommit({
       symbol: next,
       description: '',
       exchange: null,
@@ -109,7 +122,7 @@ export default function TickerInputTile({
   }): void {
     if (picked && picked.symbol) {
       inputValueRef.current = itemToString(picked);
-      onCommit({
+      deferCommit({
         symbol: picked.symbol,
         description: picked.description,
         exchange: picked.exchange,
@@ -123,7 +136,7 @@ export default function TickerInputTile({
   function handleBlur(e: FocusEvent<HTMLDivElement>): void {
     if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
     const input = inputValueRef.current;
-    if (input === itemToString(selectedItem)) return;
+    if (input === itemToString(initialSelectedItem)) return;
     commitFreeText(input);
   }
 
@@ -143,7 +156,7 @@ export default function TickerInputTile({
         itemToString={itemToString}
         onInputChange={handleInputChange}
         onChange={handleChange}
-        selectedItem={selectedItem}
+        initialSelectedItem={initialSelectedItem ?? undefined}
         helperText={helperText}
         allowCustomValue
       />

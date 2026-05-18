@@ -212,15 +212,22 @@ export default function SimulationPage({ initialCurrency, initialTheme }: Props)
             gap: 'var(--cds-spacing-05)',
           }}
         >
-          {slotIndices.map((i) => (
-            <TickerInputTile
-              key={i}
-              index={i}
-              selection={localTickers[i] ?? null}
-              finnhubKey={finnhubKey}
-              onCommit={(selection) => handleSlotCommit(i, selection)}
-            />
-          ))}
+          {slotIndices.map((i) => {
+            const sel = localTickers[i] ?? null;
+            // Re-key on the persisted selection's identity so an external
+            // commit (free-text or dropdown) remounts the ComboBox cleanly
+            // with the new initialSelectedItem.
+            const slotKey = `slot-${i}-${sel ? `${sel.symbol}|${sel.description}` : 'empty'}`;
+            return (
+              <TickerInputTile
+                key={slotKey}
+                index={i}
+                selection={sel}
+                finnhubKey={finnhubKey}
+                onCommit={(selection) => handleSlotCommit(i, selection)}
+              />
+            );
+          })}
         </div>
         {missing > 0 && (
           <div style={{ marginBlockStart: 'var(--cds-spacing-05)' }}>
