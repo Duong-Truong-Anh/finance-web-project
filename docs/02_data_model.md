@@ -53,7 +53,7 @@ type AssetAllocation = Record<AssetClass, number>;
 // Validation (Zod) enforces this; user cannot override.
 const ASSET_ALLOCATION: AssetAllocation = {
   stocks:  0.50,
-  savings: 0.10,
+  savings: 0.20,
   cash:    0.10,
   gold:    0.10,
   usd:     0.10,

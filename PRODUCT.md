@@ -17,7 +17,7 @@ Flowstate is a personal cash flow management tool with a long-term, multi-asset 
 It has two phases: a contribution window (months 1-60) where the user enters income and expenses, and
 a compounding window (months 61-360) where the portfolio compounds. Net cash flow allocates across
 five asset classes per the assignment brief — stocks 50% (split equally across 5 user-selected
-tickers), savings 10%, cash 10%, gold 10%, USD 10%. Stock growth is shown across three deterministic
+tickers), savings 20%, cash 10%, gold 10%, USD 10%. Stock growth is shown across three deterministic
 scenarios (15% / 17.5% / 20% annualized); non-stock asset classes use single rates per their typical
 long-term profile. Success means the user walks away with a believable, verifiable 30-year projection
 — and a clear sense of how each asset class contributes — they can act on.

@@ -59,6 +59,7 @@ The **pre-Carbon history** (V1 vanilla bento dashboard, Flowstate v0 hand-built 
 - Session 30 — Phase 1.W8 — allowedDevOrigins fix + frontend-design skill audit — 2026-05-10
 - Session 31 — Phase 3.1 — Multi-asset projection engine + PortfolioConfig refactor — 2026-05-10
   - Session 31 (addendum) — Phase 3.1 — Copilot review triage + ADR 008 — 2026-05-10
+- Session 32 — Phase 3.1.1 — Savings allocation resolution (0.10 → 0.20) — 2026-05-18
 
 ---
 
@@ -2481,6 +2482,56 @@ None beyond what ADR 008 already records.
 ### Recommendation for next session
 
 No change to prior Session 31 recommendation. PR #28 is ready to merge. Before Phase 3.2 prompt, teacher must resolve the ASSET_ALLOCATION sum (ADR 008).
+
+## Session 32 — Phase 3.1.1: Savings allocation resolution (2026-05-18)
+
+### What I asked the AI to do
+
+Apply the teacher's resolution of ADR 008 end-to-end: change `ASSET_ALLOCATION.savings` from `0.10` to `0.20` (closing the 0.90 sum gap), update the Zod literal, refresh worked-example pins in the projection tests, cascade the value through `PRODUCT.md` / `00_overview.md` / `02_data_model.md` / `03_calculation_spec.md`, and append a Resolution section to ADR 008. No structural changes — the Phase 3.1 integration contract (`computeProjection` signature, `Projection` shape, types) stays byte-identical.
+
+### What the AI did
+
+- **Schema (`src/lib/portfolio/schema.ts`).** `ASSET_ALLOCATION.savings: 0.10 → 0.20`. `assetAllocationSchema.savings: z.literal(0.10) → z.literal(0.20)`. Removed the "sums to 0.90" inline comment and replaced with a pointer to ADR 008 resolution. `DEFAULT_PORTFOLIO_CONFIG` in `repository.ts` is unchanged (reads the constant).
+- **ADR 008 (`docs/decisions/008_asset-allocation-sum-discrepancy.md`).** Appended a "Resolution (2026-05-10)" section recording the teacher's answer (savings absorbs the 10% gap), the three alternative readings considered, what changed in code/spec, and the observation that the original pre-Phase-3.1 spec's 330M `totalContributed` figure turns out to be correct under the resolved allocation.
+- **Spec docs.** `PRODUCT.md` (Product Purpose paragraph), `docs/00_overview.md` (§1 prose, §7 success-criteria checkbox, §8 Glossary), `docs/02_data_model.md` (§1.2 `ASSET_ALLOCATION` constant), `docs/03_calculation_spec.md` (§1 inputs table, §9 worked example: monthly contribution, V_savings_60, V_total_*_60, yr10 breakdown + totals, yr20/yr30 approximate totals).
+- **Test pin refresh.** `monthly-investments.spec.ts`: savings expectations move 550k → 1,100k (and the USD-currency case 1000c → 2000c). `compute-projection.spec.ts`: introduced `SAVINGS_PMT = 1_100_000`; routed savings closed-form pins through it; `byAsset.savings.totalContributed` 33M → 66M; `s.totalContributed` 297M → 330M; dropped the stale "sums to 0.90" comment.
+- **Migration test.** Added a case in `repository.spec.ts`: a Phase-3.1-era record (post-PR-#28, pre-Phase-3.1.1) carrying `savings: 0.10` parse-fails → `get()` returns null. Mirrors the existing legacy-`ratio` migration test.
+
+### What I learned
+
+The session started with a 30-minute false start: my local `master` was 11 commits behind `origin/master`, so PR #28 / ADR 008 / the entire Phase 3.1 refactor were invisible. I correctly flagged the premise mismatch ("ADR 008 doesn't exist, schema has no `ASSET_ALLOCATION`") and asked rather than guess — but the underlying mistake was running `git status` / `git log` without `git fetch` first. The memory rule "fast-forward before branching" exists exactly for this; treating it as a hard precondition (run `git fetch && git pull --ff-only` *before* reading any code) would have skipped the false start entirely. Adding to: read-before-write of remote state, not just local files.
+
+Second observation: the prompt asserted the allocation sum would be `1.0` exactly in IEEE 754 (`0.5 + 0.2 + 0.1 + 0.1 + 0.1`). Actual value is `0.9999999999999999` (1 - 1 ULP) — within FP tolerance, but not bit-exact. The prompt's "modulo floating-point" qualifier covered the gap, but the parenthetical claim about exactness was wrong. No fix needed; just worth knowing that floating-point sums of decimal tenths almost never bit-equal a round target.
+
+### Spec drift / discrepancies / things noticed
+
+- `docs/04_feature_spec.md:202` still mentions "savings 10%" inside the §4 spec-correction notice. Per prompt, that file is out of scope for this PR (Phase 3.2 owns the Simulation page rewrite). Worth flagging for the Phase 3.2 prompt: the inline 10% reference in the deferral notice should update at the same time the rest of §4 lands.
+- `docs/03_calculation_spec.md` §9's yr20/yr30 total figures are tagged "(approximate; pin via implementation)." Updated by adding the savings delta (~+78M at yr20, ~+127M at yr30); the implementation is still the source of truth.
+
+### Quality gates
+
+| Gate | Result |
+|---|---|
+| `bunx tsc --noEmit` | ✅ 0 errors |
+| `bun run lint` | ✅ 0 errors, 0 warnings |
+| `bun run test` | ✅ 155 passed, 1 skipped (was 154 + 1; +1 from the Phase-3.1-shape migration case) |
+| `bun run build` | ✅ all 7 routes compile |
+| `bun run fallow:check` | ✅ 0 issues in 10 changed files |
+
+### Pre/post worked-example pin diff
+
+| Pin | Phase 3.1 (0.90 sum) | Phase 3.1.1 (1.00 sum) |
+|---|---|---|
+| `byAsset.savings.totalContributed` | 33,000,000 | **66,000,000** |
+| `byAsset.{stocks,cash,gold,usd}.totalContributed` | 165M / 33M / 33M / 33M | unchanged |
+| `scenarios[*].totalContributed` | 297,000,000 | **330,000,000** |
+| Savings monthly contribution | 550,000 | **1,100,000** |
+| Stocks / cash / gold / usd monthly contribution | 2.75M / 550k / 550k / 550k | unchanged |
+| `V_savings_60(0.05)` (closed-form FV) | ~37,393,000 | **~74,786,000** |
+
+### Recommendation for next session
+
+Phase 3.2 (Simulation page rewrite) is the next deliverable. Inputs the strategist has to bake in: the Simulation page consumes the new `Projection` shape (`byAsset` per scenario, total `series` + per-asset `series`), the allocation is now read-only at 50/20/10/10/10, and `04_feature_spec.md` §4 needs the parallel rewrite (including the 10%→20% fix in the spec-correction notice on line 202). The integration contract from Phase 3.1 / 3.1.1 is now locked; if the page wants per-ticker drill-down at milestones, `byAsset.stocks` is the path.
 
 <!-- ──────────────────────────────────────────────────────────────────── -->
 <!-- APPEND NEW SESSION ENTRIES ABOVE THIS LINE.                          -->

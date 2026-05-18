@@ -46,7 +46,7 @@ describe('aggregateMonthlyContributions', () => {
     }
   });
 
-  it('single income → stocks gets floor(income × 0.50), each non-stock gets floor(income × 0.10)', () => {
+  it('single income → stocks gets floor(income × 0.50), savings floor(income × 0.20), each remaining non-stock floor(income × 0.10)', () => {
     const result = aggregateMonthlyContributions(
       [makeIncome(5_500_000, '2026-01-15')],
       ASSET_ALLOCATION,
@@ -54,7 +54,7 @@ describe('aggregateMonthlyContributions', () => {
       FX,
     );
     expect(result.stocks[0].amount).toBe(Math.floor(5_500_000 * 0.50));   // 2,750,000
-    expect(result.savings[0].amount).toBe(Math.floor(5_500_000 * 0.10));  // 550,000
+    expect(result.savings[0].amount).toBe(Math.floor(5_500_000 * 0.20));  // 1,100,000
     expect(result.cash[0].amount).toBe(Math.floor(5_500_000 * 0.10));     // 550,000
     expect(result.gold[0].amount).toBe(Math.floor(5_500_000 * 0.10));     // 550,000
     expect(result.usd[0].amount).toBe(Math.floor(5_500_000 * 0.10));      // 550,000
@@ -109,8 +109,8 @@ describe('aggregateMonthlyContributions', () => {
     }
     // 10000 cents × 0.50 = 5000 cents for stocks
     expect(result.stocks[0].amount).toBe(5000);
-    // 10000 cents × 0.10 = 1000 cents for each non-stock
-    expect(result.savings[0].amount).toBe(1000);
+    // 10000 cents × 0.20 = 2000 cents for savings
+    expect(result.savings[0].amount).toBe(2000);
   });
 
   it('gap month (transactions in months 1 and 5, none in 2/3/4) → middle entries zero', () => {
@@ -144,7 +144,7 @@ describe('aggregateMonthlyContributions', () => {
     expect(result.stocks[0].amount).toBe(2_750_001);
   });
 
-  it('worked example: constant 5.5M net flow → stocks 2,750,000 + each non-stock 550,000 per month', () => {
+  it('worked example: constant 5.5M net flow → stocks 2,750,000 + savings 1,100,000 + cash/gold/usd 550,000 each', () => {
     const result = aggregateMonthlyContributions(
       [makeIncome(18_000_000, '2026-01-01'), makeExpense(12_500_000, '2026-01-15')],
       ASSET_ALLOCATION,
@@ -152,7 +152,7 @@ describe('aggregateMonthlyContributions', () => {
       FX,
     );
     expect(result.stocks[0].amount).toBe(2_750_000);
-    expect(result.savings[0].amount).toBe(550_000);
+    expect(result.savings[0].amount).toBe(1_100_000);
     expect(result.cash[0].amount).toBe(550_000);
     expect(result.gold[0].amount).toBe(550_000);
     expect(result.usd[0].amount).toBe(550_000);

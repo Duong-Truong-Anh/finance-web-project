@@ -111,6 +111,19 @@ describe('createLocalStoragePortfolioRepository', () => {
     expect(await repo.get()).toBeNull();
   });
 
+  // Phase-3.1-era record (post-PR-#28, pre-Phase-3.1.1) carrying savings: 0.10.
+  // Resolved allocation per ADR 008 is savings: 0.20; the literal mismatch fails parse → null.
+  it('migration: Phase-3.1-shape record with savings: 0.10 → get() returns null', async () => {
+    const legacyRecord = {
+      allocation: { stocks: 0.50, savings: 0.10, cash: 0.10, gold: 0.10, usd: 0.10 },
+      tickers: [],
+      updatedAt: '2026-05-01T00:00:00.000Z',
+    };
+    storage.setItem(STORAGE_KEYS.portfolio, JSON.stringify(legacyRecord));
+    const repo = makeRepo();
+    expect(await repo.get()).toBeNull();
+  });
+
   it('DEFAULT_PORTFOLIO_CONFIG parses successfully against the schema', () => {
     const result = portfolioConfigSchema.safeParse(DEFAULT_PORTFOLIO_CONFIG);
     expect(result.success).toBe(true);

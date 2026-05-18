@@ -4,12 +4,11 @@ export const ASSET_CLASSES = ['stocks', 'savings', 'cash', 'gold', 'usd'] as con
 export type AssetClass = (typeof ASSET_CLASSES)[number];
 export type AssetAllocation = Record<AssetClass, number>;
 
-// Fixed allocation per teacher clarification (2026-05-10). Runtime value must equal this constant.
-// Zod schema enforces each literal; no UI surface allows editing.
-// Note: sums to 0.90 (stocks 50% + 4 non-stocks × 10%).
+// Fixed allocation per teacher clarification (2026-05-10) and resolution of ADR 008 (savings is 20%).
+// Runtime value must equal this constant. Zod schema enforces each literal; no UI surface allows editing.
 export const ASSET_ALLOCATION = {
   stocks:  0.50,
-  savings: 0.10,
+  savings: 0.20,
   cash:    0.10,
   gold:    0.10,
   usd:     0.10,
@@ -17,7 +16,7 @@ export const ASSET_ALLOCATION = {
 
 const assetAllocationSchema = z.object({
   stocks:  z.literal(0.50),
-  savings: z.literal(0.10),
+  savings: z.literal(0.20),
   cash:    z.literal(0.10),
   gold:    z.literal(0.10),
   usd:     z.literal(0.10),
