@@ -1,5 +1,10 @@
-export { portfolioConfigSchema, tickerSelectionSchema } from './schema';
-export type { PortfolioConfig, TickerSelection } from './schema';
+export {
+  portfolioConfigSchema,
+  tickerSelectionSchema,
+  ASSET_CLASSES,
+  ASSET_ALLOCATION,
+} from './schema';
+export type { PortfolioConfig, TickerSelection, AssetClass, AssetAllocation } from './schema';
 export {
   portfolioRepository,
   createLocalStoragePortfolioRepository,

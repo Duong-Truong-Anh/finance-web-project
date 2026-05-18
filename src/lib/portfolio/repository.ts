@@ -1,4 +1,4 @@
-import { portfolioConfigSchema, type PortfolioConfig } from './schema';
+import { portfolioConfigSchema, ASSET_ALLOCATION, type PortfolioConfig } from './schema';
 import { createStorageAdapter } from '../storage/adapter';
 import { STORAGE_KEYS } from '../storage/keys';
 
@@ -9,9 +9,9 @@ export interface PortfolioRepository {
 }
 
 export const DEFAULT_PORTFOLIO_CONFIG: PortfolioConfig = {
-  ratio: 0.40,
-  tickers: [],
-  updatedAt: '2026-01-01T00:00:00.000Z',
+  allocation: ASSET_ALLOCATION,
+  tickers:    [],
+  updatedAt:  '2026-01-01T00:00:00.000Z',
 };
 
 export function createLocalStoragePortfolioRepository(opts?: {
