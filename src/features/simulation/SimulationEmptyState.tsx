@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { Button, Tile } from '@carbon/react';
 import { AddDocument } from '@carbon/pictograms-react';
 
-// Reuses the Dashboard's pictogram (ADR 002) for empty-state language consistency across pages.
+// Reuses the Dashboard's pictogram (ADR 005) for empty-state language consistency across pages.
 
 export default function SimulationEmptyState() {
   return (

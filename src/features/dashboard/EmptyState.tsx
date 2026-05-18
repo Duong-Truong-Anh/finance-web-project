@@ -4,7 +4,7 @@ import { Button, Tile } from '@carbon/react';
 import { AddDocument } from '@carbon/pictograms-react';
 
 // TaskAdd does not exist in @carbon/pictograms-react@11; AddDocument is the closest semantic match.
-// ADR recorded in docs/decisions/002_add-document-pictogram.md.
+// ADR recorded in docs/decisions/005_add-document-pictogram.md.
 
 export default function EmptyState() {
   return (
