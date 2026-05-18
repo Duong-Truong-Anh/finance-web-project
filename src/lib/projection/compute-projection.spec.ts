@@ -63,8 +63,10 @@ function workedExampleTransactions(): Transaction[] {
 
 // Per-asset contributions for worked example:
 //   stocks:  floor(5,500,000 × 0.50) = 2,750,000/month
-//   savings/cash/gold/usd: floor(5,500,000 × 0.10) = 550,000/month each
-const STOCKS_PMT  = 2_750_000;
+//   savings: floor(5,500,000 × 0.20) = 1,100,000/month
+//   cash/gold/usd: floor(5,500,000 × 0.10) = 550,000/month each
+const STOCKS_PMT   = 2_750_000;
+const SAVINGS_PMT  = 1_100_000;
 const NONSTOCK_PMT = 550_000;
 
 const WORKED_INPUT: ProjectionInput = {
@@ -81,18 +83,17 @@ describe('computeProjection', () => {
       // All scenarios share the same contributions; pick mid
       const { byAsset } = scenarios[1];
       expect(byAsset.stocks.totalContributed.amount).toBe(165_000_000);   // 2,750,000 × 60
-      expect(byAsset.savings.totalContributed.amount).toBe(33_000_000);  // 550,000 × 60
+      expect(byAsset.savings.totalContributed.amount).toBe(66_000_000);   // 1,100,000 × 60
       expect(byAsset.cash.totalContributed.amount).toBe(33_000_000);
       expect(byAsset.gold.totalContributed.amount).toBe(33_000_000);
       expect(byAsset.usd.totalContributed.amount).toBe(33_000_000);
     });
 
-    it('total totalContributed is 297,000,000 for all scenarios', () => {
+    it('total totalContributed is 330,000,000 for all scenarios', () => {
       const { scenarios } = computeProjection(WORKED_INPUT);
-      // 4,950,000/month × 60 = 297,000,000
-      // Note: ASSET_ALLOCATION sums to 0.90 (not 1.00); see ADR 008 (docs/decisions/008_asset-allocation-sum-discrepancy.md).
+      // 5,500,000/month × 60 = 330,000,000 (ASSET_ALLOCATION sums to 1.00 per ADR 008 resolution)
       for (const s of scenarios) {
-        expect(s.totalContributed.amount).toBe(297_000_000);
+        expect(s.totalContributed.amount).toBe(330_000_000);
       }
     });
 
@@ -108,7 +109,7 @@ describe('computeProjection', () => {
 
     it('series[60] for savings matches closed-form annuity-due FV within ±1', () => {
       const { scenarios } = computeProjection(WORKED_INPUT);
-      const expected = Math.round(annuityDueFV(NONSTOCK_PMT, ASSET_RATES.savings));
+      const expected = Math.round(annuityDueFV(SAVINGS_PMT, ASSET_RATES.savings));
       const actual = scenarios[0].byAsset.savings.series[60].value.amount;
       expect(Math.abs(actual - expected)).toBeLessThanOrEqual(1);
     });
@@ -150,7 +151,7 @@ describe('computeProjection', () => {
 
       // V_a_yr30 = V_a_60 × (1 + g_a)^25
       const stocksFv60 = annuityDueFV(STOCKS_PMT, 0.175);
-      const savingsFv60 = annuityDueFV(NONSTOCK_PMT, ASSET_RATES.savings);
+      const savingsFv60 = annuityDueFV(SAVINGS_PMT, ASSET_RATES.savings);
       const cashFv60 = NONSTOCK_PMT * 60;
       const goldFv60 = annuityDueFV(NONSTOCK_PMT, ASSET_RATES.gold);
       const usdFv60 = NONSTOCK_PMT * 60;
