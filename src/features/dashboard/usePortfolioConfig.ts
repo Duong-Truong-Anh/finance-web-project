@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   portfolioRepository,
   DEFAULT_PORTFOLIO_CONFIG,
@@ -11,7 +11,11 @@ type State =
   | { status: 'ready'; config: PortfolioConfig }
   | { status: 'error'; error: Error };
 
-export function usePortfolioConfig(): State {
+export type UsePortfolioConfigResult = State & {
+  set: (next: PortfolioConfig) => Promise<void>;
+};
+
+export function usePortfolioConfig(): UsePortfolioConfigResult {
   const [state, setState] = useState<State>({ status: 'loading' });
 
   useEffect(() => {
@@ -29,5 +33,11 @@ export function usePortfolioConfig(): State {
     };
   }, []);
 
-  return state;
+  const set = useCallback(async (next: PortfolioConfig) => {
+    await portfolioRepository.set(next);
+    setState({ status: 'ready', config: next });
+  }, []);
+
+  // Memoized so consumers' useMemo deps see stable identity until state changes.
+  return useMemo<UsePortfolioConfigResult>(() => ({ ...state, set }), [state, set]);
 }
