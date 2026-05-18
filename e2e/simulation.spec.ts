@@ -1,5 +1,5 @@
 import { test, expect, type BrowserContext } from '@playwright/test';
-import { seedStorage, mockFx, attachErrorGuard, type ErrorGuard } from './fixtures/seed';
+import { seedStorage, mockFx, mockTickerSearch, attachErrorGuard, type ErrorGuard } from './fixtures/seed';
 import type { Transaction } from '../src/lib/transactions/schema';
 import type { PortfolioConfig, TickerSelection } from '../src/lib/portfolio/schema';
 import { STORAGE_KEYS } from '../src/lib/storage/keys';
@@ -61,11 +61,30 @@ async function seedPortfolio(context: BrowserContext, config: PortfolioConfig): 
   );
 }
 
+async function seedFinnhubKey(context: BrowserContext, key: string): Promise<void> {
+  await context.addInitScript(
+    ({ storageKey, finnhubKey }) => {
+      window.localStorage.setItem(
+        storageKey,
+        JSON.stringify({
+          displayCurrency: 'VND',
+          theme: 'g90',
+          finnhubKey,
+          fxAutoRefresh: true,
+          schemaVersion: 1,
+        }),
+      );
+    },
+    { storageKey: STORAGE_KEYS.settings, finnhubKey: key },
+  );
+}
+
 let guard: ErrorGuard;
 
 test.beforeEach(async ({ page, context }) => {
   guard = attachErrorGuard(page);
   await mockFx(context);
+  await mockTickerSearch(context);
 });
 
 test.afterEach(async () => {
@@ -99,10 +118,10 @@ test('populated — allocation tile, chart, 9 milestone tiles, and 5-row per-ass
   await expect(page.getByText('Asset allocation')).toBeVisible();
   await expect(page.getByText('Your stocks (5 slots)')).toBeVisible();
 
-  // Region A — all 5 ticker slots filled with the seeded symbols
+  // Region A — all 5 ticker slots filled with the seeded symbols (ComboBox displays symbol-only when description is empty)
   const symbols = ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA'];
   for (let i = 0; i < symbols.length; i += 1) {
-    await expect(page.getByLabel(`Ticker ${i + 1}`)).toHaveValue(symbols[i]);
+    await expect(page.getByRole('combobox', { name: `Ticker ${i + 1}` })).toHaveValue(symbols[i]);
   }
 
   // Region B — projection chart SVG
@@ -118,20 +137,44 @@ test('populated — allocation tile, chart, 9 milestone tiles, and 5-row per-ass
   await expect(page.getByText('Year 30: Mid (17.5%)')).toBeVisible();
 });
 
-test('ticker entry persists across reload via portfolio repository', async ({ page, context }) => {
+test('free-text entry persists across reload via portfolio repository', async ({ page, context }) => {
   await seedStorage(context, { transactions: [SALARY] });
-  // No initial portfolio — start with empty tickers
+  // No initial portfolio, no Finnhub key — exercises the free-text fallback path
   await page.goto('/simulation');
 
-  const slot1 = page.getByLabel('Ticker 1');
+  const slot1 = page.getByRole('combobox', { name: 'Ticker 1' });
   await slot1.fill('aapl');
   await slot1.blur();
 
-  // Value normalises to uppercase locally
+  // ComboBox redisplays the committed selection via controlled selectedItem
   await expect(slot1).toHaveValue('AAPL');
 
   await page.reload();
 
-  // After reload, slot 1 still shows AAPL — proves the write hit the repository.
-  await expect(page.getByLabel('Ticker 1')).toHaveValue('AAPL');
+  await expect(page.getByRole('combobox', { name: 'Ticker 1' })).toHaveValue('AAPL');
+});
+
+test('dropdown selection commits the full TickerSelection (symbol + description)', async ({
+  page,
+  context,
+}) => {
+  await seedStorage(context, { transactions: [SALARY] });
+  await seedFinnhubKey(context, 'test-key-123');
+  await page.goto('/simulation');
+
+  const slot1 = page.getByRole('combobox', { name: 'Ticker 1' });
+  await slot1.fill('app');
+
+  // The mocked /api/tickers/search returns Apple Inc. — wait for it in the listbox
+  const appleOption = page.getByRole('option', { name: /AAPL.*Apple Inc\./ });
+  await expect(appleOption).toBeVisible({ timeout: 2000 });
+  await appleOption.click();
+
+  // ComboBox now shows "AAPL  ·  Apple Inc." per itemToString
+  await expect(slot1).toHaveValue(/AAPL.*Apple Inc\./);
+
+  await page.reload();
+
+  // After reload, the persisted description carries through
+  await expect(page.getByRole('combobox', { name: 'Ticker 1' })).toHaveValue(/AAPL.*Apple Inc\./);
 });

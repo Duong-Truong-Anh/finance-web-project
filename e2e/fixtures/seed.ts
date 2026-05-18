@@ -70,3 +70,45 @@ export async function mockFx(context: BrowserContext): Promise<void> {
     }),
   );
 }
+
+type TickerSearchResult = {
+  symbol: string;
+  description: string;
+  exchange: string | null;
+  type: string;
+};
+
+type TickerSearchOutcome =
+  | { ok: true; results: TickerSearchResult[] }
+  | { ok: false; error: 'no-key' | 'invalid-key' | 'rate-limited' | 'network' | 'unknown' };
+
+/**
+ * Mock /api/tickers/search. By default returns a small Apple-themed result set
+ * regardless of query; pass a function to vary the response per request body.
+ */
+export async function mockTickerSearch(
+  context: BrowserContext,
+  resolve: TickerSearchOutcome | ((body: { query: string; apiKey: string }) => TickerSearchOutcome) = {
+    ok: true,
+    results: [
+      { symbol: 'AAPL', description: 'Apple Inc.', exchange: null, type: 'Common Stock' },
+      { symbol: 'APPF', description: 'AppFolio Inc.', exchange: null, type: 'Common Stock' },
+    ],
+  },
+): Promise<void> {
+  await context.route('**/api/tickers/search', async (route) => {
+    const body = JSON.parse(route.request().postData() ?? '{}') as {
+      query?: string;
+      apiKey?: string;
+    };
+    const outcome =
+      typeof resolve === 'function'
+        ? resolve({ query: body.query ?? '', apiKey: body.apiKey ?? '' })
+        : resolve;
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(outcome),
+    });
+  });
+}
