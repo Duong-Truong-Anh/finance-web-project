@@ -11,7 +11,7 @@ interface Props {
   theme: Theme;
 }
 
-// Full-density: every monthly point (361 per scenario) — Simulation is the dense view per spec §4.
+// Full-density: every monthly point (361 per scenario). Simulation is the dense view per spec §4.
 // Dashboard downsamples to 31 yearly points; do not share the data shape.
 const TOTAL_MONTHS = 361;
 const SCENARIO_LABELS = ['Low (15%)', 'Mid (17.5%)', 'High (20%)'] as const;
@@ -30,7 +30,9 @@ export default function SimulationProjectionChart({ projection, displayCurrency,
   );
 
   const options = {
-    title: '30-year projection — monthly',
+    // Visible heading is rendered by SimulationPage and provides the chart's accessible name
+    // via aria-labelledby on a role="figure" wrapper. Empty title here avoids voice duplication.
+    title: '',
     axes: {
       bottom: {
         mapsTo: 'key',

@@ -24,7 +24,8 @@ export default function AllocationTile() {
         style={{ color: 'var(--cds-text-helper)', marginBlockEnd: 'var(--cds-spacing-06)' }}
       >
         Fixed allocation per the brief. Each net-flow contribution is split across the five
-        classes in these proportions.
+        classes in these proportions. The 50% stocks slice is split equally across the
+        tickers you enter on the right.
       </p>
       <ul
         style={{

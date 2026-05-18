@@ -115,7 +115,7 @@ test('populated — allocation tile, chart, 9 milestone tiles, and 5-row per-ass
 
   // Region C — per-asset summary: 5 asset rows under the header row
   await expect(page.getByText('Per-asset breakdown')).toBeVisible();
-  await expect(page.getByText('Year 30 — Mid (17.5%)')).toBeVisible();
+  await expect(page.getByText('Year 30: Mid (17.5%)')).toBeVisible();
 });
 
 test('ticker entry persists across reload via portfolio repository', async ({ page, context }) => {

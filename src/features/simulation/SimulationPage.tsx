@@ -65,7 +65,7 @@ export default function SimulationPage({ initialCurrency, initialTheme }: Props)
   const fxState = useFx();
   const cfgState = usePortfolioConfig();
 
-  // Local optimistic ticker state — fixes the blur-race when two slots fire close together.
+  // Local optimistic ticker state: fixes the blur-race when two slots fire close together.
   const persistedTickers =
     cfgState.status === 'ready' ? cfgState.config.tickers : null;
   const [localTickers, setLocalTickers] = useState<TickerSelection[]>(persistedTickers ?? []);
@@ -199,24 +199,17 @@ export default function SimulationPage({ initialCurrency, initialTheme }: Props)
         </h1>
       </Column>
 
-      {/* Region A — Configuration */}
-      <Column sm={4} md={8} lg={6} style={{ marginBlockEnd: 'var(--cds-spacing-07)' }}>
+      {/* Region A: Configuration */}
+      <Column sm={4} md={8} lg={5} style={{ marginBlockEnd: 'var(--cds-spacing-07)' }}>
         <AllocationTile />
       </Column>
 
-      <Column sm={4} md={8} lg={10} style={{ marginBlockEnd: 'var(--cds-spacing-07)' }}>
+      <Column sm={4} md={8} lg={11} style={{ marginBlockEnd: 'var(--cds-spacing-07)' }}>
         <p
           className="cds--type-productive-heading-03"
           style={{ marginBlockEnd: 'var(--cds-spacing-05)' }}
         >
           Your stocks (5 slots)
-        </p>
-        <p
-          className="cds--type-label-01"
-          style={{ color: 'var(--cds-text-helper)', marginBlockEnd: 'var(--cds-spacing-05)' }}
-        >
-          Enter a symbol and tab away to save. The 50% stocks allocation is split equally across
-          the slots you fill.
         </p>
         <div
           style={{
@@ -234,30 +227,37 @@ export default function SimulationPage({ initialCurrency, initialTheme }: Props)
             />
           ))}
         </div>
+        {missing > 0 && (
+          <div style={{ marginBlockStart: 'var(--cds-spacing-05)' }}>
+            <InlineNotification
+              kind="info"
+              lowContrast
+              title={`Add ${missing} more ticker${missing === 1 ? '' : 's'} to complete your portfolio.`}
+              hideCloseButton
+            />
+          </div>
+        )}
       </Column>
 
-      {missing > 0 && (
-        <Column sm={4} md={8} lg={16} style={{ marginBlockEnd: 'var(--cds-spacing-05)' }}>
-          <InlineNotification
-            kind="info"
-            lowContrast
-            title="Portfolio incomplete"
-            subtitle={`Add ${missing} more ticker${missing === 1 ? '' : 's'} to complete your portfolio. The projection assumes the 50% stocks allocation is split equally across 5 stocks regardless of how many symbols you have entered.`}
-            hideCloseButton
-          />
-        </Column>
-      )}
-
-      {/* Region B — Projection chart */}
+      {/* Region B: Projection chart */}
       <Column sm={4} md={8} lg={16} style={{ marginBlockEnd: 'var(--cds-spacing-07)' }}>
-        <SimulationProjectionChart
-          projection={projection}
-          displayCurrency={initialCurrency}
-          theme={initialTheme}
-        />
+        <p
+          id="sim-chart-heading"
+          className="cds--type-productive-heading-03"
+          style={{ marginBlockEnd: 'var(--cds-spacing-05)' }}
+        >
+          30-year projection
+        </p>
+        <div role="figure" aria-labelledby="sim-chart-heading">
+          <SimulationProjectionChart
+            projection={projection}
+            displayCurrency={initialCurrency}
+            theme={initialTheme}
+          />
+        </div>
       </Column>
 
-      {/* Region C — Milestones + per-asset summary */}
+      {/* Region C: Milestones + per-asset summary */}
       <Column sm={4} md={8} lg={16} style={{ marginBlockEnd: 'var(--cds-spacing-07)' }}>
         <p
           className="cds--type-productive-heading-03"

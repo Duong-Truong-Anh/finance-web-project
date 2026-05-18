@@ -35,7 +35,7 @@ export default function MilestoneGrid({ projection, displayCurrency, locale }: P
       style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(3, 1fr)',
-        gap: 'var(--cds-spacing-05)',
+        gap: 'var(--cds-spacing-07)',
       }}
     >
       {HORIZONS.flatMap((horizon) =>
@@ -91,7 +91,7 @@ export default function MilestoneGrid({ projection, displayCurrency, locale }: P
                   fontVariantNumeric: 'tabular-nums',
                 }}
               >
-                Per stock (÷5): {format(perStockMoney, locale)}
+                Per ticker: {format(perStockMoney, locale)}
               </p>
             </Tile>
           );

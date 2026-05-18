@@ -32,7 +32,7 @@ export default function PerAssetSummary({ projection, locale }: Props) {
         <StructuredListRow head>
           <StructuredListCell head>Asset</StructuredListCell>
           <StructuredListCell head>Contributed (months 1–60)</StructuredListCell>
-          <StructuredListCell head>Year 30 — Mid (17.5%)</StructuredListCell>
+          <StructuredListCell head>Year 30: Mid (17.5%)</StructuredListCell>
         </StructuredListRow>
       </StructuredListHead>
       <StructuredListBody>

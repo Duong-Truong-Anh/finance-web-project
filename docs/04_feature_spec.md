@@ -213,24 +213,31 @@ Three regions, top to bottom.
 
 **Region A — Configuration.**
 
-- **Allocation tile** (`<Tile>`, `<Column lg={6}>`): five rows showing the fixed allocation
-  (stocks 50%, savings 20%, cash 10%, gold 10%, USD 10%). Read-only display; no slider, no
-  inputs, no decorative pictograms. Label-percent rows in a single Tile, not five inner Tiles
-  (the inner-grid pattern would trip the "identical icon-heading-text grid" anti-reference).
-- **Ticker slots** (`<Column lg={10}>`): a row of five `<Tile>`s, one Carbon `<TextInput>` per
-  Tile, accepting a symbol string (1–20 chars). Persists on blur via the writeable
-  `usePortfolioConfig.set()` — symbol is trimmed and uppercased before save. Manual entry
-  only; Finnhub-backed autocomplete and live prices are deferred to Phase 3.2b.
+- **Allocation tile** (`<Tile>`, `<Column lg={5}>`): five rows showing the fixed allocation
+  (stocks 50%, savings 20%, cash 10%, gold 10%, USD 10%) plus a single subtitle paragraph
+  that absorbs both the "fixed by the brief" framing and the "50% stocks slice splits equally
+  across your tickers" rule. Read-only display; no slider, no inputs, no decorative
+  pictograms. Label-percent rows in a single Tile, not five inner Tiles (the inner-grid
+  pattern would trip the "identical icon-heading-text grid" anti-reference).
+- **Ticker slots** (`<Column lg={11}>`): a row of five bare Carbon `<TextInput>`s — no outer
+  Tile chrome; the input's bottom-border affordance per DESIGN.md §5 is the visible
+  boundary. Each accepts a symbol string (1–20 chars). Persists on blur via the writeable
+  `usePortfolioConfig.set()`: symbol is trimmed and uppercased before save. Manual entry
+  only; Finnhub-backed autocomplete and live prices are deferred to Phase 3.2b. The
+  partial-state `<InlineNotification>` sits inside this column, below the ticker row.
 
 **Region B — Projection chart** (`<Column lg={16}>`):
 
-Carbon Charts `<LineChart>` with three series ("Low (15%)", "Mid (17.5%)", "High (20%)") at
-full 361-point monthly density. Carbon Charts' built-in tooltip surfaces all three values on
-hover; data-vis palette positions 1–3 carry the series colors. A single threshold reference
-line at month 60 marks the end of the contribution window. Height ~440px. Y-axis title
-`Value (${displayCurrency})`. X-axis title `Month`; auto-ticks. The Dashboard's chart is the
-yearly-downsampled condensed view; this one is the dense view — they intentionally do not
-share a component.
+Visible section heading `<p class="cds--type-productive-heading-03">30-year projection</p>`
+above a `<div role="figure" aria-labelledby="sim-chart-heading">` wrapping the chart. The
+Carbon Charts `<LineChart>` is configured with `title: ''`; the accessible name flows from
+the page heading through the figure's aria-labelledby. Three series ("Low (15%)",
+"Mid (17.5%)", "High (20%)") at full 361-point monthly density. Carbon Charts' built-in
+tooltip surfaces all three values on hover; data-vis palette positions 1–3 carry the series
+colors. A single threshold reference line at month 60 marks the end of the contribution
+window. Height ~440px. Y-axis title `Value (${displayCurrency})`. X-axis title `Month`;
+auto-ticks. The Dashboard's chart is the yearly-downsampled condensed view; this one is the
+dense view: they intentionally do not share a component.
 
 **Region C — Milestones + per-asset summary** (`<Column lg={16}>`):
 
@@ -290,10 +297,10 @@ At `md`: regions stack into a single column; the ticker row keeps its 5-column g
   Dashboard's empty state per ADR 002), heading "No data yet", subtitle, and a single primary
   `<Button as={Link} href="/cash-flow">` CTA. Chart, ticker row, milestones do not render.
 - **Transactions present but `tickers.length < 5`.** An `<InlineNotification kind="info"
-  lowContrast hideCloseButton>` sits above Region B with the message "Add N more tickers to
-  complete your portfolio. The projection assumes the 50% stocks allocation is split equally
-  across 5 stocks regardless of how many symbols you have entered." Chart and milestones
-  render — the math is independent of ticker count.
+  lowContrast hideCloseButton>` sits inside the "Your stocks" block, directly below the
+  ticker row. Title only: "Add N more ticker(s) to complete your portfolio." The surrounding
+  Region A context provides the rule about equal-split-across-5; the notification stays
+  terse. Chart and milestones render regardless of ticker count: the math is independent.
 - **Loading.** `<SkeletonText heading>` for the title and `<SkeletonPlaceholder>` for the
   chart area while either `useTransactions` or `usePortfolioConfig` is loading.
 - **Error.** Separate `<InlineNotification kind="error">` for `txState` and `cfgState`
