@@ -60,6 +60,7 @@ The **pre-Carbon history** (V1 vanilla bento dashboard, Flowstate v0 hand-built 
 - Session 31 — Phase 3.1 — Multi-asset projection engine + PortfolioConfig refactor — 2026-05-10
   - Session 31 (addendum) — Phase 3.1 — Copilot review triage + ADR 008 — 2026-05-10
 - Session 32 — Phase 3.1.1 — Savings allocation resolution (0.10 → 0.20) — 2026-05-18
+- Session 33 — Phase 3.2 — Simulation page v1 (allocation, tickers, projection, milestones) — 2026-05-18
 
 ---
 
@@ -2532,6 +2533,69 @@ Second observation: the prompt asserted the allocation sum would be `1.0` exactl
 ### Recommendation for next session
 
 Phase 3.2 (Simulation page rewrite) is the next deliverable. Inputs the strategist has to bake in: the Simulation page consumes the new `Projection` shape (`byAsset` per scenario, total `series` + per-asset `series`), the allocation is now read-only at 50/20/10/10/10, and `04_feature_spec.md` §4 needs the parallel rewrite (including the 10%→20% fix in the spec-correction notice on line 202). The integration contract from Phase 3.1 / 3.1.1 is now locked; if the page wants per-ticker drill-down at milestones, `byAsset.stocks` is the path.
+
+## Session 33 — Phase 3.2: Simulation page v1 (2026-05-18)
+
+### What I asked the AI to do
+
+Build the Simulation page end-to-end against the locked Phase 3.1 integration contract: read-only allocation tile, five editable ticker slots (manual symbol entry; Finnhub deferred), a full-density 361-point three-line projection chart, a 3×3 milestone grid, and a per-asset summary `<StructuredList>`. Extend `usePortfolioConfig` with a `set()` writer so the ticker tiles can persist on blur. Rewrite `docs/04_feature_spec.md §4` in parallel, ship three Playwright cases, and append a Session 33 log entry. Do not touch `src/lib/`, the Dashboard, or the existing `ProjectionLineChart`.
+
+### What the AI did
+
+- **`src/features/dashboard/usePortfolioConfig.ts`** — extended the hook to return `UsePortfolioConfigResult = State & { set }`. `set` is a `useCallback`-stable async writer that delegates to `portfolioRepository.set(...)` and synchronously updates local state on resolve. The return value is wrapped in `useMemo` so Dashboard's `useMemo([..., cfgState, ...])` dependency keeps its referential identity until state actually changes — the previous read-only behavior is preserved byte-for-byte.
+- **`src/components/charts/SimulationProjectionChart.tsx`** — new chart wrapper. Carbon Charts `<LineChart>` with three full-density series (361 points × 3 = 1083 rows), one threshold reference line at month 60 labeled "End of contribution," height 440px, X-axis in linear month scale, Y-axis title `Value (${displayCurrency})`. Theme prop threaded the same way as `ProjectionLineChart`.
+- **`src/features/simulation/AllocationTile.tsx`** — single `<Tile>` with five label-percent rows from `ASSET_ALLOCATION` and `ASSET_CLASSES`. No inner Tiles (would trip the DESIGN.md §6 "identical icon-heading-text grid" anti-pattern). Tabular-nums on the percent column.
+- **`src/features/simulation/TickerInputTile.tsx`** — Carbon `<TextInput>` wrapped in a `<Tile>`, `maxLength=20`, `labelText={"Ticker N"}`. Controlled `draft` state. Render-phase sync (not `useEffect`) on prop changes — `react-hooks/set-state-in-effect` is enabled. Blur normalises to trimmed-uppercase and calls `onCommit(symbol)`.
+- **`src/features/simulation/MilestoneGrid.tsx`** — native CSS Grid (`grid-template-columns: repeat(3, 1fr)`) of 9 `<Tile>`s. Carbon `<Tag>` per cell paired with the scenario text label (color-plus-text per DESIGN.md). Tag colors: `green` Low / `blue` Mid / `purple` High. Per-stock divisor reads `byAsset.stocks.milestones[horizon]` and divides by 5. `role="grid"` + `role="gridcell"` + per-cell `aria-label` for SR users.
+- **`src/features/simulation/PerAssetSummary.tsx`** — `<StructuredListWrapper>` with `<StructuredListHead>` + 5 body rows. Columns: Asset, Contributed (months 1–60), Year 30 — Mid (17.5%). Reads `projection.scenarios[1].byAsset[asset]`.
+- **`src/features/simulation/SimulationEmptyState.tsx`** — `AddDocument` pictogram + "No data yet" heading + primary CTA linking to `/cash-flow`. Mirrors the Dashboard's `EmptyState` shape per ADR 002.
+- **`src/features/simulation/SimulationPage.tsx`** — `'use client'` orchestrator. Composes `useTransactions`, `useFx`, `usePortfolioConfig`. Holds local optimistic `localTickers` state seeded from the persisted array; render-phase sync hydrates on initial load. `handleSlotCommit(index, symbol)` computes the next ticker array (pad → assign/remove → compact), updates local state synchronously, fires `cfgState.set(...)` fire-and-forget. Renders the three regions, the partial-portfolio `<InlineNotification>` when `tickers.length < 5`, and the empty/loading/error states.
+- **`app/simulation/page.tsx`** — replaced the heading-only placeholder with a server component that reads `currency` + `theme` cookies and wraps `SimulationPage` in `<Grid>` + `<Column>`. Mirrors `app/cash-flow/page.tsx` and `app/page.tsx`.
+- **`docs/04_feature_spec.md §4`** — full rewrite. Stripped the spec-correction notice, replaced §4.1–§4.6 with the v1 description (three regions, real layout skeleton, actual interaction set, real empty/partial states, real a11y notes). The old §4.2–§4.6 v0 layout (slider, Change modal, AreaChart with multiple thresholds, cross-component highlight) is fully removed.
+- **`e2e/simulation.spec.ts`** — three Playwright cases with `attachErrorGuard` + `mockFx`: empty state CTA routes to `/cash-flow`; populated state asserts allocation tile heading, "Your stocks (5 slots)" header, 5 filled ticker slots, chart SVG presence, 9 `role="gridcell"` tiles, and the per-asset summary heading + Mid-scenario column header; ticker persistence enters "aapl" → blur → reload → still shows "AAPL".
+
+### What I learned
+
+- **`react-hooks/set-state-in-effect` is enforced.** The lint rule blocks the classic `useEffect(() => setState(props.x), [props.x])` prop-to-state sync pattern. The right fix is the render-phase pattern from the React docs: hold a `lastProp` state, compare during render, call the setters during render if it changed. Applied in both `TickerInputTile` (for the symbol prop) and `SimulationPage` (for the persistedTickers from cfgState).
+- **`useMemo` is load-bearing when a hook returns an object spread.** The original `usePortfolioConfig` returned `state` directly — referential identity changed only when state changed. The naive extension `return { ...state, set }` creates a fresh object every render, which would have invalidated Dashboard's `useMemo` over `[..., cfgState, ...]` on every render. Wrapping the return in `useMemo<UsePortfolioConfigResult>(() => ({ ...state, set }), [state, set])` restores the original referential-stability contract.
+- **`page.getByDisplayValue` doesn't exist on this Playwright version.** Switched to `page.getByLabel('Ticker N').toHaveValue('AAPL')` which uses Carbon `<TextInput>`'s `labelText` to find the input. The label-based locator is also more robust to component restructuring.
+- **AreaChart vs LineChart decision.** Per the strategist prompt's authorisation, I started with `<LineChart>` (proven in `ProjectionLineChart`) and did not spend cycles attempting `<AreaChart>`. Carbon Charts `<AreaChart>` defaults to stacked rendering for grouped series — non-cumulative three-series areas require an `Alluvial`-style config that didn't justify the time cost for a nice-to-have visual cue this phase. LineChart ships; AreaChart can be revisited if a future phase asks for the filled-band visual.
+- **`role="heading"` strict-mode locator.** I instinctively used `getByRole('heading', { name: ... })` in the first e2e draft, but the page renders section labels as `<p class="cds--type-productive-heading-03">` (DESIGN.md uses Carbon type classes on `<p>`s for visual hierarchy without inflating the heading outline). Tests must use `getByText` for those, not `getByRole('heading')`. Real `<h1>`/`<h2>` is reserved for page titles and empty-state titles.
+- **Carbon Tag color palette.** Carbon supports `type="purple"` (verified at build time) alongside the more common `green` / `blue` / `red`. The three-tier scenario tagging didn't need a fallback.
+
+### Spec drift / discrepancies / things noticed
+
+- **The strategist prompt referenced "ADR 005" for the AddDocument pictogram decision.** The actual ADR is `docs/decisions/002_add-document-pictogram.md`; `EmptyState.tsx` cites ADR 002 in its inline comment. Used ADR 002 in the new `SimulationEmptyState` comment for accuracy. No ADR-005 was needed for this phase, consistent with the prompt's "no new ADR" directive.
+- **`portfolioConfigSchema` requires `description: z.string().max(120)`** — empty string passes (`.max(120)` doesn't imply `.min(1)`). Confirmed; the schema accepts manual-entry tickers with `description: ''` and `exchange: null` as planned.
+- **Per-stock divisor semantics.** Spec §4.2 says "Per stock (÷5)". The math: `byAsset.stocks.milestones[horizon] / 5`. Rounded with `Math.round` so the divided Money's integer minor units stays integer. Documented inline.
+- **Pre-existing settings.spec.ts flakiness still present.** 4 settings cases continued to fail (theme radio click / pop-up confirmation gates). Pre-existing per Session 27; not introduced by this phase.
+
+### Quality gates
+
+| Gate | Result |
+|---|---|
+| `bunx tsc --noEmit` | ✅ 0 errors |
+| `bun run lint` | ✅ 0 errors, 0 warnings (after switching `useEffect` prop-sync to render-phase pattern) |
+| `bun run test` | ✅ 155 passed, 1 skipped (no new Vitest tests; chart + UI is e2e-tested) |
+| `bun run e2e` | ✅ 18 passed (15 pre-existing + 3 new simulation cases), 4 pre-existing settings flakes (unchanged from Session 27 baseline) |
+| `bun run build` | ✅ all 7 routes build cleanly |
+| `bun run fallow:check` | ✅ no regressions across 10 changed files (0 new issues) |
+
+### Carbon discipline
+
+- No raw hex, no drop shadows, no ad-hoc media queries. All colors and spacing through `var(--cds-*)`. Theme prop threaded into the chart so g90/g100/white re-theme for free.
+- Carbon components for every primitive: `<Tile>`, `<TextInput>`, `<LineChart>`, `<Tag>`, `<StructuredListWrapper>`, `<InlineNotification>`, `<Button>`, `<Grid>`/`<Column>`. Native CSS Grid only inside component-internal layout (the 5-slot ticker row and the 3×3 milestone grid) per the Carbon "Grid for page; flex/grid for component" rule.
+- Status uses color + text/icon: scenario tags are paired with the textual scenario name ("Low" / "Mid" / "High") and the percent label; color is never the only channel. The partial-portfolio `<InlineNotification kind="info">` carries its semantic via the kind prop, not by color alone.
+
+### Karpathy discipline
+
+- No new abstractions beyond the listed files. No shared `<MilestoneCell>` factory. No `MoneyDisplay` helper. The `divideByFive` helper is local to `MilestoneGrid.tsx`. The `computeNextTickers` helper is local to `SimulationPage.tsx`.
+- Did not refactor `ProjectionLineChart` for sharing. The yearly-downsampled Dashboard chart and the full-density Simulation chart have different data shapes and different formatting goals; deduplication at N=2 would have been premature per the strategist's Karpathy guidance.
+- Surgical extension of `usePortfolioConfig`: same file, same export name, same discriminated-union shape, additive `set` field. Dashboard imports unchanged.
+
+### Recommendation for next session
+
+Phase 3.2b — Finnhub-backed ticker autocomplete — is the next deliverable. The seam already exists: `TickerInputTile` currently takes a plain symbol prop and an `onCommit(symbol)` callback. The 3.2b version can either (a) compose a `<ComboBox>` inside the same tile (Carbon ships it; same blur/persistence pattern) or (b) introduce a sibling `TickerSearchTile` and let the parent decide which to render based on whether a Finnhub key is configured. The integration contract from Phase 3.1 is still locked; `TickerSelection.description` and `TickerSelection.exchange` are the fields Finnhub will populate. The pre-existing settings.spec.ts flake (4 cases) is now visible to anyone running the full suite — worth a small workflow phase to either fix the theme-radio click strategy or quarantine those tests behind a `test.fixme` marker.
 
 <!-- ──────────────────────────────────────────────────────────────────── -->
 <!-- APPEND NEW SESSION ENTRIES ABOVE THIS LINE.                          -->
