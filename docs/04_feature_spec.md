@@ -199,37 +199,52 @@ Validation uses the Zod schema; field-level `invalid` + `invalidText` props are 
 
 ## 4. Simulation (`/simulation`)
 
-> **Spec correction (post-Phase-1.W7 — teacher clarification 2026-05-10).** This section was authored against the old single-asset stocks-only model with a 30–50% slider. The teacher's clarification mandates a fixed five-asset allocation (stocks 50%, savings 10%, cash 10%, gold 10%, USD 10%); the slider is removed entirely. The page now displays the fixed allocation as read-only context, the five ticker pickers (still), the per-asset breakdown alongside the total, and milestone tiles for the total + a per-asset drill-down view. Sub-sections §4.2 / §4.3 / §4.4 below describe the **old** layout and stay as historical reference until Phase 3.2 ships the rewritten Simulation page; the **new** layout is described in `docs/03_calculation_spec.md` §3–§7 and will land in feature spec form alongside the Phase 3.2 implementation. Implementer agents working on Phase 3.x: trust the calculation spec over §4.2–§4.4 below.
-
 ### 4.1 Goal
 
-Configure and visualize the 30-year projection. The user picks the five tickers (stock allocation is fixed at 50%) and reads the milestone outcomes for both the total portfolio and the per-asset breakdown. The page is dense by design — this is the assignment's centerpiece.
+The dense, configurable view of the 30-year projection. The user reads the fixed asset
+allocation, enters up to five stock tickers, and reads the milestone outcomes — for the total
+portfolio (3 × 3 scenarios × horizons) and the per-asset breakdown at the mid scenario's
+30-year mark. This is the assignment's centerpiece; the Dashboard is the condensed view, this
+page is the dense one.
 
 ### 4.2 Carbon composition
 
 Three regions, top to bottom.
 
-**Region A — Configuration** (`<Column lg={16}>` wrapping a 2-column inner grid):
+**Region A — Configuration.**
 
-- Left: a `<Slider>` 30%–50%, step 1%, default 40%. Big readout above (`heading-04`) showing the live monthly investment value: "You're investing **2,200,000 ₫** every month."
-- Right: a 5-card row (`<Tile>` × 5 in a `<Column lg={3}>` × 5 sub-grid, then `lg={1}` filler — actually `lg={3}` × 5 + `lg={1}`). Each tile shows: ticker symbol (large, mono), company name (truncated), live last price + change %, and a `<Button kind="ghost" renderIcon={Edit}>Change</Button>` opening a `<ComboBox>` modal.
+- **Allocation tile** (`<Tile>`, `<Column lg={6}>`): five rows showing the fixed allocation
+  (stocks 50%, savings 20%, cash 10%, gold 10%, USD 10%). Read-only display; no slider, no
+  inputs, no decorative pictograms. Label-percent rows in a single Tile, not five inner Tiles
+  (the inner-grid pattern would trip the "identical icon-heading-text grid" anti-reference).
+- **Ticker slots** (`<Column lg={10}>`): a row of five `<Tile>`s, one Carbon `<TextInput>` per
+  Tile, accepting a symbol string (1–20 chars). Persists on blur via the writeable
+  `usePortfolioConfig.set()` — symbol is trimmed and uppercased before save. Manual entry
+  only; Finnhub-backed autocomplete and live prices are deferred to Phase 3.2b.
 
 **Region B — Projection chart** (`<Column lg={16}>`):
 
-A Carbon Charts `<AreaChart>` with three series (15%, 17.5%, 20%) over 360 months. The 17.5% line is the visual anchor (heavier stroke). Hover surfaces all three values at once via Carbon Charts' built-in tooltip group.
+Carbon Charts `<LineChart>` with three series ("Low (15%)", "Mid (17.5%)", "High (20%)") at
+full 361-point monthly density. Carbon Charts' built-in tooltip surfaces all three values on
+hover; data-vis palette positions 1–3 carry the series colors. A single threshold reference
+line at month 60 marks the end of the contribution window. Height ~440px. Y-axis title
+`Value (${displayCurrency})`. X-axis title `Month`; auto-ticks. The Dashboard's chart is the
+yearly-downsampled condensed view; this one is the dense view — they intentionally do not
+share a component.
 
-Vertical reference lines at month 60 (end of contribution), 120, 240, 360 — using Carbon Charts' `thresholds` feature.
+**Region C — Milestones + per-asset summary** (`<Column lg={16}>`):
 
-**Region C — Milestone Tiles** (`<Column lg={16}>`):
-
-A 3-row × 3-column Tile grid. Rows = horizon (Yr10, Yr20, Yr30). Columns = scenario (Low 15%, Mid 17.5%, High 20%). Each Tile shows:
-
-- Horizon label (small, `label-01`)
-- Scenario badge (`<Tag size="sm">`)
-- Portfolio value (large, `productive-heading-05`, tabular nums)
-- Per-stock value (small, `body-compact-01`, prefixed "÷ 5: ")
-
-Below the milestone grid: a `<StructuredList>` showing total contributed, total growth (dollar/đồng amount), and effective multiple ("3.4×") at the mid scenario.
+- **Milestone grid:** native CSS Grid (`grid-template-columns: repeat(3, 1fr)`) of nine
+  `<Tile>`s. Rows = horizon (Year 10, Year 20, Year 30). Columns = scenario (Low / Mid /
+  High). Each Tile shows: horizon label (`label-01`), `<Tag size="sm">` for the scenario
+  paired with the scenario text (color is never the sole channel per DESIGN.md), portfolio
+  value (`productive-heading-05`, tabular nums), and the per-stock divisor `Per stock (÷5):`
+  value (`body-compact-01`). Tag colors: green for Low (steady ground), blue for Mid (the
+  anchor), purple for High (the optimistic case).
+- **Per-asset summary:** `<StructuredListWrapper>` with five rows (one per asset class).
+  Columns: Asset, Contributed (months 1–60), Year 30 — Mid (17.5%). Reads from
+  `projection.scenarios[1].byAsset[asset]`. This is the per-asset drill-down without
+  committing to a full per-asset chart (deferred to Phase 3.2c).
 
 ### 4.3 Layout
 
@@ -237,40 +252,61 @@ Below the milestone grid: a `<StructuredList>` showing total contributed, total 
 <Grid>
   <Column lg={16}><Heading>Simulation</Heading></Column>
 
-  <Column lg={6}><Tile><Slider/></Tile></Column>
-  <Column lg={10}><div className="ticker-row"><Tile/> × 5</div></Column>
+  <Column lg={6}><AllocationTile/></Column>
+  <Column lg={10}>"Your stocks" + <TickerInputTile/> × 5 in 5-column CSS grid</Column>
 
-  <Column lg={16}><AreaChart height={420}/></Column>
-
-  <Column lg={16}>
-    <Grid condensed>
-      <Column lg={5}><Tile/></Column> × 3 per row × 3 rows
-    </Grid>
+  <Column lg={16} when tickers.length < 5>
+    <InlineNotification kind="info" lowContrast title="Portfolio incomplete"/>
   </Column>
 
-  <Column lg={16}><StructuredList/></Column>
+  <Column lg={16}><SimulationProjectionChart height="440px"/></Column>
+
+  <Column lg={16}>"Milestone outcomes" + <MilestoneGrid/></Column>
+  <Column lg={16}>"Per-asset breakdown" + <PerAssetSummary/></Column>
 </Grid>
 ```
 
+At `md`: regions stack into a single column; the ticker row keeps its 5-column grid.
+
 ### 4.4 Interactions
 
-- Slider drags update the ratio in real time. Projection recomputes on every drag tick (50ms budget — tested).
-- Ticker tile "Change" opens a `<ComboBox>` modal with Finnhub-backed search. Picking a new ticker updates the portfolio.
-- Hovering a milestone Tile cross-highlights the corresponding point on the projection chart (a Carbon Charts custom interaction; if non-trivial, defer to v1.1 and document).
-- Currency switch in the header reflows all numbers on this page; chart re-renders with the new currency formatter.
+- **Ticker entry.** Typing in a slot updates a local optimistic state; blur normalises
+  (trim + uppercase), commits to local state synchronously, then fires
+  `usePortfolioConfig.set(...)` to persist via `portfolioRepository`. Local-first reads avoid
+  the blur-race when two slots commit close together. Empty after trim removes the slot
+  (tickers array stays contiguous to satisfy `portfolioConfigSchema.max(5)`).
+- **Currency reflow.** Toggling display currency in the header reflows milestone values,
+  per-asset summary values, and chart Y-axis labels via Carbon Charts' theme + the locale
+  formatter.
+- **No drag interactions.** The slider from the v0 spec is removed; allocation is fixed by
+  the assignment brief.
+- **Cross-component highlight (deferred to Phase 3.2c).** Hover-to-cross-highlight between
+  milestone Tile and chart point is non-trivial in Carbon Charts and not load-bearing for
+  comprehension.
 
-### 4.5 Empty / error states
+### 4.5 Empty / partial states
 
-- Fewer than 5 tickers picked → an `<InlineNotification kind="warning">` above the ticker row: "Pick X more ticker(s) to complete your portfolio. The projection still computes — the brief specifies equal allocation across 5."
-- No transactions yet → a stronger `<InlineNotification kind="info">` linking to `/cash-flow`: "The projection assumes zero contribution until you add transactions."
-- Finnhub fails on a price refresh → ticker tiles render symbol + name only, with a small "—" for price; a single banner `<InlineNotification>` reports the issue.
+- **No transactions.** Empty `<Tile>` with the `AddDocument` pictogram (matches the
+  Dashboard's empty state per ADR 002), heading "No data yet", subtitle, and a single primary
+  `<Button as={Link} href="/cash-flow">` CTA. Chart, ticker row, milestones do not render.
+- **Transactions present but `tickers.length < 5`.** An `<InlineNotification kind="info"
+  lowContrast hideCloseButton>` sits above Region B with the message "Add N more tickers to
+  complete your portfolio. The projection assumes the 50% stocks allocation is split equally
+  across 5 stocks regardless of how many symbols you have entered." Chart and milestones
+  render — the math is independent of ticker count.
+- **Loading.** `<SkeletonText heading>` for the title and `<SkeletonPlaceholder>` for the
+  chart area while either `useTransactions` or `usePortfolioConfig` is loading.
+- **Error.** Separate `<InlineNotification kind="error">` for `txState` and `cfgState`
+  errors; subtitle is the underlying error message.
 
 ### 4.6 Keyboard & a11y
 
-- Slider supports `Arrow Left/Right` (step 1%), `Page Up/Down` (step 5%), `Home/End` (min/max).
+- Each `<TextInput>` is the focusable affordance for its slot; `Tab` cycles slots in order,
+  `Enter` commits (Carbon `<TextInput>` default — blur fires on Tab/Enter).
+- Milestone grid uses `role="grid"` on the container and `role="gridcell"` on each Tile,
+  with an `aria-label` per cell reading "Year 10, Low scenario, X" for screen-reader users.
 - Chart text alternative is auto-generated by Carbon Charts.
-- Milestone Tiles have explicit `aria-label` reading "Year 10, mid scenario, 466 million đồng" for screen-reader users.
-- Ticker tiles are not links; the "Change" button inside each is the focusable affordance.
+- Allocation tile is a `<ul>` of definition pairs; screen readers announce as a list.
 
 ---
 
