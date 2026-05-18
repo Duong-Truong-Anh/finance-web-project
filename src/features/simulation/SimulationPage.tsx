@@ -14,6 +14,7 @@ import type { TickerSelection } from '@/src/lib/portfolio';
 import { useTransactions } from '@/src/features/cash-flow/useTransactions';
 import { useFx } from '@/src/features/cash-flow/useFx';
 import { usePortfolioConfig } from '@/src/features/dashboard/usePortfolioConfig';
+import { useSettings } from '@/src/features/settings/useSettings';
 import AllocationTile from './AllocationTile';
 import TickerInputTile from './TickerInputTile';
 import MilestoneGrid from './MilestoneGrid';
@@ -36,21 +37,11 @@ function localeFor(currency: Currency): 'vi-VN' | 'en-US' {
 function computeNextTickers(
   current: TickerSelection[],
   index: number,
-  symbol: string,
+  selection: TickerSelection | null,
 ): TickerSelection[] {
   const padded: Array<TickerSelection | null> = [...current];
   while (padded.length <= index) padded.push(null);
-  if (symbol === '') {
-    padded[index] = null;
-  } else {
-    const existing = padded[index];
-    padded[index] = {
-      symbol,
-      description: existing?.description ?? '',
-      exchange: existing?.exchange ?? null,
-      pickedAt: new Date().toISOString(),
-    };
-  }
+  padded[index] = selection;
   // Compact so the schema (max 5, contiguous) accepts it.
   return padded.filter((t): t is TickerSelection => t !== null);
 }
@@ -64,6 +55,9 @@ export default function SimulationPage({ initialCurrency, initialTheme }: Props)
   const { state: txState } = useTransactions();
   const fxState = useFx();
   const cfgState = usePortfolioConfig();
+  const settingsState = useSettings();
+  const finnhubKey =
+    settingsState.status === 'ready' ? settingsState.settings.finnhubKey : null;
 
   // Local optimistic ticker state: fixes the blur-race when two slots fire close together.
   const persistedTickers =
@@ -91,9 +85,9 @@ export default function SimulationPage({ initialCurrency, initialTheme }: Props)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [txState, cfgState, fxState, initialCurrency]);
 
-  function handleSlotCommit(index: number, symbol: string) {
+  function handleSlotCommit(index: number, selection: TickerSelection | null) {
     if (cfgState.status !== 'ready') return;
-    const next = computeNextTickers(localTickers, index, symbol);
+    const next = computeNextTickers(localTickers, index, selection);
     setLocalTickers(next);
     void cfgState.set({
       ...cfgState.config,
@@ -222,8 +216,9 @@ export default function SimulationPage({ initialCurrency, initialTheme }: Props)
             <TickerInputTile
               key={i}
               index={i}
-              symbol={localTickers[i]?.symbol ?? ''}
-              onCommit={(symbol) => handleSlotCommit(i, symbol)}
+              selection={localTickers[i] ?? null}
+              finnhubKey={finnhubKey}
+              onCommit={(selection) => handleSlotCommit(i, selection)}
             />
           ))}
         </div>
