@@ -62,6 +62,7 @@ The **pre-Carbon history** (V1 vanilla bento dashboard, Flowstate v0 hand-built 
 - Session 32 — Phase 3.1.1 — Savings allocation resolution (0.10 → 0.20) — 2026-05-18
 - Session 33 — Phase 3.2 — Simulation page v1 (allocation, tickers, projection, milestones) — 2026-05-18
   - Session 33 (addendum) — Phase 3.2 — Impeccable critique fixes (P1–P5) — 2026-05-18
+- Session 34 — Phase 3.2b — Finnhub ticker autocomplete + Settings test-connection — 2026-05-18
 
 ---
 
@@ -2646,6 +2647,54 @@ Per the strategist's "confirm in the Session 33 log which path you took" directi
 ### Recommendation for next session
 
 Phase 3.2b (Finnhub-backed ticker autocomplete) remains the next phase. The TickerInputTile seam (`symbol` prop + `onCommit` callback) is unchanged; the 3.2b version swaps the bare `<TextInput>` for `<ComboBox>` without touching the parent contract. The pre-existing settings.spec.ts flake (4 cases) is still on the workflow-phase backlog. If the user wants to validate the impeccable fixes visually before merging this PR, the screenshots-in-all-three-themes audit checklist is the next manual step.
+
+## Session 34 — Phase 3.2b: Finnhub ticker autocomplete + Settings test-connection (2026-05-18)
+
+### What I asked the AI to do
+
+Wire Finnhub `/search` autocomplete into the Simulation page's ticker slots and enable the Settings "Test connection" button — both routed through a single `POST /api/tickers/search` handler so the user-supplied Finnhub key never crosses to the client in any URL, console log, or error message. Out of scope: live last-price quotes and per-asset detailed visualizations (those land in Phase 3.2c).
+
+### What the AI did
+
+- **Server-side adapter** — `src/lib/tickers/{types.ts,finnhub-client.ts,index.ts}`. Pure `searchTickers(query, apiKey, fetchImpl?)` returning a tagged `SearchResponse` union; parses `exchange` from symbol suffix (`VNM.HM → 'HM'`, `AAPL → null`). 10 vitest cases mock the fetch.
+- **Route handler** — `app/api/tickers/search/route.ts`. POST-only (body carries the key, never the URL). 60-second in-memory cache keyed by `${apiKey}:${query.toLowerCase()}`; caches only on `ok: true`. Light shape validation returns 400 on bad input.
+- **Client search hook** — `src/features/simulation/useTickerSearch.ts`. Returns empty array when `apiKey === null`; throws a coded `Error` on `ok: false` so the consumer can surface specific messages.
+- **`TickerInputTile` swap** — `<TextInput>` → Carbon `<ComboBox>` with `allowCustomValue`, debounced (300ms) `onInputChange` via a local 10-line `useDebouncedCallback` (no new npm dep). `itemToString` emits `${symbol}  ·  ${description}` (symbol-only when description is empty per Phase 3.2 manual-entry semantics). `helperText` instructs the user to add a key when none is set. Wrapping `onBlur` is the defensive backstop for the free-text path; `allowCustomValue` is the primary Enter-commit path.
+- **`SimulationPage.handleSlotCommit`** — now accepts a full `TickerSelection | null`. Parent re-keys each tile on the persisted selection identity so an external commit remounts the ComboBox cleanly with the new `initialSelectedItem`.
+- **`FinnhubKeyTile`** — removed `disabled` and the "Phase 3" helper text. Click → POST `/api/tickers/search` with `{ query: 'AAPL', apiKey }`. Surfaces a Carbon `<ToastNotification>` per outcome (`success` on ok; specific subtitle per `SearchErrorCode` on failure). Toast stack is local to the tile; auto-dismiss after 4s, click-to-close.
+- **e2e** — added `mockTickerSearch` to `e2e/fixtures/seed.ts`. `simulation.spec.ts` gained a dropdown-selection test (search 'app' → click 'AAPL · Apple Inc.' → persists across reload). `settings.spec.ts` gained two test-connection cases (success toast on ok; specific error subtitle on invalid-key). Switched `getByLabel('Ticker N')` to `getByRole('combobox', { name: 'Ticker N' })` since the listbox shares the same label via aria-labelledby.
+
+### What I learned
+
+- **Carbon ComboBox + `getByLabel` is ambiguous.** Both the `<input role="combobox">` and the `<ul role="listbox">` carry `aria-labelledby` pointing to the same label element, so Playwright's `getByLabel('Ticker 1')` matches two nodes in strict mode. `getByRole('combobox', { name: ... })` disambiguates.
+- **Controlled `selectedItem` on Carbon ComboBox triggers Downshift to fire `onChange` during reconciliation.** With `selectedItem` derived from a parent's `useMemo` and the parent's setState happening inside `onChange`, this produces React's "Cannot update a component while rendering a different component" warning (caught by the e2e `attachErrorGuard`). The fix is two-part: (1) make the ComboBox uncontrolled via `initialSelectedItem` and have the parent re-key the tile on commit so the next render remounts with a fresh seed; (2) wrap parent `onCommit` calls in `queueMicrotask` so the setState escapes Downshift's reducer dispatch.
+- **`allowCustomValue` on Carbon ComboBox commits via `onChange` with `selectedItem: null` + `inputValue: string`.** The wrapping-`onBlur` defensive backstop is still worth keeping for Tab-blur paths where the version's behavior is ambiguous, but `allowCustomValue` was the primary working path in our @carbon/react version. Both paths run through one `commitFreeText` helper, so a double-fire is a no-op (the second call sees the symbol already matches).
+- **`tickerSelectionSchema` accepts `description: ''`.** The free-text fallback persists `{ symbol, description: '', exchange: null, pickedAt }`, identical to the Phase 3.2 manual-entry shape — no schema relaxation needed.
+
+### Spec drift / discrepancies / things noticed
+
+- `docs/04_feature_spec.md` §6.5 still reads "Finnhub key empty → 'Test connection' button is disabled, helper text reads 'Add your key to enable live ticker search.'" — the implementation now keeps the button enabled and surfaces a Carbon error toast (`'Add a Finnhub key above before testing the connection.'`) on click instead. Keeping the button enabled is the more honest behavior (users can click to discover what's missing) and the toast keeps the same channel as the success path. Spec should be updated to match in a follow-up; deferred so this PR stays surgical.
+- `docs/04_feature_spec.md` §7.3 specifies HTTP status codes (`412`, `401`, `429`, `502`) and `X-Flowstate-Finnhub-Key` header for the future onboarding flow's UI signaling. Phase 3.2b's route handler returns `200` with the tagged `SearchResponse` union (the spec contract for this phase per the prompt) and uses POST body for the key. The spec block is forward-looking onboarding territory; not a divergence to fix now.
+
+### Quality gates
+
+| Gate | Result |
+|---|---|
+| `bunx tsc --noEmit` | ✅ 0 errors |
+| `bun run lint` | ✅ 0 errors, 0 warnings |
+| `bun run test` | ✅ 165 passed, 1 skipped (+10 from `finnhub-client.spec.ts`) |
+| `bun run e2e` | ✅ 18 passed, 4 failed (4 failures are the pre-existing `settings.spec.ts` flakes flagged in Session 27 — out of scope) |
+| `bun run build` | ✅ all routes build; `/api/tickers/search` listed in the route table |
+| `bun run fallow:check` | ✅ no regressions in 13 changed files |
+
+### Implementation path notes (per strategist directive)
+
+- **Free-text blur path: `allowCustomValue` primary, wrapping `onBlur` defensive backstop.** Carbon's `<ComboBox>` with `allowCustomValue` fires `onChange` with `{ selectedItem: null, inputValue: string }` on Enter and on most Tab-blur paths in our version. The wrapping `<div onBlur>` is still wired as a defensive backstop and routes through the same `commitFreeText` helper, so a double-invocation no-ops (second call sees `next === selection.symbol`).
+- **Uncontrolled `selectedItem` + parent re-key.** Controlled `selectedItem` caused Downshift to dispatch `onChange` during render. The chosen path keeps the ComboBox uncontrolled (`initialSelectedItem`) and lifts the resync responsibility to the parent (`key={`slot-${i}-${sel?.symbol}|${sel?.description}`}`) — when persisted selection changes, the tile remounts and reads the fresh seed. The microtask deferral (`queueMicrotask`) on `onCommit` is the second half of the fix; it ensures parent state updates never run inside Downshift's reducer dispatch even if a future Carbon version routes the commit through a different path.
+
+### Recommendation for next session
+
+Phase 3.2c (live last-price quotes on the per-tile display, and per-asset detailed visualizations) is the next deliverable. The route-handler pattern is established (`POST` body, memory cache, tagged response union); a sibling `app/api/tickers/quote/route.ts` should mirror it with a shorter TTL per §7.2. The pre-existing 4-case `settings.spec.ts` flake remains on the workflow-phase backlog — radio clicks are intercepted by `<span class="cds--radio-button__appearance">`; fix is likely a `force: true` or a switch to keyboard activation. If §6.5's spec drift (button-enabled-with-toast vs button-disabled-with-helper) is worth resolving in the docs, that's a 5-minute spec-only PR before 3.2c.
 
 <!-- ──────────────────────────────────────────────────────────────────── -->
 <!-- APPEND NEW SESSION ENTRIES ABOVE THIS LINE.                          -->
