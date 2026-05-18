@@ -3,10 +3,9 @@ import Link from 'next/link';
 import { Button, Tile } from '@carbon/react';
 import { AddDocument } from '@carbon/pictograms-react';
 
-// TaskAdd does not exist in @carbon/pictograms-react@11; AddDocument is the closest semantic match.
-// ADR recorded in docs/decisions/005_add-document-pictogram.md.
+// Reuses the Dashboard's pictogram (ADR 005) for empty-state language consistency across pages.
 
-export default function EmptyState() {
+export default function SimulationEmptyState() {
   return (
     <Tile
       style={{
@@ -23,11 +22,11 @@ export default function EmptyState() {
       <h2 className="cds--type-productive-heading-03">No data yet</h2>
 
       <p className="cds--type-body-01" style={{ color: 'var(--cds-text-secondary)' }}>
-        Add your first income or expense to start projecting.
+        Add a transaction to start your 30-year projection.
       </p>
 
       <Button as={Link} href="/cash-flow" kind="primary">
-        Add a transaction
+        Add your first transaction
       </Button>
     </Tile>
   );
