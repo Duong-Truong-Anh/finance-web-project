@@ -33,25 +33,35 @@ export function FinnhubKeyTile({ settings, onSet }: Props) {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [testing, setTesting] = useState(false);
   const nextIdRef = useRef(0);
+  const timersRef = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
 
   const dismiss = useCallback((id: number) => {
+    const timer = timersRef.current.get(id);
+    if (timer) {
+      clearTimeout(timer);
+      timersRef.current.delete(id);
+    }
     setToasts((current) => current.filter((t) => t.id !== id));
   }, []);
 
-  useEffect(() => {
-    if (toasts.length === 0) return;
-    const timers = toasts.map((t) =>
-      setTimeout(() => dismiss(t.id), TOAST_TIMEOUT_MS),
-    );
-    return () => {
-      timers.forEach(clearTimeout);
-    };
-  }, [toasts, dismiss]);
+  // Clear any outstanding timers on unmount.
+  useEffect(
+    () => () => {
+      timersRef.current.forEach(clearTimeout);
+      timersRef.current.clear();
+    },
+    [],
+  );
 
-  function pushToast(toast: Omit<Toast, 'id'>) {
+  const pushToast = useCallback((toast: Omit<Toast, 'id'>) => {
     const id = nextIdRef.current++;
     setToasts((current) => [...current, { ...toast, id }]);
-  }
+    const timer = setTimeout(() => {
+      timersRef.current.delete(id);
+      setToasts((current) => current.filter((t) => t.id !== id));
+    }, TOAST_TIMEOUT_MS);
+    timersRef.current.set(id, timer);
+  }, []);
 
   function handleBlur() {
     const trimmed = draft.trim();
