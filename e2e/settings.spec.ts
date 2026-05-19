@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { seedStorage, mockFx, attachErrorGuard, type ErrorGuard } from './fixtures/seed';
+import { seedStorage, mockFx, mockTickerSearch, attachErrorGuard, type ErrorGuard } from './fixtures/seed';
 import { STORAGE_KEYS } from '../src/lib/storage/keys';
 
 let guard: ErrorGuard;
@@ -107,4 +107,55 @@ test('theme change applies immediately without page reload', async ({ page, cont
 
   await page.getByRole('radio', { name: /White/ }).click();
   await expect(page.locator('html')).toHaveClass(/cds--white/);
+});
+
+test('test connection: surfaces success toast when Finnhub returns ok', async ({ page, context }) => {
+  await seedStorage(context);
+  await context.addInitScript(
+    ({ key, value }) => window.localStorage.setItem(key, value),
+    {
+      key: STORAGE_KEYS.settings,
+      value: JSON.stringify({
+        displayCurrency: 'VND',
+        theme: 'g90',
+        finnhubKey: 'valid-key',
+        fxAutoRefresh: true,
+        schemaVersion: 1,
+      }),
+    },
+  );
+  await mockTickerSearch(context, {
+    ok: true,
+    results: [{ symbol: 'AAPL', description: 'Apple Inc.', exchange: null, type: 'Common Stock' }],
+  });
+
+  await page.goto('/settings');
+  await page.getByRole('button', { name: 'Test connection' }).click();
+
+  await expect(page.getByText('Connected')).toBeVisible();
+  await expect(page.getByText('Live ticker search is working.')).toBeVisible();
+});
+
+test('test connection: surfaces specific error toast for invalid key', async ({ page, context }) => {
+  await seedStorage(context);
+  await context.addInitScript(
+    ({ key, value }) => window.localStorage.setItem(key, value),
+    {
+      key: STORAGE_KEYS.settings,
+      value: JSON.stringify({
+        displayCurrency: 'VND',
+        theme: 'g90',
+        finnhubKey: 'bad-key',
+        fxAutoRefresh: true,
+        schemaVersion: 1,
+      }),
+    },
+  );
+  await mockTickerSearch(context, { ok: false, error: 'invalid-key' });
+
+  await page.goto('/settings');
+  await page.getByRole('button', { name: 'Test connection' }).click();
+
+  await expect(page.getByText('Connection failed')).toBeVisible();
+  await expect(page.getByText(/Finnhub rejected this key/)).toBeVisible();
 });
