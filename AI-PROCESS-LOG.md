@@ -63,6 +63,7 @@ The **pre-Carbon history** (V1 vanilla bento dashboard, Flowstate v0 hand-built 
 - Session 33 — Phase 3.2 — Simulation page v1 (allocation, tickers, projection, milestones) — 2026-05-18
   - Session 33 (addendum) — Phase 3.2 — Impeccable critique fixes (P1–P5) — 2026-05-18
 - Session 34 — Phase 3.2b — Finnhub ticker autocomplete + Settings test-connection — 2026-05-18
+  - Session 34 (addendum) — Copilot PR #31 triage — 2026-05-18
 
 ---
 
@@ -2695,6 +2696,21 @@ Wire Finnhub `/search` autocomplete into the Simulation page's ticker slots and 
 ### Recommendation for next session
 
 Phase 3.2c (live last-price quotes on the per-tile display, and per-asset detailed visualizations) is the next deliverable. The route-handler pattern is established (`POST` body, memory cache, tagged response union); a sibling `app/api/tickers/quote/route.ts` should mirror it with a shorter TTL per §7.2. The pre-existing 4-case `settings.spec.ts` flake remains on the workflow-phase backlog — radio clicks are intercepted by `<span class="cds--radio-button__appearance">`; fix is likely a `force: true` or a switch to keyboard activation. If §6.5's spec drift (button-enabled-with-toast vs button-disabled-with-helper) is worth resolving in the docs, that's a 5-minute spec-only PR before 3.2c.
+
+## Session 34 (addendum) — Copilot PR #31 triage (2026-05-18)
+
+### Verdict
+
+Both Copilot comments valid; both applied.
+
+| # | Concern | Verdict | Fix |
+|---|---|---|---|
+| 1 | Toast dismiss timer re-extends prior toasts when new ones push | Valid — real interaction bug | Moved timer into `pushToast`; each toast owns its own timer, dropped the `[toasts]`-watching effect, kept a `Map<id, Timer>` ref so manual dismiss clears its own timer |
+| 2 | Route-handler cache: unbounded growth + raw API key in memory | Valid (a) memory leak risk, (b) hypothetical leak via future log serialization | Hashed key in cache index (SHA-256 truncated to 16 chars); delete-on-access for expired entries; FIFO eviction at `MAX_CACHE_SIZE=100` |
+
+### What I learned
+
+Nothing new — both were standard "this works in dev but not under sustained load" patterns. The toast bug would have eventually surfaced under any rapid-fire test that pushes more than one toast inside 4s; worth knowing the failure mode for future toast implementations elsewhere in the codebase.
 
 <!-- ──────────────────────────────────────────────────────────────────── -->
 <!-- APPEND NEW SESSION ENTRIES ABOVE THIS LINE.                          -->
