@@ -1,10 +1,17 @@
 'use client';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { FocusEvent } from 'react';
-import { ComboBox } from '@carbon/react';
-import type { TickerSearchResult } from '@/src/lib/tickers';
+import { Button, ComboBox, SkeletonText, Tag } from '@carbon/react';
+import { ArrowDown, ArrowUp, Information, Renew } from '@carbon/icons-react';
+import type {
+  QuoteErrorCode,
+  TickerSearchResult,
+} from '@/src/lib/tickers';
 import type { TickerSelection } from '@/src/lib/portfolio';
+import type { Currency } from '@/src/lib/currency/types';
+import { format, type Locale } from '@/src/lib/currency/format';
 import { useTickerSearch } from './useTickerSearch';
+import { useTickerQuote, type QuoteState } from './useTickerQuote';
 
 interface Props {
   index: number;
@@ -46,6 +53,120 @@ function itemToString(r: TickerSearchResult | null): string {
   return r.description ? `${r.symbol}  ·  ${r.description}` : r.symbol;
 }
 
+function inferTickerCurrency(symbol: string): Currency {
+  return symbol.endsWith('.HM') || symbol.endsWith('.HN') ? 'VND' : 'USD';
+}
+
+function formatNativePrice(price: number, symbol: string): string {
+  const currency = inferTickerCurrency(symbol);
+  const locale: Locale = currency === 'VND' ? 'vi-VN' : 'en-US';
+  const minorUnits = Math.round(price * (currency === 'VND' ? 1 : 100));
+  return format({ amount: minorUnits, currency }, locale);
+}
+
+function formatPercent(dp: number): string {
+  const sign = dp > 0 ? '+' : '';
+  return `${sign}${dp.toFixed(2)}%`;
+}
+
+const ERROR_LABEL: Record<QuoteErrorCode, string> = {
+  'no-key': 'No key',
+  'invalid-key': 'Invalid key',
+  'rate-limited': 'Rate limited',
+  network: 'Network error',
+  unknown: 'Quote unavailable',
+};
+
+interface PriceRowProps {
+  state: QuoteState;
+  refresh: () => void;
+  symbol: string;
+}
+
+function PriceRow({ state, refresh, symbol }: PriceRowProps) {
+  if (state.status === 'idle') return null;
+
+  const rowStyle = {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 'var(--cds-spacing-03)',
+    minHeight: '1.5rem',
+  } as const;
+
+  if (state.status === 'loading') {
+    return (
+      <div style={rowStyle}>
+        <SkeletonText width="80px" />
+        <SkeletonText width="60px" />
+      </div>
+    );
+  }
+
+  if (state.status === 'error') {
+    return (
+      <div style={rowStyle}>
+        <Tag size="sm" type="warm-gray" renderIcon={Information}>
+          {ERROR_LABEL[state.error]}
+        </Tag>
+        <Button
+          kind="ghost"
+          size="sm"
+          hasIconOnly
+          iconDescription="Refresh price"
+          renderIcon={Renew}
+          onClick={refresh}
+        />
+      </div>
+    );
+  }
+
+  if (state.quote === null) {
+    return (
+      <div style={rowStyle}>
+        <span
+          className="cds--type-body-02"
+          style={{ color: 'var(--cds-text-helper)' }}
+        >
+          —
+        </span>
+        <span
+          className="cds--type-helper-text-01"
+          style={{ color: 'var(--cds-text-helper)' }}
+        >
+          No live price
+        </span>
+      </div>
+    );
+  }
+
+  const { currentPrice, percentChange } = state.quote;
+  const tagType: 'green' | 'red' | 'gray' =
+    percentChange > 0 ? 'green' : percentChange < 0 ? 'red' : 'gray';
+  const ArrowIcon = percentChange >= 0 ? ArrowUp : ArrowDown;
+
+  return (
+    <div style={rowStyle}>
+      <span
+        className="cds--type-body-02"
+        style={{ fontVariantNumeric: 'tabular-nums' }}
+      >
+        {formatNativePrice(currentPrice, symbol)}
+      </span>
+      <Tag size="sm" type={tagType} renderIcon={ArrowIcon}>
+        {formatPercent(percentChange)}
+      </Tag>
+      <Button
+        kind="ghost"
+        size="sm"
+        hasIconOnly
+        iconDescription="Refresh price"
+        renderIcon={Renew}
+        onClick={refresh}
+      />
+    </div>
+  );
+}
+
 export default function TickerInputTile({
   index,
   selection,
@@ -56,6 +177,12 @@ export default function TickerInputTile({
   const [items, setItems] = useState<TickerSearchResult[]>([]);
   const inputValueRef = useRef<string>(
     selection ? itemToString({ ...selection, type: '' }) : '',
+  );
+
+  const committedSymbol = selection?.symbol ?? null;
+  const { state: quoteState, refresh: refreshQuote } = useTickerQuote(
+    committedSymbol,
+    finnhubKey,
   );
 
   // Synthesized once at mount; parent re-keys the tile on commit so external
@@ -147,7 +274,14 @@ export default function TickerInputTile({
       : undefined;
 
   return (
-    <div onBlur={handleBlur}>
+    <div
+      onBlur={handleBlur}
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 'var(--cds-spacing-03)',
+      }}
+    >
       <ComboBox
         id={`ticker-slot-${slotNumber}`}
         titleText={`Ticker ${slotNumber}`}
@@ -160,6 +294,13 @@ export default function TickerInputTile({
         helperText={helperText}
         allowCustomValue
       />
+      {committedSymbol !== null && (
+        <PriceRow
+          state={quoteState}
+          refresh={refreshQuote}
+          symbol={committedSymbol}
+        />
+      )}
     </div>
   );
 }
