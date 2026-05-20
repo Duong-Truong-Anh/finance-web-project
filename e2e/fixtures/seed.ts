@@ -15,16 +15,27 @@ export const FX_SNAPSHOT: FxRateSnapshot = {
 /**
  * Seed LocalStorage before the page loads. addInitScript runs on every
  * navigation in the context. Call seedStorage before page.goto().
+ *
+ * Pass `seedTransactions: false` to skip the transactions initScript entirely —
+ * required for any test asserting that an action *clears* transactions storage,
+ * since the initScript would otherwise rewrite the key on the post-action
+ * navigation and mask the assertion.
  */
 export async function seedStorage(
   context: BrowserContext,
   opts: {
     transactions?: Transaction[];
+    seedTransactions?: boolean;
     theme?: 'g90' | 'g100' | 'white';
     currency?: 'VND' | 'USD';
   } = {},
 ): Promise<void> {
-  const { transactions = [], theme = 'g90', currency = 'VND' } = opts;
+  const {
+    transactions = [],
+    seedTransactions = true,
+    theme = 'g90',
+    currency = 'VND',
+  } = opts;
 
   await context.addCookies([
     { name: 'flowstate-theme', value: theme, url: 'http://localhost:3000' },
@@ -32,11 +43,17 @@ export async function seedStorage(
   ]);
 
   await context.addInitScript(
-    ({ txs, fx, txKey, fxKey }) => {
-      window.localStorage.setItem(txKey, JSON.stringify(txs));
+    ({ txs, fx, txKey, fxKey, seedTxs }) => {
+      if (seedTxs) window.localStorage.setItem(txKey, JSON.stringify(txs));
       window.localStorage.setItem(fxKey, JSON.stringify(fx));
     },
-    { txs: transactions, fx: FX_SNAPSHOT, txKey: TX_KEY, fxKey: FX_KEY },
+    {
+      txs: transactions,
+      fx: FX_SNAPSHOT,
+      txKey: TX_KEY,
+      fxKey: FX_KEY,
+      seedTxs: seedTransactions,
+    },
   );
 }
 

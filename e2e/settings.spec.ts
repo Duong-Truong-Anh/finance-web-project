@@ -55,52 +55,49 @@ test('reset flow: confirm button gated on exact "RESET" text, clears storage on 
   page,
   context,
 }) => {
-  // Seed empty transactions via seedStorage so the initScript writes an empty list on page reload
-  await seedStorage(context, { transactions: [] });
+  // Opt out of the transactions initScript so the post-reset navigation
+  // (window.location.href = '/') can't rewrite the transactions key and mask a
+  // broken reset. Cookies + FX still seed normally. Settings has no initScript
+  // here either, so the storage.settings === null assertion remains meaningful.
+  await seedStorage(context, { seedTransactions: false });
   await page.goto('/settings');
 
-  // Seed a transaction directly on the page so we can verify it gets deleted
-  await page.evaluate(({ key, txs }) => {
-    window.localStorage.setItem(key, JSON.stringify(txs));
-  }, {
-    key: STORAGE_KEYS.transactions,
-    txs: [
-      {
-        id: '01ARRW3H6B29ASJRX6AWR0VJ31',
-        kind: 'income',
-        name: 'Salary',
-        amount: { amount: 5000000, currency: 'VND' },
-        occurredOn: '2026-05-15',
-        notes: null,
-        createdAt: '2026-05-15T00:00:00.000Z',
-        updatedAt: '2026-05-15T00:00:00.000Z',
-      },
-    ],
-  });
-
-  // Seed some settings directly on the page (with custom finnhubKey) so there's something to reset
-  await page.evaluate(({ key, settings }) => {
-    window.localStorage.setItem(key, JSON.stringify(settings));
-  }, {
-    key: STORAGE_KEYS.settings,
-    settings: {
-      displayCurrency: 'USD',
-      theme: 'g100',
-      finnhubKey: 'test-key-123',
-      fxAutoRefresh: true,
-      schemaVersion: 1,
+  await page.evaluate(
+    ({ txKey, txs, settingsKey, settings }) => {
+      window.localStorage.setItem(txKey, JSON.stringify(txs));
+      window.localStorage.setItem(settingsKey, JSON.stringify(settings));
     },
-  });
-
-  // Reload page so settings and transactions are rendered from the localStorage we just wrote
-  await page.reload();
+    {
+      txKey: STORAGE_KEYS.transactions,
+      txs: [
+        {
+          id: '01ARRW3H6B29ASJRX6AWR0VJ31',
+          kind: 'income',
+          name: 'Salary',
+          amount: { amount: 5000000, currency: 'VND' },
+          occurredOn: '2026-05-15',
+          notes: null,
+          createdAt: '2026-05-15T00:00:00.000Z',
+          updatedAt: '2026-05-15T00:00:00.000Z',
+        },
+      ],
+      settingsKey: STORAGE_KEYS.settings,
+      settings: {
+        displayCurrency: 'USD',
+        theme: 'g100',
+        finnhubKey: 'test-key-123',
+        fxAutoRefresh: true,
+        schemaVersion: 1,
+      },
+    },
+  );
 
   // Open the Reset modal
   await page.getByRole('button', { name: 'Reset all data' }).click();
 
-  // Confirm button should be disabled with empty input
-  // Carbon's danger modal wraps the text as "danger Reset" for screen readers
-  const confirmBtn = page.getByRole('button', { name: /Reset/ }).last();
+  // Scope the confirm button to the dialog so we don't match the trigger button.
+  const dialog = page.getByRole('dialog', { name: /Reset all data\?/ });
+  const confirmBtn = dialog.getByRole('button', { name: /Reset/ });
   await expect(confirmBtn).toBeDisabled();
 
   // Type wrong text — still disabled
@@ -117,15 +114,20 @@ test('reset flow: confirm button gated on exact "RESET" text, clears storage on 
   // After reset, expect navigation to /
   await page.waitForURL('/');
 
-  // Verify that customized settings and transactions were reset/cleared
-  const storage = await page.evaluate(() => {
-    return {
-      txs: window.localStorage.getItem('flowstate:v1:transactions'),
-      settings: window.localStorage.getItem('flowstate:v1:settings'),
-    };
-  });
+  // Verify that customized settings and transactions were reset/cleared. Pass the
+  // storage keys in as arguments since page.evaluate runs in browser context where
+  // STORAGE_KEYS isn't directly importable.
+  const storage = await page.evaluate(
+    (keys) => ({
+      txs: window.localStorage.getItem(keys.txs),
+      settings: window.localStorage.getItem(keys.settings),
+    }),
+    { txs: STORAGE_KEYS.transactions, settings: STORAGE_KEYS.settings },
+  );
 
-  expect(JSON.parse(storage.txs || '[]')).toEqual([]);
+  // With seedTransactions: false, no initScript rewrites the transactions key,
+  // so a passing assertion here is real evidence that the reset action cleared it.
+  expect(storage.txs).toBeNull();
   expect(storage.settings).toBeNull();
 });
 
