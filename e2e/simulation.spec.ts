@@ -1,5 +1,5 @@
 import { test, expect, type BrowserContext } from '@playwright/test';
-import { seedStorage, mockFx, mockTickerSearch, attachErrorGuard, type ErrorGuard } from './fixtures/seed';
+import { seedStorage, mockFx, mockTickerSearch, mockTickerQuote, attachErrorGuard, type ErrorGuard } from './fixtures/seed';
 import type { Transaction } from '../src/lib/transactions/schema';
 import type { PortfolioConfig, TickerSelection } from '../src/lib/portfolio/schema';
 import { STORAGE_KEYS } from '../src/lib/storage/keys';
@@ -85,6 +85,7 @@ test.beforeEach(async ({ page, context }) => {
   guard = attachErrorGuard(page);
   await mockFx(context);
   await mockTickerSearch(context);
+  await mockTickerQuote(context);
 });
 
 test.afterEach(async () => {
@@ -177,4 +178,19 @@ test('dropdown selection commits the full TickerSelection (symbol + description)
 
   // After reload, the persisted description carries through
   await expect(page.getByRole('combobox', { name: 'Ticker 1' })).toHaveValue(/AAPL.*Apple Inc\./);
+});
+
+test('live price renders under the ComboBox when a symbol is committed and a Finnhub key is set', async ({
+  page,
+  context,
+}) => {
+  await seedStorage(context, { transactions: [SALARY] });
+  await seedPortfolio(context, FULL_PORTFOLIO);
+  await seedFinnhubKey(context, 'test-key-123');
+  await page.goto('/simulation');
+
+  // mockTickerQuote returns $185.42 +1.23% by default; assert both are visible.
+  await expect(page.getByText('$185.42').first()).toBeVisible({ timeout: 4000 });
+  await expect(page.getByText('+1.23%').first()).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Refresh price' }).first()).toBeVisible();
 });
