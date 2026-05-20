@@ -1,5 +1,6 @@
 import type {
   FinnhubResult,
+  QuoteResponse,
   SearchResponse,
   TickerSearchResult,
 } from './types';
@@ -36,4 +37,36 @@ function toTickerSearchResult(r: FinnhubResult): TickerSearchResult {
     exchange,
     type: r.type,
   };
+}
+
+export async function fetchQuote(
+  symbol: string,
+  apiKey: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<QuoteResponse> {
+  if (!apiKey) return { ok: false, error: 'no-key' };
+  if (!symbol.trim()) return { ok: true, quote: null };
+
+  try {
+    const url = `https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(symbol)}&token=${encodeURIComponent(apiKey)}`;
+    const res = await fetchImpl(url);
+
+    if (res.status === 401 || res.status === 403) return { ok: false, error: 'invalid-key' };
+    if (res.status === 429) return { ok: false, error: 'rate-limited' };
+    if (!res.ok) return { ok: false, error: 'network' };
+
+    const data = (await res.json()) as { c: number; dp: number | null; pc: number };
+    if (data.c === 0 && data.pc === 0) return { ok: true, quote: null };
+
+    return {
+      ok: true,
+      quote: {
+        currentPrice: data.c,
+        percentChange: data.dp ?? 0,
+        fetchedAt: new Date().toISOString(),
+      },
+    };
+  } catch {
+    return { ok: false, error: 'network' };
+  }
 }
