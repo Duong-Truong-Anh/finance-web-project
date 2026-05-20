@@ -55,14 +55,11 @@ test('reset flow: confirm button gated on exact "RESET" text, clears storage on 
   page,
   context,
 }) => {
-  // Use seedStorage to get the theme/currency cookies + FX snapshot in place, then
-  // seed transactions and settings via page.evaluate AFTER navigation. The Reset
-  // button doesn't depend on either being rendered — it's always present — so we
-  // don't need a reload to hydrate React state from the seeded values. Skipping
-  // the reload also means the seedStorage initScript can't re-clobber transactions,
-  // and we avoid adding any new initScript that would re-seed settings on the
-  // post-reset navigation to `/`.
-  await seedStorage(context, { transactions: [] });
+  // Opt out of the transactions initScript so the post-reset navigation
+  // (window.location.href = '/') can't rewrite the transactions key and mask a
+  // broken reset. Cookies + FX still seed normally. Settings has no initScript
+  // here either, so the storage.settings === null assertion remains meaningful.
+  await seedStorage(context, { seedTransactions: false });
   await page.goto('/settings');
 
   await page.evaluate(
@@ -128,7 +125,9 @@ test('reset flow: confirm button gated on exact "RESET" text, clears storage on 
     { txs: STORAGE_KEYS.transactions, settings: STORAGE_KEYS.settings },
   );
 
-  expect(JSON.parse(storage.txs ?? '[]')).toEqual([]);
+  // With seedTransactions: false, no initScript rewrites the transactions key,
+  // so a passing assertion here is real evidence that the reset action cleared it.
+  expect(storage.txs).toBeNull();
   expect(storage.settings).toBeNull();
 });
 
