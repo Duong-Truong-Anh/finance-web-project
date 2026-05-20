@@ -66,6 +66,7 @@ The **pre-Carbon history** (V1 vanilla bento dashboard, Flowstate v0 hand-built 
   - Session 34 (addendum) — Copilot PR #31 triage — 2026-05-18
 - Session 35 — Phase 1.6.2 — Settings E2E & Accessibility Resolution — 2026-05-20
   - Session 35 (addendum) — Copilot PR #32 triage — 2026-05-20
+- Session 36 — Phase 3.2c.1 — Finnhub /quote integration (live last-price per ticker tile) — 2026-05-20
 
 ---
 
@@ -2767,6 +2768,66 @@ All three Copilot comments on `e2e/settings.spec.ts` valid; all three applied (P
 ### Recommendation for next session
 
 Phase 3.2c (live last-price quotes + per-asset detailed visualizations) is still the next deliverable. The 4-case `settings.spec.ts` flake that was on the workflow backlog through Session 27 is closed by Phase 1.6.2 + this addendum — the full e2e suite is green at `--workers=2`. The dev-server contention under default parallelism is worth a 30-minute investigation if it reproduces, but not a blocker.
+
+## Session 36 — Phase 3.2c.1: Finnhub /quote integration (2026-05-20)
+
+### What I asked the AI to do
+
+Wire the second half of the live-ticker integration: a Finnhub `/quote` lookup for the last price and percent change, rendered as a small "$185.42 ▴ 1.23%" readout below each ComboBox on the Simulation page. The quote is decorative — a credibility cue that the symbol exists and trades — and is explicitly never fed back into the deterministic projection math.
+
+### What the AI did
+
+- **Shared cache module** ([src/lib/tickers/route-cache.ts](src/lib/tickers/route-cache.ts), new) — extracted `cacheKeyFor` / `readCache` / `writeCache` from the search route into a `createRouteCache<T>()` factory. Each route handler now owns its own typed Map; TTL is a per-call parameter (search → 60s, quote → 30s). Adds a `dispose()` helper for test cleanup. Search route rewired in [app/api/tickers/search/route.ts](app/api/tickers/search/route.ts).
+- **Types** ([src/lib/tickers/types.ts](src/lib/tickers/types.ts)) — added `TickerQuote { currentPrice, percentChange, fetchedAt }`, `QuoteResponse` union, and `QuoteErrorCode`. Re-exported from [src/lib/tickers/index.ts](src/lib/tickers/index.ts).
+- **Adapter** ([src/lib/tickers/finnhub-client.ts](src/lib/tickers/finnhub-client.ts)) — `fetchQuote(symbol, apiKey, fetchImpl?)`. Mirrors `searchTickers` error mapping (`401/403 → invalid-key`, `429 → rate-limited`, network → `network`). Treats `{ c: 0, pc: 0 }` from Finnhub as "no quote available" → returns `{ ok: true, quote: null }`. +7 vitest cases in [finnhub-client.spec.ts](src/lib/tickers/finnhub-client.spec.ts) covering each branch.
+- **Route handler** ([app/api/tickers/quote/route.ts](app/api/tickers/quote/route.ts), new) — POST `{ symbol, apiKey }` → `QuoteResponse`, with the shared cache at 30s TTL.
+- **Client hook** ([src/features/simulation/useTickerQuote.ts](src/features/simulation/useTickerQuote.ts), new) — fetches on mount and on `symbol`/`apiKey` change; `refresh()` bumps a tick to retrigger. **No polling.** State is derived from a `requestKey` (`symbol:apiKey:tick`) and a `result` keyed by the same string, so the effect never calls `setState` synchronously in its body (works around the `react-hooks/set-state-in-effect` lint rule — see "What I learned" below).
+- **Tile display** ([src/features/simulation/TickerInputTile.tsx](src/features/simulation/TickerInputTile.tsx)) — wrapped the existing ComboBox in a flex column. New `<PriceRow>` renders four states: skeleton (loading), price + signed-percent `<Tag>` + refresh `<Button>` (ready), inert "— No live price" (ready with `quote: null`), and `<Tag type="warm-gray" renderIcon={Information}>` + refresh (error). Currency heuristic `inferTickerCurrency` is a tile-local function: `.HM` / `.HN` → VND, everything else → USD. Locale ternary is symbol-tied (`vi-VN` for VND, `en-US` for USD). `format()` is called with `Math.round(price * 100)` for USD so the integer-minor-units invariant on `Money` holds (avoids `185.42 * 100 = 18541.999…` IEEE 754 drift).
+- **E2E** ([e2e/fixtures/seed.ts](e2e/fixtures/seed.ts), [e2e/simulation.spec.ts](e2e/simulation.spec.ts)) — added `mockTickerQuote` (default returns the fixed AAPL-like `$185.42 +1.23%`) and one new test that asserts the price, percent tag, and refresh button all render when a symbol is committed and a Finnhub key is set.
+
+### What I learned
+
+- **ESLint's `react-hooks/set-state-in-effect` rejects the canonical async-fetch-in-effect pattern.** The implementer prompt provided a hook skeleton with `setState({ status: 'loading' })` and `setState({ status: 'idle' })` called synchronously in the effect body — the conventional React idiom for async data fetching. Modern `eslint-plugin-react-hooks` (the version this project uses) flags both as cascading-render hazards. Resolution: derive `idle`/`loading` from inputs (a `requestKey` string and a `result` keyed by the same string), and only call `setState` inside `.then`/`.catch` callbacks. Net effect is the same UX, but the state machine is now a pure function of `(requestKey, result)` plus async resolution — arguably cleaner than the original. This is the second time recently a "canonical" React pattern collided with this lint rule and required a derived-state restructure; worth knowing it's stricter than the React docs imply.
+- **Floating-point bite in the integer-minor-units conversion.** `185.42 * 100 === 18541.999999999996` in JavaScript. Without `Math.round()`, `format()` would have rendered `$185.41` for that specific price. Caught in plan review before any code was written — flagged as a discipline item for the project's `Money` invariant.
+- **Full e2e suite has a cold-start contention issue under default 5-worker parallelism**, but passes deterministically against a warm dev server (`bun run dev` first, then `bun run e2e` consuming the existing server via `reuseExistingServer`). Two cold-start runs in a row failed 13–18 unrelated specs (cash-flow, dashboard, currency-toggle, settings); the warm-server run was 23/23 green in 11.8s. This is the same contention Session 35 (addendum) flagged. Deferred per the prompt's explicit out-of-scope list.
+- **Carbon `<Tag>` colors that pair semantically clean with `<Information>` icon for advisory states** — `warm-gray` reads as "calm advisory, your main task is fine" (matches "the quote lookup didn't work, but the simulation still computes"). `WarningAlt` was rejected in the plan because the user's input isn't broken — the network is. This is a Signal Rule consideration that's not in §6 of DESIGN.md but probably should be: "color + icon must agree in tone, not just be present together."
+
+### Spec drift / discrepancies / things noticed
+
+- **§7.1 of [docs/04_feature_spec.md](docs/04_feature_spec.md) describes the Finnhub key as an `X-Flowstate-Finnhub-Key` header with a `process.env.FINNHUB_API_KEY` server-side fallback.** The actual implementation (established in Phase 3.2b) sends the key in the POST body, no header, no env fallback. This phase keeps the POST-body pattern for consistency (Karpathy: match existing style). If onboarding ships a new live-data surface, that's the natural moment to reconcile — either update the spec to POST-body, or migrate both routes to the header pattern in one focused PR.
+- **The lint rule conflict above** is worth a note in `docs/decisions/` if the team plans to write more async hooks. The derived-state-from-requestKey pattern is the right call-site default now; an ADR would shortcut future "why didn't you just setState in the effect?" review questions.
+
+### Quality gates
+
+| Gate | Result |
+|---|---|
+| `bunx tsc --noEmit` | ✅ 0 errors |
+| `bun run lint` | ✅ 0 errors, 0 warnings (after the derived-state restructure of `useTickerQuote`) |
+| `bun run test` | ✅ 172 passed, 1 skipped (was 165 + 1; +7 quote cases as forecast) |
+| `bun run e2e` (warm dev server) | ✅ 23/23 passed (was 22; +1 quote-display case as forecast) |
+| `bun run e2e` (cold start) | ⚠ Flaky — 13–18 unrelated specs fail to first-page-load under 5-worker thrash. Warm-server run is deterministic green. Pre-existing per Session 35 addendum. |
+| `bun run build` | ✅ All routes build; `/api/tickers/quote` listed alongside `/api/tickers/search` |
+| `bun run fallow:check` | ✅ 0 issues in 12 changed files |
+
+### Manual verification
+
+Manual smoke-test in browser (all three themes, four quote states) is **pending the user** since automated browser drive isn't part of this session. The four states the user should verify against `bun run dev`:
+
+1. Valid Finnhub key + AAPL → `$185.42 ▴ 1.23%` (live data, USD).
+2. Valid key + `VNM.HM` → price reads in VND (`đ` suffix, vi-VN grouping).
+3. No Finnhub key set → tile renders quiet (no price row at all).
+4. Unknown symbol → "— No live price" (inert dash + helper text).
+5. Invalid key → warm-gray `<Tag>` with Information icon reading "Invalid key", plus refresh button.
+
+Also: confirm the Finnhub key is absent from all request URLs in DevTools → Network (POST body only).
+
+### PR review triage
+
+N/A — fresh PR; triage to follow after Copilot/human review lands.
+
+### Recommendation for next session
+
+**Phase 3.2c.2: per-asset stacked-area chart** — visualize each ticker slot's contribution to the total stocks projection over the 30-year horizon. Carbon Charts ships a `StackedAreaChart` that should slot in alongside the existing line projection in Region B of Simulation. The per-asset breakdown table from Phase 3.2 already computes per-asset values at the milestone horizons; extending that to the full timeline is the load-bearing data wiring. Consider also: an ADR documenting the derived-state-from-requestKey pattern (so future async-hook authors don't burn a code-review round on rediscovering the lint constraint), and the §7.1 spec-drift reconciliation if it can land in the same PR cheaply.
 
 <!-- ──────────────────────────────────────────────────────────────────── -->
 <!-- APPEND NEW SESSION ENTRIES ABOVE THIS LINE.                          -->
