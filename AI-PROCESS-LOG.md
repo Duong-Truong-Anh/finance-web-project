@@ -65,6 +65,7 @@ The **pre-Carbon history** (V1 vanilla bento dashboard, Flowstate v0 hand-built 
 - Session 34 — Phase 3.2b — Finnhub ticker autocomplete + Settings test-connection — 2026-05-18
   - Session 34 (addendum) — Copilot PR #31 triage — 2026-05-18
 - Session 35 — Phase 1.6.2 — Settings E2E & Accessibility Resolution — 2026-05-20
+  - Session 35 (addendum) — Copilot PR #32 triage — 2026-05-20
 
 ---
 
@@ -2736,6 +2737,36 @@ Nothing new — both were standard "this works in dev but not under sustained lo
 - Why duplicate IDs break accessibility: Assistive technologies and browsers associate labels with inputs using matching `id` and `htmlFor` attributes. When duplicate IDs exist, the label is associated with the first element in DOM order (in this case, the hidden popover in the header), leaving the other input completely unlabeled and without an accessible name.
 - Why Carbon's `<Toggle>` maps to `role="switch"`: A toggle button toggles state between two values (like "On/Off"), which is semantically representing a switch rather than a simple true/false checkbox.
 - How `context.addInitScript` affects data reset flows: Playwright's `addInitScript` runs on *every* new document navigation. If seeded there, navigating back to `/` after a data reset re-seeds the transactions, making them reappear. Seeding with `page.evaluate` allows writing to `localStorage` for the current page only.
+
+## Session 35 (addendum) — Copilot PR #32 triage (2026-05-20)
+
+### Verdict
+
+All three Copilot comments on `e2e/settings.spec.ts` valid; all three applied (Phase 1.6.3 follow-up PR from master rather than rewriting merged history).
+
+| # | Concern | Verdict | Fix |
+|---|---|---|---|
+| 1 | `page.reload()` re-runs the `seedStorage` initScript and overwrites the `page.evaluate`-seeded transaction back to `[]` before the reset fires — so the "transactions cleared" assertion passes for the wrong reason | Valid — test was meaningless on the transactions side | Removed the reload; seeded both transactions and settings via a single `page.evaluate` after the initial `goto`. Reset button doesn't render either entity, so no rehydration is needed |
+| 2 | `getByRole('button', { name: /Reset/ }).last()` relies on DOM ordering to pick the modal danger primary over the trigger button | Valid — brittle to future re-ordering | Scoped to the dialog: `getByRole('dialog', { name: /Reset all data\?/ }).getByRole('button', { name: /Reset/ })` |
+| 3 | Hardcoded `'flowstate:v1:transactions'` / `'flowstate:v1:settings'` instead of imported `STORAGE_KEYS` constants | Valid — drift risk | Passed `STORAGE_KEYS.{transactions,settings}` into the `page.evaluate` as the second argument (constants aren't directly importable in the browser context) |
+
+### What I learned
+
+- **`addInitScript` is per-navigation, not per-page-load.** Anything `seedStorage` writes via `addInitScript` will re-fire on every subsequent `page.reload()` AND on the post-action navigation triggered by the Reset button (`/settings → /`). A test that asserts "storage was cleared" must either avoid initScripts that touch the same keys, or accept that the assertion is satisfied by the initScript rather than by the action under test. The first-pass fix I attempted introduced a new `addInitScript` for the settings key — which then re-seeded settings on the post-reset navigation and broke the `storage.settings === null` assertion. Final fix: no initScripts for the keys being asserted; seed via `page.evaluate` after `goto` and let the Reset button work against whatever's in storage at click time.
+- **The Session 35 stabilization makes the full settings suite green when dev-server contention is controlled.** Running `bun run e2e -- --workers=2` got 22/22 passing. The default-parallelism failures (`page.goto: Test timeout`) reproduced in this session were the Next.js dev server choking on simultaneous cold starts, not a code regression — confirmed by isolated and 2-worker runs both passing.
+
+### Quality gates
+
+| Gate | Result |
+|---|---|
+| `bunx tsc --noEmit` | ✅ 0 errors |
+| `bun run lint` | ✅ 0 errors, 0 warnings |
+| `bun run e2e -- settings.spec.ts` | ✅ 6/6 passed (incl. the reset test that this commit re-grounds) |
+| `bun run e2e -- --workers=2` | ✅ 22/22 passed |
+
+### Recommendation for next session
+
+Phase 3.2c (live last-price quotes + per-asset detailed visualizations) is still the next deliverable. The 4-case `settings.spec.ts` flake that was on the workflow backlog through Session 27 is closed by Phase 1.6.2 + this addendum — the full e2e suite is green at `--workers=2`. The dev-server contention under default parallelism is worth a 30-minute investigation if it reproduces, but not a blocker.
 
 <!-- ──────────────────────────────────────────────────────────────────── -->
 <!-- APPEND NEW SESSION ENTRIES ABOVE THIS LINE.                          -->
