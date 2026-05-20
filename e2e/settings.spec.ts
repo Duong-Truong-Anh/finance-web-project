@@ -29,8 +29,8 @@ test('renders with default values on empty storage', async ({ page, context }) =
   const keyInput = page.getByLabel('Finnhub key');
   await expect(keyInput).toHaveValue('');
 
-  // Auto-refresh toggle: on by default
-  const toggle = page.getByRole('checkbox', { name: /Refresh automatically/i });
+  // Auto-refresh toggle: on by default (Carbon's Toggle component uses role="switch")
+  const toggle = page.getByRole('switch', { name: /Refresh automatically/i });
   await expect(toggle).toBeChecked();
 });
 
@@ -38,8 +38,8 @@ test('currency change persists across reload', async ({ page, context }) => {
   await seedStorage(context);
   await page.goto('/settings');
 
-  // Switch to USD via the Settings page radio
-  await page.getByRole('radio', { name: /USD/ }).click();
+  // Switch to USD via the Settings page radio label (scoped to avoid clicking the hidden header popover switcher)
+  await page.getByRole('group', { name: 'Display currency' }).locator('label', { hasText: 'USD' }).click();
 
   // Header should reflect the new currency
   await expect(page.getByRole('button', { name: /Display currency: USD/ })).toBeVisible();
@@ -55,30 +55,52 @@ test('reset flow: confirm button gated on exact "RESET" text, clears storage on 
   page,
   context,
 }) => {
+  // Seed empty transactions via seedStorage so the initScript writes an empty list on page reload
   await seedStorage(context, { transactions: [] });
-
-  // Seed some settings so there's something to reset
-  await context.addInitScript(
-    ({ key, value }) => window.localStorage.setItem(key, value),
-    {
-      key: STORAGE_KEYS.settings,
-      value: JSON.stringify({
-        displayCurrency: 'USD',
-        theme: 'g100',
-        finnhubKey: null,
-        fxAutoRefresh: true,
-        schemaVersion: 1,
-      }),
-    },
-  );
-
   await page.goto('/settings');
+
+  // Seed a transaction directly on the page so we can verify it gets deleted
+  await page.evaluate(({ key, txs }) => {
+    window.localStorage.setItem(key, JSON.stringify(txs));
+  }, {
+    key: STORAGE_KEYS.transactions,
+    txs: [
+      {
+        id: '01ARRW3H6B29ASJRX6AWR0VJ31',
+        kind: 'income',
+        name: 'Salary',
+        amount: { amount: 5000000, currency: 'VND' },
+        occurredOn: '2026-05-15',
+        notes: null,
+        createdAt: '2026-05-15T00:00:00.000Z',
+        updatedAt: '2026-05-15T00:00:00.000Z',
+      },
+    ],
+  });
+
+  // Seed some settings directly on the page (with custom finnhubKey) so there's something to reset
+  await page.evaluate(({ key, settings }) => {
+    window.localStorage.setItem(key, JSON.stringify(settings));
+  }, {
+    key: STORAGE_KEYS.settings,
+    settings: {
+      displayCurrency: 'USD',
+      theme: 'g100',
+      finnhubKey: 'test-key-123',
+      fxAutoRefresh: true,
+      schemaVersion: 1,
+    },
+  });
+
+  // Reload page so settings and transactions are rendered from the localStorage we just wrote
+  await page.reload();
 
   // Open the Reset modal
   await page.getByRole('button', { name: 'Reset all data' }).click();
 
   // Confirm button should be disabled with empty input
-  const confirmBtn = page.getByRole('button', { name: /^Reset$/ }).last();
+  // Carbon's danger modal wraps the text as "danger Reset" for screen readers
+  const confirmBtn = page.getByRole('button', { name: /Reset/ }).last();
   await expect(confirmBtn).toBeDisabled();
 
   // Type wrong text — still disabled
@@ -92,20 +114,30 @@ test('reset flow: confirm button gated on exact "RESET" text, clears storage on 
   // Confirm — should navigate away and clear storage
   await confirmBtn.click();
 
-  // After reset, expect navigation to / and localStorage cleared
+  // After reset, expect navigation to /
   await page.waitForURL('/');
-  const storageLength = await page.evaluate(() => window.localStorage.length);
-  expect(storageLength).toBe(0);
+
+  // Verify that customized settings and transactions were reset/cleared
+  const storage = await page.evaluate(() => {
+    return {
+      txs: window.localStorage.getItem('flowstate:v1:transactions'),
+      settings: window.localStorage.getItem('flowstate:v1:settings'),
+    };
+  });
+
+  expect(JSON.parse(storage.txs || '[]')).toEqual([]);
+  expect(storage.settings).toBeNull();
 });
 
 test('theme change applies immediately without page reload', async ({ page, context }) => {
   await seedStorage(context);
   await page.goto('/settings');
 
-  await page.getByRole('radio', { name: /g100/ }).click();
+  // Click theme labels to avoid pointer event interception
+  await page.locator('label', { hasText: 'g100 – Darker' }).click();
   await expect(page.locator('html')).toHaveClass(/cds--g100/);
 
-  await page.getByRole('radio', { name: /White/ }).click();
+  await page.locator('label', { hasText: 'White – Light' }).click();
   await expect(page.locator('html')).toHaveClass(/cds--white/);
 });
 
