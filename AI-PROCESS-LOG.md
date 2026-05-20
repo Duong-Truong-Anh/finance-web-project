@@ -64,6 +64,7 @@ The **pre-Carbon history** (V1 vanilla bento dashboard, Flowstate v0 hand-built 
   - Session 33 (addendum) — Phase 3.2 — Impeccable critique fixes (P1–P5) — 2026-05-18
 - Session 34 — Phase 3.2b — Finnhub ticker autocomplete + Settings test-connection — 2026-05-18
   - Session 34 (addendum) — Copilot PR #31 triage — 2026-05-18
+- Session 35 — Phase 1.6.2 — Settings E2E & Accessibility Resolution — 2026-05-20
 
 ---
 
@@ -2711,6 +2712,30 @@ Both Copilot comments valid; both applied.
 ### What I learned
 
 Nothing new — both were standard "this works in dev but not under sustained load" patterns. The toast bug would have eventually surfaced under any rapid-fire test that pushes more than one toast inside 4s; worth knowing the failure mode for future toast implementations elsewhere in the codebase.
+
+## Session 35 — Phase 1.6.2 — Settings E2E & Accessibility Resolution (2026-05-20)
+
+### What I asked the AI to do
+
+- Address the outstanding E2E test failures in `e2e/settings.spec.ts`.
+- Perform a deep scan for correct web standards and resolve duplicate ID violations found.
+
+### What the AI did this session
+
+1. Identified duplicate `id="currency-vnd"` and `id="currency-usd"` inputs between the Settings page `DisplayCurrencyTile` and the Header `CurrencySwitcher` popover. This broke the accessible name mapping for the settings page currency selection radio buttons, causing E2E tests to fail.
+2. Refactored `DisplayCurrencyTile.tsx` to use unique `settings-currency-vnd` and `settings-currency-usd` IDs, restoring correct accessible label mapping.
+3. Updated E2E settings spec (`e2e/settings.spec.ts`):
+   - Corrected toggle query to use the `switch` role instead of `checkbox` since Carbon's `<Toggle>` component uses `role="switch"`.
+   - Scoped the display currency selection click to the `"Display currency"` group to avoid clicking the hidden header popover switcher.
+   - Refactored the reset flow test to seed custom data (transactions and settings) via `page.evaluate` and `page.reload` directly on the page, rather than `context.addInitScript`, preventing automatic re-seeding of the reset data on navigation to `/`.
+   - Updated the reset assertions to check that customized settings and transactions are cleared/null, accounting for the application's auto-initialization behavior on the dashboard.
+4. Ran the entire E2E test suite (`bun run e2e`), verifying that all 22 tests now pass successfully.
+
+### What I learned
+
+- Why duplicate IDs break accessibility: Assistive technologies and browsers associate labels with inputs using matching `id` and `htmlFor` attributes. When duplicate IDs exist, the label is associated with the first element in DOM order (in this case, the hidden popover in the header), leaving the other input completely unlabeled and without an accessible name.
+- Why Carbon's `<Toggle>` maps to `role="switch"`: A toggle button toggles state between two values (like "On/Off"), which is semantically representing a switch rather than a simple true/false checkbox.
+- How `context.addInitScript` affects data reset flows: Playwright's `addInitScript` runs on *every* new document navigation. If seeded there, navigating back to `/` after a data reset re-seeds the transactions, making them reappear. Seeding with `page.evaluate` allows writing to `localStorage` for the current page only.
 
 <!-- ──────────────────────────────────────────────────────────────────── -->
 <!-- APPEND NEW SESSION ENTRIES ABOVE THIS LINE.                          -->
