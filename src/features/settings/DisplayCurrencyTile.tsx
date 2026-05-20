@@ -30,8 +30,8 @@ export function DisplayCurrencyTile({ settings, onSet }: Props) {
         onChange={handleChange}
         orientation="vertical"
       >
-        <RadioButton id="currency-vnd" value="VND" labelText="VND – Vietnamese Đồng" />
-        <RadioButton id="currency-usd" value="USD" labelText="USD – US Dollar" />
+        <RadioButton id="settings-currency-vnd" value="VND" labelText="VND – Vietnamese Đồng" />
+        <RadioButton id="settings-currency-usd" value="USD" labelText="USD – US Dollar" />
       </RadioButtonGroup>
     </Tile>
   );
