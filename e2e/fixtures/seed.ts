@@ -129,3 +129,45 @@ export async function mockTickerSearch(
     });
   });
 }
+
+type TickerQuote = {
+  currentPrice: number;
+  percentChange: number;
+  fetchedAt: string;
+};
+
+type TickerQuoteOutcome =
+  | { ok: true; quote: TickerQuote | null }
+  | { ok: false; error: 'no-key' | 'invalid-key' | 'rate-limited' | 'network' | 'unknown' };
+
+/**
+ * Mock /api/tickers/quote. By default returns a fixed AAPL-like quote
+ * regardless of symbol; pass a function to vary the response per request body.
+ */
+export async function mockTickerQuote(
+  context: BrowserContext,
+  resolve: TickerQuoteOutcome | ((body: { symbol: string; apiKey: string }) => TickerQuoteOutcome) = {
+    ok: true,
+    quote: {
+      currentPrice: 185.42,
+      percentChange: 1.23,
+      fetchedAt: '2026-05-20T00:00:00.000Z',
+    },
+  },
+): Promise<void> {
+  await context.route('**/api/tickers/quote', async (route) => {
+    const body = JSON.parse(route.request().postData() ?? '{}') as {
+      symbol?: string;
+      apiKey?: string;
+    };
+    const outcome =
+      typeof resolve === 'function'
+        ? resolve({ symbol: body.symbol ?? '', apiKey: body.apiKey ?? '' })
+        : resolve;
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(outcome),
+    });
+  });
+}

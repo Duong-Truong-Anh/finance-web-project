@@ -22,3 +22,20 @@ export type FinnhubResult = {
   displaySymbol: string;
   type: string;
 };
+
+export type TickerQuote = {
+  currentPrice: number;
+  percentChange: number;
+  fetchedAt: string;
+};
+
+export type QuoteErrorCode =
+  | 'no-key'
+  | 'invalid-key'
+  | 'rate-limited'
+  | 'network'
+  | 'unknown';
+
+export type QuoteResponse =
+  | { ok: true; quote: TickerQuote | null }
+  | { ok: false; error: QuoteErrorCode };
