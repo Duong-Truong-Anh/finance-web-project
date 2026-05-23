@@ -15,7 +15,7 @@ interface Props {
   locale: Locale;
 }
 
-const ASSET_LABELS: Record<AssetClass, string> = {
+export const ASSET_LABELS: Record<AssetClass, string> = {
   stocks:  'Stocks',
   savings: 'Savings',
   cash:    'Cash',
