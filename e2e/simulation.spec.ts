@@ -138,6 +138,26 @@ test('populated — allocation tile, chart, 9 milestone tiles, and 5-row per-ass
   await expect(page.getByText('Year 30: Mid (17.5%)')).toBeVisible();
 });
 
+test('per-asset stacked-area chart renders below the projection chart on populated state', async ({
+  page,
+  context,
+}) => {
+  await seedStorage(context, { transactions: [SALARY, RENT, GROCERIES] });
+  await seedPortfolio(context, FULL_PORTFOLIO);
+  await page.goto('/simulation');
+
+  await expect(page.getByText('Per-asset growth (Mid scenario)')).toBeVisible();
+  await expect(
+    page.getByText('Composition of your portfolio at each month, mid scenario only.'),
+  ).toBeVisible();
+
+  // Carbon Charts renders its SVG inside .cds--chart-holder; assert one is present
+  // inside the figure scoped by aria-labelledby="sim-stacked-heading".
+  const figure = page.locator('[role="figure"][aria-labelledby="sim-stacked-heading"]');
+  await expect(figure).toBeVisible();
+  await expect(figure.locator('.cds--chart-holder svg').first()).toBeVisible({ timeout: 8000 });
+});
+
 test('free-text entry persists across reload via portfolio repository', async ({ page, context }) => {
   await seedStorage(context, { transactions: [SALARY] });
   // No initial portfolio, no Finnhub key — exercises the free-text fallback path
