@@ -242,9 +242,9 @@ dense view: they intentionally do not share a component.
 **Region B (cont.) — Per-asset stacked-area chart** (`<Column lg={16}>`):
 
 Visible section heading `<p class="cds--type-productive-heading-03">Per-asset growth (Mid
-scenario)</p>` followed by a single `body-compact-01` subtitle ("Composition of your
-portfolio at each month, mid scenario only."), then a `<div role="figure"
-aria-labelledby="sim-stacked-heading">` wrapping a Carbon Charts `<StackedAreaChart>`. Five
+scenario)</p>` directly above a `<div role="figure" aria-labelledby="sim-stacked-heading">`
+wrapping a Carbon Charts `<StackedAreaChart>` — no subtitle, to keep heading→figure
+composition parity with the line chart sibling above. Five
 series — Stocks, Savings, Cash, Gold, USD — at the same 361-point monthly density, sourced
 from `projection.scenarios[1].byAsset[asset].series` (mid scenario only). Height `360px`
 (deliberately shorter than the line chart to signal "secondary view"). Y-axis title

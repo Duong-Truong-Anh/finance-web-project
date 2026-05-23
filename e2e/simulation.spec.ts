@@ -147,9 +147,6 @@ test('per-asset stacked-area chart renders below the projection chart on populat
   await page.goto('/simulation');
 
   await expect(page.getByText('Per-asset growth (Mid scenario)')).toBeVisible();
-  await expect(
-    page.getByText('Composition of your portfolio at each month, mid scenario only.'),
-  ).toBeVisible();
 
   // Carbon Charts renders its SVG inside .cds--chart-holder; assert one is present
   // inside the figure scoped by aria-labelledby="sim-stacked-heading".

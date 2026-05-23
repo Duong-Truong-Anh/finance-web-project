@@ -269,12 +269,6 @@ export default function SimulationPage({ initialCurrency, initialTheme }: Props)
         >
           Per-asset growth (Mid scenario)
         </p>
-        <p
-          className="cds--type-body-compact-01"
-          style={{ marginBlockEnd: 'var(--cds-spacing-05)' }}
-        >
-          Composition of your portfolio at each month, mid scenario only.
-        </p>
         <div role="figure" aria-labelledby="sim-stacked-heading">
           <PerAssetStackedAreaChart
             projection={projection}
