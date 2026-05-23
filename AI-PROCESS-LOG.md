@@ -67,6 +67,7 @@ The **pre-Carbon history** (V1 vanilla bento dashboard, Flowstate v0 hand-built 
 - Session 35 — Phase 1.6.2 — Settings E2E & Accessibility Resolution — 2026-05-20
   - Session 35 (addendum) — Copilot PR #32 triage — 2026-05-20
 - Session 36 — Phase 3.2c.1 — Finnhub /quote integration (live last-price per ticker tile) — 2026-05-20
+- Session 37 — Phase 3.2c.2 — Per-asset stacked-area chart on Simulation (mid scenario) — 2026-05-23
 
 ---
 
@@ -2828,6 +2829,44 @@ N/A — fresh PR; triage to follow after Copilot/human review lands.
 ### Recommendation for next session
 
 **Phase 3.2c.2: per-asset stacked-area chart** — visualize each ticker slot's contribution to the total stocks projection over the 30-year horizon. Carbon Charts ships a `StackedAreaChart` that should slot in alongside the existing line projection in Region B of Simulation. The per-asset breakdown table from Phase 3.2 already computes per-asset values at the milestone horizons; extending that to the full timeline is the load-bearing data wiring. Consider also: an ADR documenting the derived-state-from-requestKey pattern (so future async-hook authors don't burn a code-review round on rediscovering the lint constraint), and the §7.1 spec-drift reconciliation if it can land in the same PR cheaply.
+
+## Session 37 — Phase 3.2c.2: per-asset stacked-area chart on Simulation (mid scenario) (2026-05-23)
+
+### What I asked the AI to do
+
+Add a Carbon `<StackedAreaChart>` to the Simulation page that visualizes how each of the five asset classes contributes to portfolio growth across the full 30-year horizon — sourced from `projection.scenarios[1].byAsset[asset].series` (mid only), at 361-point monthly density. Slot it as a new full-width sub-region between the existing line chart (Region B) and the milestone grid (Region C). Mid is fixed because four of the five `byAsset` series are scenario-identical per the calculation contract, so a scenario picker would be more confusing than illuminating.
+
+### What the AI did
+
+- **New component:** `src/components/charts/PerAssetStackedAreaChart.tsx` (`'use client'`, named import of `StackedAreaChart` from `@carbon/charts-react`). Data shape mirrors `SimulationProjectionChart`: `ASSET_CLASSES.flatMap(...)` over `mid.byAsset[asset].series` with `group: ASSET_LABELS[asset]`, `key: monthIndex`, `value: toMajor(...)`. `toMajor` inlined per the established N=2 pattern. Options: `title: ''` (figure provides the accessible name), linear month axis with `includeZero: true`, `points: { enabled: false }`, `height: '360px'` (shorter than the line chart's 440px to signal "secondary view"), no thresholds, no per-series colors — Carbon's data-vis palette assigns by position.
+- **`ASSET_LABELS` reuse:** Exported the existing map from `src/features/simulation/PerAssetSummary.tsx` instead of duplicating it (Karpathy: deduplicate at N=2 when the source-of-truth claim is shared).
+- **SimulationPage slot:** New `<Column lg={16}>` between the existing Region B line-chart column and the Region C milestones column. Visible heading (`productive-heading-03`) + one-line `body-compact-01` subtitle ("Composition of your portfolio at each month, mid scenario only.") above a `<div role="figure" aria-labelledby="sim-stacked-heading">`. Same `projection !== null` guard as the line chart.
+- **Spec update:** `docs/04_feature_spec.md` §4.2 gains a new "Region B (cont.)" sub-region documenting the StackedAreaChart, its mid-only convention with the per-contract rationale, height 360px, and palette/threshold posture. §4.3 layout sketch picks up the new column. The Per-asset summary blurb in Region C is re-pointed at the year-30-scalar role; the "deferred to Phase 3.2c" note is cleared.
+- **E2E:** +1 Playwright test in `e2e/simulation.spec.ts` asserting the new heading + subtitle are visible and a Carbon-Charts SVG renders inside the figure scoped by `aria-labelledby="sim-stacked-heading"`. Suite: 23 → 24 green.
+- **Commits:** Split into four per the prompt — `feat(simulation)` for the component, `feat(simulation)` for the slot-in, `docs(spec)` for the spec, `test(e2e)` for the test.
+
+### What I learned
+
+The first cut of the e2e assertion used `svg[role="img"]` based on a (wrong) assumption that Carbon Charts emits `role="img"` on its inner SVG. It does not in the version we're on — the assertion timed out, and the existing line-chart test's `.cds--chart-holder svg` selector is the right pattern. Worth recording because the prompt's "Carbon Charts emits `role="img"` on the chart SVG" line was load-bearing for my first selector choice; the actual rendered DOM is what the test must match. Next time, run the e2e once before trusting an assumed-DOM claim from the prompt.
+
+### Spec drift / discrepancies / things noticed
+
+- The prompt asked to "remove the 'deferred to Phase 3.2c' notes in §4.4 and §4.5 that this PR fulfils." §4.4 only contains a *cross-component-highlight* deferral, which is explicitly Out of Scope per the same prompt — not what this PR fulfils, so left untouched. §4.5 has no deferral note. The only deferral note this PR actually clears lives in §4.2 (Region C Per-asset summary line), which was rewritten accordingly.
+
+### Quality gates
+
+| Gate | Result |
+|---|---|
+| `bunx tsc --noEmit` | 0 errors |
+| `bun run lint` | 0 errors, 0 warnings |
+| `bun run test` | 172 passed + 1 skipped (no new unit tests; chart is a pure data-shape transform over an already-tested contract) |
+| `bun run e2e` | 24/24 green (was 23; +1 stacked-area render assertion) |
+| `bun run build` | All routes build |
+| `bun run fallow:check` | 0 issues across 18 changed-vs-master files |
+
+### Recommendation for next session
+
+Two open threads from the Phase 3.2c.1 recommendation remain untouched and are good candidates: (1) the ADR for the derived-state-from-`useEffect` lint workaround (the `react-hooks/set-state-in-effect` idiom in `useTickerQuote`), and (2) the §7.1 spec-drift reconciliation (Finnhub key header vs POST body). Both are documentation-shaped and small. If you want a code-shaped next phase instead, the natural extensions of Phase 3.2c.2 are either (a) hover cross-highlight between the line and stacked charts (still non-trivial per Carbon Charts' API), or (b) a year-axis variant — collapse the X-axis from 361 monthly points to 31 yearly points for a quieter read on the dashboard's condensed view.
 
 <!-- ──────────────────────────────────────────────────────────────────── -->
 <!-- APPEND NEW SESSION ENTRIES ABOVE THIS LINE.                          -->
