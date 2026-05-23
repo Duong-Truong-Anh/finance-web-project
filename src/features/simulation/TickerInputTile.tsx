@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { FocusEvent } from 'react';
 import { Button, ComboBox, SkeletonText, Tag } from '@carbon/react';
-import { ArrowDown, ArrowUp, Information, Renew } from '@carbon/icons-react';
+import { ArrowDown, ArrowUp, Information, Renew, Subtract } from '@carbon/icons-react';
 import type {
   QuoteErrorCode,
   TickerSearchResult,
@@ -64,9 +64,12 @@ function formatNativePrice(price: number, symbol: string): string {
   return format({ amount: minorUnits, currency }, locale);
 }
 
-function formatPercent(dp: number): string {
-  const sign = dp > 0 ? '+' : '';
-  return `${sign}${dp.toFixed(2)}%`;
+function formatPercent(rounded: number): string {
+  // Caller rounds to 2dp first so the sign here reflects the displayed
+  // magnitude — `-0.001` rounds to `0` and reads "0.00%", not "-0.00%".
+  if (rounded === 0) return '0.00%';
+  const sign = rounded > 0 ? '+' : '';
+  return `${sign}${rounded.toFixed(2)}%`;
 }
 
 const ERROR_LABEL: Record<QuoteErrorCode, string> = {
@@ -140,9 +143,11 @@ function PriceRow({ state, refresh, symbol }: PriceRowProps) {
   }
 
   const { currentPrice, percentChange } = state.quote;
+  const roundedPercent = Math.round(percentChange * 100) / 100;
   const tagType: 'green' | 'red' | 'gray' =
-    percentChange > 0 ? 'green' : percentChange < 0 ? 'red' : 'gray';
-  const ArrowIcon = percentChange >= 0 ? ArrowUp : ArrowDown;
+    roundedPercent > 0 ? 'green' : roundedPercent < 0 ? 'red' : 'gray';
+  const ChangeIcon =
+    roundedPercent > 0 ? ArrowUp : roundedPercent < 0 ? ArrowDown : Subtract;
 
   return (
     <div style={rowStyle}>
@@ -152,8 +157,8 @@ function PriceRow({ state, refresh, symbol }: PriceRowProps) {
       >
         {formatNativePrice(currentPrice, symbol)}
       </span>
-      <Tag size="sm" type={tagType} renderIcon={ArrowIcon}>
-        {formatPercent(percentChange)}
+      <Tag size="sm" type={tagType} renderIcon={ChangeIcon}>
+        {formatPercent(roundedPercent)}
       </Tag>
       <Button
         kind="ghost"
