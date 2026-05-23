@@ -68,6 +68,7 @@ The **pre-Carbon history** (V1 vanilla bento dashboard, Flowstate v0 hand-built 
   - Session 35 (addendum) — Copilot PR #32 triage — 2026-05-20
 - Session 36 — Phase 3.2c.1 — Finnhub /quote integration (live last-price per ticker tile) — 2026-05-20
 - Session 37 — Phase 3.2c.2 — Per-asset stacked-area chart on Simulation (mid scenario) — 2026-05-23
+  - Session 37 (addendum) — Phase 3.2c.2 — Retro skill audit + subtitle removal — 2026-05-23
 
 ---
 
@@ -2867,6 +2868,41 @@ The first cut of the e2e assertion used `svg[role="img"]` based on a (wrong) ass
 ### Recommendation for next session
 
 Two open threads from the Phase 3.2c.1 recommendation remain untouched and are good candidates: (1) the ADR for the derived-state-from-`useEffect` lint workaround (the `react-hooks/set-state-in-effect` idiom in `useTickerQuote`), and (2) the §7.1 spec-drift reconciliation (Finnhub key header vs POST body). Both are documentation-shaped and small. If you want a code-shaped next phase instead, the natural extensions of Phase 3.2c.2 are either (a) hover cross-highlight between the line and stacked charts (still non-trivial per Carbon Charts' API), or (b) a year-axis variant — collapse the X-axis from 361 monthly points to 31 yearly points for a quieter read on the dashboard's condensed view.
+
+## Session 37 (addendum) — Phase 3.2c.2: retro skill audit + subtitle removal (2026-05-23)
+
+### What I asked the AI to do
+
+I noticed the AI had shipped Session 37 without invoking the four skills the original prompt named (`karpathy-guidelines`, `carbon-builder`, `impeccable`, `fallow`). Asked it to explain why, then to run the three skipped retroactively (fallow was already covered by the CLI) as a skill-recovery audit on the in-flight PR #35 — with any findings applied as fix-up commits on the same branch.
+
+### What the AI did
+
+- **karpathy-guidelines audit:** Clean. No hidden generalization, no premature abstraction, no unnecessary fallback handling, no orphan comments. `toMajor` was inlined per the N=2 rule; `ASSET_LABELS` was reused, not duplicated. Surgical change discipline held.
+- **carbon-builder audit (standalone mode, embedded references):** Clean. Token-before-value pass, component-before-markup pass, no per-series color overrides on the chart, no raw hex, no arbitrary px, no ad-hoc media queries. The figure ARIA pattern matched the line chart exactly.
+- **impeccable composition audit (product register):** **One real finding.** The new chart slot used a heading+subtitle+figure pattern, but the line chart sibling above used heading+figure (no subtitle). That introduced a composition asymmetry inside Region B with no rationale visible to a reader, *and* the subtitle's "mid scenario only" tail was redundant with the heading's "(Mid scenario)" parenthetical. Recommended fix: drop the subtitle.
+- **Fix applied:** Removed the `<p class="cds--type-body-compact-01">` subtitle from `SimulationPage.tsx`. Removed the subtitle visibility assertion from `e2e/simulation.spec.ts`. Updated `docs/04_feature_spec.md` §4.2 Region B (cont.) to reflect heading→figure parity. The chart now visually matches the line chart's structural pattern.
+- **Heading-as-`<p>` observation, not fixed:** All four section headings on the Simulation page use `<p class="cds--type-productive-heading-03">` rather than `<h2>`. That's a page-wide screen-reader-outline defect that predates this PR; flagged in the audit, not fixed here. Candidate for a separate semantic-heading-pass phase.
+
+### What I learned
+
+**The prompt didn't substitute for the skills.** I had argued that the original prompt encoded the discipline these skills enforce — and that's *partly* true for karpathy and carbon-builder (no findings on the diff). But impeccable caught a real composition asymmetry the prompt didn't flag because the prompt was specifying-from-scratch, not auditing-the-result. The skill ran against actual code with the sibling region as context — and saw the parity break that no checklist would have caught at write-time. **Heuristic:** skills that audit *composition* (cross-component consistency, hierarchy, rhythm) are not substitutable by even a thorough prompt; they need to see the full surface, which only exists after the code does.
+
+### Spec drift / discrepancies / things noticed
+
+- All Simulation page section headings use `<p>` with a type-style class, not `<h2>`. Not introduced by 3.2c.2 or its addendum; flagged for a future semantic-heading pass.
+
+### Quality gates
+
+| Gate | Result |
+|---|---|
+| `bunx tsc --noEmit` | 0 errors |
+| `bun run lint` | 0 issues |
+| `bun run e2e` | 24/24 green on warm dev server (initial run had cold-start timeouts in `currency-toggle.spec.ts` + `dashboard.spec.ts`; re-run with warm server passed all 5) |
+| `bun run fallow:check` | 0 issues on changed files |
+
+### Recommendation for next session
+
+The same recommendations from Session 37 stand (derived-state ADR; §7.1 spec-drift reconciliation; optional year-axis variant of the new chart). Additional candidate now visible: a **semantic-heading pass on the Simulation page** — convert the four `<p class="cds--type-productive-heading-03">` region headings to `<h2>` with the same type-style class, restoring the document outline for screen readers. Small surgical PR, no visual change.
 
 <!-- ──────────────────────────────────────────────────────────────────── -->
 <!-- APPEND NEW SESSION ENTRIES ABOVE THIS LINE.                          -->
