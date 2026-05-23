@@ -239,6 +239,23 @@ window. Height ~440px. Y-axis title `Value (${displayCurrency})`. X-axis title `
 auto-ticks. The Dashboard's chart is the yearly-downsampled condensed view; this one is the
 dense view: they intentionally do not share a component.
 
+**Region B (cont.) — Per-asset stacked-area chart** (`<Column lg={16}>`):
+
+Visible section heading `<p class="cds--type-productive-heading-03">Per-asset growth (Mid
+scenario)</p>` followed by a single `body-compact-01` subtitle ("Composition of your
+portfolio at each month, mid scenario only."), then a `<div role="figure"
+aria-labelledby="sim-stacked-heading">` wrapping a Carbon Charts `<StackedAreaChart>`. Five
+series — Stocks, Savings, Cash, Gold, USD — at the same 361-point monthly density, sourced
+from `projection.scenarios[1].byAsset[asset].series` (mid scenario only). Height `360px`
+(deliberately shorter than the line chart to signal "secondary view"). Y-axis title
+`Value (${displayCurrency})`. X-axis title `Month`. No thresholds, no per-series color
+overrides — Carbon's data-vis palette assigns series colors by position. Mid is fixed
+because four of the five `byAsset` series are identical across scenarios per the
+calculation contract; only stocks varies with the growth rate. A scenario picker on this
+view would change one band and leave four unchanged, which is more confusing than
+illuminating — the line chart above already carries the scenario-spread story. This
+fulfils the per-asset chart originally deferred to Phase 3.2c.
+
 **Region C — Milestones + per-asset summary** (`<Column lg={16}>`):
 
 - **Milestone grid:** native CSS Grid (`grid-template-columns: repeat(3, 1fr)`) of nine
@@ -250,8 +267,8 @@ dense view: they intentionally do not share a component.
   anchor), purple for High (the optimistic case).
 - **Per-asset summary:** `<StructuredListWrapper>` with five rows (one per asset class).
   Columns: Asset, Contributed (months 1–60), Year 30 — Mid (17.5%). Reads from
-  `projection.scenarios[1].byAsset[asset]`. This is the per-asset drill-down without
-  committing to a full per-asset chart (deferred to Phase 3.2c).
+  `projection.scenarios[1].byAsset[asset]`. This is the per-asset year-30 scalar
+  drill-down; the shape-over-time view is the stacked-area chart in Region B above.
 
 ### 4.3 Layout
 
@@ -267,6 +284,7 @@ dense view: they intentionally do not share a component.
   </Column>
 
   <Column lg={16}><SimulationProjectionChart height="440px"/></Column>
+  <Column lg={16}>"Per-asset growth (Mid scenario)" + <PerAssetStackedAreaChart height="360px"/></Column>
 
   <Column lg={16}>"Milestone outcomes" + <MilestoneGrid/></Column>
   <Column lg={16}>"Per-asset breakdown" + <PerAssetSummary/></Column>
