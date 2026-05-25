@@ -21,6 +21,7 @@ import MilestoneGrid from './MilestoneGrid';
 import PerAssetSummary from './PerAssetSummary';
 import SimulationEmptyState from './SimulationEmptyState';
 import SimulationProjectionChart from '@/src/components/charts/SimulationProjectionChart';
+import PerAssetStackedAreaChart from '@/src/components/charts/PerAssetStackedAreaChart';
 
 const IDENTITY_FX: FxRateSnapshot = {
   base: 'USD',
@@ -252,6 +253,24 @@ export default function SimulationPage({ initialCurrency, initialTheme }: Props)
         </p>
         <div role="figure" aria-labelledby="sim-chart-heading">
           <SimulationProjectionChart
+            projection={projection}
+            displayCurrency={initialCurrency}
+            theme={initialTheme}
+          />
+        </div>
+      </Column>
+
+      {/* Region B (cont.): Per-asset stacked-area chart (mid scenario only) */}
+      <Column sm={4} md={8} lg={16} style={{ marginBlockEnd: 'var(--cds-spacing-07)' }}>
+        <p
+          id="sim-stacked-heading"
+          className="cds--type-productive-heading-03"
+          style={{ marginBlockEnd: 'var(--cds-spacing-05)' }}
+        >
+          Per-asset growth (Mid scenario)
+        </p>
+        <div role="figure" aria-labelledby="sim-stacked-heading">
+          <PerAssetStackedAreaChart
             projection={projection}
             displayCurrency={initialCurrency}
             theme={initialTheme}
