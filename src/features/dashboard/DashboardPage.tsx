@@ -5,7 +5,9 @@ import {
   DataTableSkeleton,
   Grid,
   InlineNotification,
+  SkeletonPlaceholder,
   SkeletonText,
+  Tile,
 } from '@carbon/react';
 import { computeProjection } from '@/src/lib/projection';
 import { currentMonthIndex } from '@/src/lib/projection/current-month-index';
@@ -79,13 +81,17 @@ export default function DashboardPage({ initialCurrency, initialTheme }: Props) 
 
         {[0, 1, 2, 3].map((i) => (
           <Column key={i} sm={4} md={4} lg={4}>
-            <div style={{ padding: 'var(--cds-spacing-05)', background: 'var(--cds-layer-01)' }}>
+            <Tile style={{ height: '100%', minBlockSize: 'var(--cds-spacing-13)' }}>
               <SkeletonText width="60%" />
               <SkeletonText width="80%" heading />
               <SkeletonText width="50%" />
-            </div>
+            </Tile>
           </Column>
         ))}
+
+        <Column sm={4} md={8} lg={16} style={{ marginBlockStart: 'var(--cds-spacing-07)' }}>
+          <SkeletonPlaceholder style={{ width: '100%', height: '280px' }} />
+        </Column>
 
         <Column sm={4} md={8} lg={16} style={{ marginBlockStart: 'var(--cds-spacing-07)' }}>
           <DataTableSkeleton
