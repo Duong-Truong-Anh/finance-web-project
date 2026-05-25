@@ -11,9 +11,10 @@ interface Props {
   theme: Theme;
 }
 
-// Full-density: every monthly point (361 per scenario). Simulation is the dense view per spec §4.
-// Dashboard downsamples to 31 yearly points; do not share the data shape.
-const TOTAL_MONTHS = 361;
+// Yearly downsampling: 31 points (year 0..30) × 3 scenarios = 93 data rows.
+// Hit-test cost on mousemove scales with rendered point count; 1,083 monthly
+// points caused ~1s tooltip latency in manual QA. Mirrors ProjectionLineChart.
+const TOTAL_YEARS = 31;
 const SCENARIO_LABELS = ['Low (15%)', 'Mid (17.5%)', 'High (20%)'] as const;
 
 function toMajor(amount: number, currency: Currency): number {
@@ -22,10 +23,10 @@ function toMajor(amount: number, currency: Currency): number {
 
 export default function SimulationProjectionChart({ projection, displayCurrency, theme }: Props) {
   const data = projection.scenarios.flatMap((scenario, si) =>
-    Array.from({ length: TOTAL_MONTHS }, (_, m) => ({
+    Array.from({ length: TOTAL_YEARS }, (_, y) => ({
       group: SCENARIO_LABELS[si],
-      key: m,
-      value: toMajor(scenario.series[m].value.amount, displayCurrency),
+      key: y,
+      value: toMajor(scenario.series[y * 12].value.amount, displayCurrency),
     })),
   );
 
@@ -37,7 +38,7 @@ export default function SimulationProjectionChart({ projection, displayCurrency,
       bottom: {
         mapsTo: 'key',
         scaleType: ScaleTypes.LINEAR,
-        title: 'Month',
+        title: 'Year',
         includeZero: true,
       },
       left: {
@@ -50,7 +51,7 @@ export default function SimulationProjectionChart({ projection, displayCurrency,
     thresholds: [
       {
         axis: 'x' as const,
-        value: 60,
+        value: 5,
         label: 'End of contribution',
         fillColor: 'var(--cds-border-subtle-01)',
       },
