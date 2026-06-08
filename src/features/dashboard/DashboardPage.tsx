@@ -245,16 +245,20 @@ export default function DashboardPage({ initialCurrency, initialTheme }: Props) 
         />
       </Column>
 
-      {/* Projection chart */}
-      {projReady && (
-        <Column sm={4} md={8} lg={16} style={{ marginBlockStart: 'var(--cds-spacing-07)' }}>
+      {/* Projection chart — reserve 280px slot while cfg loads so the chart's
+          arrival doesn't grow page height. tx-ready-before-cfg-ready is a real
+          intermediate state on cold load. */}
+      <Column sm={4} md={8} lg={16} style={{ marginBlockStart: 'var(--cds-spacing-07)' }}>
+        {projReady ? (
           <ProjectionLineChart
             projection={projection}
             displayCurrency={initialCurrency}
             theme={initialTheme}
           />
-        </Column>
-      )}
+        ) : (
+          <SkeletonPlaceholder style={{ width: '100%', height: '280px' }} />
+        )}
+      </Column>
 
       {/* Recent transactions */}
       <Column sm={4} md={8} lg={16} style={{ marginBlockStart: 'var(--cds-spacing-07)' }}>
