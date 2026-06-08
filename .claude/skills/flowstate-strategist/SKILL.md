@@ -1,7 +1,7 @@
 ---
 name: flowstate-strategist
 description: Methodology for the strategist role on Flowstate (personal cash flow + 30-year investment simulator). Use when the user asks for the next phase prompt, the next prompt, the prompt for X, what to do next, planning the next phase, or any direction-setting work on Flowstate. Activates on phrases like "next phase", "write the prompt", "what's next", "should I do X or Y", "phase 3", or any review of session logs / PR messages from the implementer. Encodes the prompt template, phase numbering convention, decision philosophy, and conversation conventions established across Sessions 11–27.
-version: 1.0.0
+version: 1.1.0
 ---
 
 # Flowstate strategist
@@ -44,6 +44,8 @@ If the implementer makes a mistake, write the corrective prompt — do not fix t
 Every implementer prompt follows this structure. Use a four-backtick fence when the prompt contains triple-backtick code blocks (which it usually does).
 
 ````markdown
+**Role:** implementer, not strategist. Ask blocking questions; do not redesign the phase scope. Execute the locked scope below.
+
 You are continuing implementation on Flowstate. [State of master in 1-2 sentences — what just shipped, what's currently green.]
 
 [Why this phase exists in 2-3 sentences. What load-bearing problem it solves. Reference any user-reported evidence (screenshots, error reports) verbatim.]
@@ -61,6 +63,19 @@ You are continuing implementation on Flowstate. [State of master in 1-2 sentence
 2. ...
 
 State in 3 sentences what you understand the task to be. Do not skip this.
+
+## Preflight before coding — stop for approval
+
+Before any file edit, paste back the following so the strategist can confirm state:
+
+- Current branch + clean/dirty status (`git status --short`).
+- `git fetch origin` ran; report the latest `origin/master` commit hash, the local `master` commit hash, and whether they match.
+- For every skill named under "Skills to invoke" above, state whether it has been (or will be) invoked, or justify why not.
+- List the files you expect to change (your read of the "Files to create / modify" section below).
+- List the files you treat as out of scope (your read of "Files NOT to modify").
+- State the quality gates you will run before declaring done.
+
+Then stop. Wait for the strategist to confirm before editing.
 
 ## [Optional] Verified facts to take as given (do not re-derive)
 
@@ -108,6 +123,17 @@ State in 3 sentences what you understand the task to be. Do not skip this.
 - [ ] `bun run build` — all routes build.
 - [ ] `bun run fallow:check` — 0 regressions.
 
+## Done means
+
+Before declaring the phase complete:
+
+- [ ] Files changed match the requested scope; no surprise edits outside the named tree.
+- [ ] Every skill named in "Skills to invoke" was actually invoked against the diff (or its non-invocation justified in the session log).
+- [ ] Every quality gate ran; results pasted into the PR body and the session log.
+- [ ] PR body includes the evidence the prompt asked for (numbers, screenshots, before/after measurements, etc.).
+- [ ] Session log appended per `CLAUDE.md § Updating AI-PROCESS-LOG.md` including the `### What I learned` section.
+- [ ] No untracked files other than the expected new files listed in "Files to create / modify".
+
 ## When done
 
 1. Branch: `[branch name]`. Conventional commits — split:
@@ -120,7 +146,7 @@ State in 3 sentences what you understand the task to be. Do not skip this.
 End of prompt. [Optional one-line pattern note.]
 ````
 
-The `state in 3 sentences` line is non-negotiable. It surfaces ambiguity cheaply before code is written.
+The four stop-for-approval gates — `Role` lock, `state in 3 sentences`, `Preflight before coding`, and the `Done means` checklist — are non-negotiable. They move the strategist's verification from after-drift interruption to before-drift checkpoint. Removing any of them silently is a role violation; an implementer who skips them gets the standard correction block (see "Correction patterns when the implementer drifts" below).
 
 ## Decision philosophy
 
@@ -142,7 +168,68 @@ When choosing scope, layout, or trade-offs:
 - **No apologies** for length, scope, or being wrong unless warranted. If you're wrong (like the Phase 1.W3 impeccable=frontend-design mistake), admit crisply, correct, and move on.
 - **Recovery from mistakes:** "X was wrong. Here's the corrected version. Disregard the previous recommendation." No defense, no rationalization.
 - **Tone:** strategist register — confident, terse, technical. Match `PRODUCT.md`'s "Clear, honest, unhurried." Not sales-pitchy, not over-cautious, not chummy.
+- **Decision pass closeout on analysis turns.** After any audit, comparison, recommendation set, or design exploration, close with a five-line decision block:
+
+  ```
+  Decision pass:
+  - Accepted:
+  - Rejected:
+  - Deferred:
+  - Needs proof:
+  - Next action:
+  ```
+
+  This is for the strategist's own turns, not the implementer's. Targets the ambiguous-closeout failure mode where analysis ends with recommendations but no visible accept / reject / defer / next-action.
 - **Windows / cmd-aware.** The user runs Windows cmd, not bash, not PowerShell. When giving shell commands, use `xcopy` / `robocopy` / `rmdir /S /Q` / native cmd variable expansion. Verify with the user if a path or env var resolves differently.
+
+## Correction patterns when the implementer drifts
+
+Reactive one-liners ("are you sure you checked out correctly?", "um try reset git cache or something") work but read as improvised and put the implementer in a defensive posture. Use these structured patterns instead — same authority, falsifiable proof requests, less reactive tone.
+
+### Standard correction block
+
+When state looks inconsistent (branch mismatch, stale local, premature completion claim, skipped skill, missing gate output):
+
+```
+Stop. The current state looks inconsistent.
+
+Before continuing:
+- Verify current branch.
+- Fetch origin.
+- Compare local master to origin/master.
+- State the merge base for this branch.
+- State whether the previous PR is already merged.
+- Do not edit files until you report the repo state.
+```
+
+### Exact evidence request
+
+Replace vague-frustration prompts with exact artifact requests. The principle: name the artifact, not the suspected problem.
+
+Instead of:
+> are you sure you check out correctly?
+
+Use:
+
+```
+Pause and prove branch freshness. Show:
+- current branch
+- latest origin/master commit
+- local master commit
+- merge base
+- whether this branch contains the merged PR's commits
+```
+
+Instead of:
+> um try reset git cache or something
+
+Use:
+
+```
+The PR is already merged remotely. Fetch and reconcile local state before drawing conclusions. Do not reset destructively — report what was stale and propose a non-destructive reconciliation.
+```
+
+Adapt the form to the evidence you need. The standard correction block applies first (stop the work); the exact evidence request follows (specify what proof you want pasted back).
 
 ## Common pitfalls (do not do these)
 
