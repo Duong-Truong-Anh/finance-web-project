@@ -69,7 +69,7 @@ Top row: four `<ClickableTile>` KPI tiles. Each tile is `<Column lg={4}>`.
 | **Today's value (mid)** | Portfolio value at the current month, mid scenario (17.5%) | "low: X · high: Y" smaller | `/simulation` |
 | **In 30 years (mid)** | Yr30 mid-scenario value | "low: X · high: Y" smaller | `/simulation` |
 
-Below: a single Carbon Charts `<LineChart>` showing the three projection scenarios for the full 30-year horizon, condensed (no axis padding, smaller height ~280px). The `lg={16}` row.
+Below: a single Carbon Charts `<LineChart>` showing the three projection scenarios for the full 30-year horizon at 31-point yearly density (year 0..30), smaller height ~280px. The `lg={16}` row.
 
 Below the chart: a `<DataTable>` with the most recent 5 transactions. Header has a `<Button kind="ghost">View all →</Button>` linking to `/cash-flow`.
 
@@ -201,11 +201,11 @@ Validation uses the Zod schema; field-level `invalid` + `invalidText` props are 
 
 ### 4.1 Goal
 
-The dense, configurable view of the 30-year projection. The user reads the fixed asset
+The configurable view of the 30-year projection. The user reads the fixed asset
 allocation, enters up to five stock tickers, and reads the milestone outcomes — for the total
 portfolio (3 × 3 scenarios × horizons) and the per-asset breakdown at the mid scenario's
-30-year mark. This is the assignment's centerpiece; the Dashboard is the condensed view, this
-page is the dense one.
+30-year mark. This is the assignment's centerpiece; Dashboard is the at-a-glance summary,
+Simulation is the deep-dive — distinguished by configurability and detail, not chart density.
 
 ### 4.2 Carbon composition
 
@@ -232,12 +232,14 @@ Visible section heading `<p class="cds--type-productive-heading-03">30-year proj
 above a `<div role="figure" aria-labelledby="sim-chart-heading">` wrapping the chart. The
 Carbon Charts `<LineChart>` is configured with `title: ''`; the accessible name flows from
 the page heading through the figure's aria-labelledby. Three series ("Low (15%)",
-"Mid (17.5%)", "High (20%)") at full 361-point monthly density. Carbon Charts' built-in
-tooltip surfaces all three values on hover; data-vis palette positions 1–3 carry the series
-colors. A single threshold reference line at month 60 marks the end of the contribution
-window. Height ~440px. Y-axis title `Value (${displayCurrency})`. X-axis title `Month`;
-auto-ticks. The Dashboard's chart is the yearly-downsampled condensed view; this one is the
-dense view: they intentionally do not share a component.
+"Mid (17.5%)", "High (20%)") at 31-point yearly density (year 0..30). Carbon Charts'
+built-in tooltip surfaces all three values on hover; data-vis palette positions 1–3 carry
+the series colors. A single threshold reference line at year 5 marks the end of the
+contribution window. Height ~440px. Y-axis title `Value (${displayCurrency})`. X-axis title
+`Year`; auto-ticks. The Dashboard line chart uses the same 31-yearly-point convention but
+remains a separate component — it uses different scenario labels ("15% growth" vs
+"Low (15%)"), carries no threshold line, and renders at a different height. The
+presentation-level downsample is the same; the framing differs.
 
 **Region B (cont.) — Per-asset stacked-area chart** (`<Column lg={16}>`):
 
@@ -245,10 +247,11 @@ Visible section heading `<p class="cds--type-productive-heading-03">Per-asset gr
 scenario)</p>` directly above a `<div role="figure" aria-labelledby="sim-stacked-heading">`
 wrapping a Carbon Charts `<StackedAreaChart>` — no subtitle, to keep heading→figure
 composition parity with the line chart sibling above. Five
-series — Stocks, Savings, Cash, Gold, USD — at the same 361-point monthly density, sourced
-from `projection.scenarios[1].byAsset[asset].series` (mid scenario only). Height `360px`
-(deliberately shorter than the line chart to signal "secondary view"). Y-axis title
-`Value (${displayCurrency})`. X-axis title `Month`. No thresholds, no per-series color
+series — Stocks, Savings, Cash, Gold, USD — at the same 31-point yearly density, sourced
+from `projection.scenarios[1].byAsset[asset].series` (mid scenario only, sampled at months
+0, 12, 24, …, 360). Height `360px` (deliberately shorter than the line chart to signal
+"secondary view"). Y-axis title `Value (${displayCurrency})`. X-axis title `Year`. No
+thresholds, no per-series color
 overrides — Carbon's data-vis palette assigns series colors by position. Mid is fixed
 because four of the five `byAsset` series are identical across scenarios per the
 calculation contract; only stocks varies with the growth rate. A scenario picker on this

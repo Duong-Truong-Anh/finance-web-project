@@ -110,6 +110,13 @@ export default function SimulationPage({ initialCurrency, initialTheme }: Props)
           </h1>
           <SkeletonText heading width="40%" />
           <SkeletonPlaceholder style={{ width: '100%', height: '440px' }} />
+          <SkeletonPlaceholder
+            style={{
+              width: '100%',
+              height: '360px',
+              marginBlockStart: 'var(--cds-spacing-07)',
+            }}
+          />
         </Column>
       </Grid>
     );

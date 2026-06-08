@@ -24,11 +24,13 @@ export default function PerAssetStackedAreaChart({
 }: Props) {
   const mid = projection.scenarios[1];
 
+  // Yearly downsampling (mirrors SimulationProjectionChart): 31 points × 5 assets = 155 rows.
+  // Monthly density was 361 × 5 = 1,805 points, which made tooltip hit-tests visibly slow.
   const data = ASSET_CLASSES.flatMap((asset) =>
-    mid.byAsset[asset].series.map((point, k) => ({
+    Array.from({ length: 31 }, (_, y) => ({
       group: ASSET_LABELS[asset],
-      key: k,
-      value: toMajor(point.value.amount, displayCurrency),
+      key: y,
+      value: toMajor(mid.byAsset[asset].series[y * 12].value.amount, displayCurrency),
     })),
   );
 
@@ -38,7 +40,7 @@ export default function PerAssetStackedAreaChart({
       bottom: {
         mapsTo: 'key',
         scaleType: ScaleTypes.LINEAR,
-        title: 'Month',
+        title: 'Year',
         includeZero: true,
       },
       left: {

@@ -12,7 +12,10 @@ interface Props {
 
 export default function KpiTile({ label, value, sub, href, negative = false }: Props) {
   return (
-    <ClickableTile href={href} style={{ height: '100%' }}>
+    <ClickableTile
+      href={href}
+      style={{ height: '100%', minBlockSize: 'var(--cds-spacing-13)' }}
+    >
       <p
         className="cds--type-label-01"
         style={{ color: 'var(--cds-text-secondary)', marginBlockEnd: 'var(--cds-spacing-03)' }}

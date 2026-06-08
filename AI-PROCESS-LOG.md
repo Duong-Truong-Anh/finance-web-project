@@ -69,6 +69,7 @@ The **pre-Carbon history** (V1 vanilla bento dashboard, Flowstate v0 hand-built 
 - Session 36 — Phase 3.2c.1 — Finnhub /quote integration (live last-price per ticker tile) — 2026-05-20
 - Session 37 — Phase 3.2c.2 — Per-asset stacked-area chart on Simulation (mid scenario) — 2026-05-23
   - Session 37 (addendum) — Phase 3.2c.2 — Retro skill audit + subtitle removal — 2026-05-23
+- Session 38 — Phase 3.3 — Chart hover latency + defensive CLS work — 2026-05-25
 
 ---
 
@@ -2903,6 +2904,72 @@ I noticed the AI had shipped Session 37 without invoking the four skills the ori
 ### Recommendation for next session
 
 The same recommendations from Session 37 stand (derived-state ADR; §7.1 spec-drift reconciliation; optional year-axis variant of the new chart). Additional candidate now visible: a **semantic-heading pass on the Simulation page** — convert the four `<p class="cds--type-productive-heading-03">` region headings to `<h2>` with the same type-style class, restoring the document outline for screen readers. Small surgical PR, no visual change.
+
+## Session 38 — Phase 3.3: Chart hover latency + defensive CLS work (2026-05-25)
+
+### What I asked the AI to do
+
+Three perceived-perf defects surfaced in manual QA after Phase 3.2c.2 merged: (1) ~1s tooltip latency on Simulation charts, (2) visible layout shift on initial load of `/` and `/simulation`, (3) spec drift declaring Simulation the "dense (monthly)" view despite Dashboard's yearly-downsampled chart being lossless. Implementer should downsample both Simulation charts to yearly, reserve chart and tile heights through the loading swap, preload IBM Plex weights actually used, and retire the dense/condensed framing. Before/after CLS + tooltip-latency numbers in the PR body are the load-bearing perf claim.
+
+### What the AI did
+
+**Pre-work audit (5 files read).** Surfaced material divergences from the prompt before writing code:
+
+- Project uses `next/font/google`, not Carbon-bundled fonts → manual `<link rel=preload>` would duplicate Next's auto-injected preloads. Strategist accepted; font work was reframed.
+- Plex Serif has zero usages anywhere in source. Weight 500 has zero usages. Plex Mono is only used in `code`/`pre`.
+- E2E tests have no `"Month"` axis assertion (one false positive in `chaos.spec.ts` on transaction copy text). The planned `test(e2e):` commit was dropped from the split.
+- Dashboard loading state uses raw `<div>` with `padding-05` background, NOT Carbon Tile primitives → structural skeleton-vs-loaded mismatch beats the height mismatch as a CLS source. Strategist promoted this to the actual fix.
+
+**Four commits, in order:**
+
+1. `perf(charts)`: yearly downsample on `SimulationProjectionChart` and `PerAssetStackedAreaChart` via `Array.from({ length: 31 }, (_, y) => …)` sampling `series[y * 12]`. X-axis title `Year`. Line-chart threshold value `60 → 5`. Projection contract unchanged.
+2. `perf(layout)`: `KpiTile` gets `min-block-size: var(--cds-spacing-13)` (160px). Dashboard loading-state `<div>` placeholders replaced with `<Tile>` shells carrying the same min-block-size and `SkeletonText` content. Dashboard loading state gains a 280px `SkeletonPlaceholder` for the line chart. Simulation loading state gains a 360px `SkeletonPlaceholder` for the new stacked-area chart.
+3. `perf(fonts)`: Plex Serif loader removed. Plex Sans weights `400/500/600 → 300/400/600`, `display: 'swap' → 'optional'`. Plex Mono weights `400/500/600 → 400`, display unchanged.
+4. `docs(spec)`: `04_feature_spec.md` §2.2 drops "condensed" qualifier on Dashboard chart; §4.1 reframes Simulation as configurable/detail-rich rather than chart-dense; §4.2 Region B + Region B (cont.) updated to 31-point yearly density, year-5 threshold, `Year` axis. The "Dashboard is the condensed, this is the dense" sentence is replaced with the actual reasons the two charts remain separate components (scenario labels, threshold semantics, height).
+
+PR #36 opened against master with measured before/after numbers.
+
+### What I learned
+
+Three gap-closures worth recording:
+
+1. **`next/font/google` vs Carbon-bundled fonts.** The prompt assumed Carbon was loading fonts; the project's been on `next/font/google` since the layout was scaffolded. Next already injects `<link rel="preload">` for fonts used in the root layout. Manual preload links would have been redundant — and would have shipped without anyone noticing the duplication for a while. The first-principles font-CLS fix in this codebase is **`display: 'optional'`** plus weight pruning, not preload.
+2. **Display strategy is the actual CLS lever for fonts.** `swap` (FOUT) is the default cause of visible font swap-in; `optional` falls back to system fonts if the web font isn't ready in ~100ms and never swaps mid-session. Plex still downloads in the background and caches for subsequent loads. The first-principles fix is "stop swapping," not "preload faster."
+3. **Structural skeleton mismatch beats height mismatch as a CLS source.** A raw `<div>` swapping into a Carbon `<Tile>` has different border, background, and padding semantics — the visual layout shift is real even when the heights match. Loading skeletons must use the **same primitive** as the loaded content, not a placeholder shape that approximates it. This made the Dashboard loading-state rewrite the real CLS fix; the min-height token was secondary.
+4. **CLS-as-metric vs perceived jank.** Measured CLS on cold load of `/` and `/simulation` was `0.0000` both before AND after this PR. The perceived layout shift caught in manual QA isn't captured by `PerformanceObserver({type:'layout-shift'})` on a ≥1280px viewport — likely because shifts happen pre-FCP, or because Next's `adjustFontFallback` already produces metric-matched fallback fonts, or because long values don't wrap at this width. **The tooltip-latency win carries the perf claim; the skeleton/tile/font work is defensive against future regressions.** Honest framing of this in the PR body matters more than dressing it up.
+5. **Root layout font config does not hot-reload cleanly with Turbopack.** First e2e run hit 5 failures in `settings.spec.ts` with `Failed to load resource: 500 Internal Server Error`. Cause: dev server was started before the font edits, and Turbopack didn't pick up the loader-config changes on file save. Killing the dev process and restarting fixed it — all 24 tests passed. Pattern: when editing `app/layout.tsx` font config, restart the dev server before running e2e.
+
+### Spec drift / discrepancies / things noticed
+
+- The prompt referenced `$0.00` KPI tile placeholders during loading; actual placeholders are `—` (em-dash). The real CLS source on KPI tiles is the value text wrapping from 1 line to 2 lines on small viewports as the long currency string replaces the em-dash. Fix is the same (min-block-size on the tile), rationale differs.
+- The prompt's `SimulationPage` render-phase sync pattern audit (lines 70-73): the `if (persistedTickers !== lastPersisted) setLocalTickers(...)` block re-renders but doesn't change rendered dimensions. Not a CLS contributor; left untouched per the prompt's audit-only instruction.
+
+### Quality gates
+
+| Gate | Result |
+|---|---|
+| `bunx tsc --noEmit` | 0 errors |
+| `bun run lint` | 0 errors, 0 warnings |
+| `bun run test` | 172 passed + 1 skipped (no test changes — pure presentation-layer work) |
+| `bun run e2e` | 24/24 green on warm dev server (after dev-server restart for font config) |
+| `bun run build` | All routes built |
+| `bun run fallow:check` | 0 issues in 9 changed files |
+
+### Phase-specific section — measured perf numbers
+
+| Metric | Before (master) | After (this PR) | Delta |
+|---|---|---|---|
+| Tooltip latency at Year 15 on Simulation line chart | 420.5 ms | 0.7 ms | ~600× faster |
+| CLS `/` cold load (≥1280px viewport) | 0.0000 | 0.0000 | unchanged (not measurable) |
+| CLS `/simulation` cold load (≥1280px viewport) | 0.0000 | 0.0000 | unchanged (not measurable) |
+
+Measurement protocol: PerformanceObserver `{type:'layout-shift', buffered:true}` on cold load, read after network-idle + 2s. Tooltip latency via DevTools agent driving mousemove on the Simulation line-chart SVG at year 15.
+
+### Recommendation for next session
+
+Phase 3.4 is the natural next step: chart narrative work — tooltip series ordering (Low → Mid → High → Total), Y-axis tick formatter (`$50K / $100K / $250K`), year-5 annotation visibility audit (now that the threshold is `year 5` instead of `month 60`, verify the label renders correctly at that x-position). All three were explicitly scoped out of this phase.
+
+Alternative if perf-tuning continues: investigate why measured CLS reads `0.0000` despite visible jank — try measuring on a narrower viewport (e.g. 375px), or with throttled CPU/network, to see whether the skeleton/tile/font work in this PR shows a measurable delta under those conditions. That would convert this PR's "defensive" framing to "validated under representative conditions."
 
 <!-- ──────────────────────────────────────────────────────────────────── -->
 <!-- APPEND NEW SESSION ENTRIES ABOVE THIS LINE.                          -->

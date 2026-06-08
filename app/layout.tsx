@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { IBM_Plex_Mono, IBM_Plex_Sans, IBM_Plex_Serif } from 'next/font/google';
+import { IBM_Plex_Mono, IBM_Plex_Sans } from 'next/font/google';
 import { Theme } from '@carbon/react';
 import AppShell from './components/AppShell';
 import { readTheme, readCurrency } from './lib/cookies-server';
@@ -10,25 +10,24 @@ import '@carbon/styles/css/styles.css';
 import '@carbon/charts/styles.css';
 import './globals.scss';
 
-// next/font/google downloads fonts at build time and serves them from /_next/static/media/.
-// The `variable` option injects CSS custom properties on the element that receives the class.
-// globals.scss then overrides Carbon's hardcoded body font-family to use these variables.
+// next/font/google downloads fonts at build time, self-hosts them under
+// /_next/static/media/, and auto-injects <link rel="preload"> for fonts used in
+// the root layout. Weights are pruned to what Carbon's productive type tokens
+// actually consume (300 for productive-heading-05, 400 for body/heading-03/04,
+// 600 for heading-01/02). Plex Serif is dropped entirely — zero usages.
+// `display: 'optional'` on Sans eliminates the visible swap from system fallback
+// to Plex on cold load: if Plex isn't ready in ~100ms it stays on fallback for
+// the session and downloads in the background for next time. CLS win.
 const ibmPlexSans = IBM_Plex_Sans({
   subsets: ['latin'],
-  weight: ['400', '500', '600'],
+  weight: ['300', '400', '600'],
   variable: '--font-ibm-plex-sans',
-  display: 'swap',
+  display: 'optional',
 });
 const ibmPlexMono = IBM_Plex_Mono({
   subsets: ['latin'],
-  weight: ['400', '500', '600'],
+  weight: ['400'],
   variable: '--font-ibm-plex-mono',
-  display: 'swap',
-});
-const ibmPlexSerif = IBM_Plex_Serif({
-  subsets: ['latin'],
-  weight: ['400', '500', '600'],
-  variable: '--font-ibm-plex-serif',
   display: 'swap',
 });
 
@@ -48,11 +47,7 @@ export default async function RootLayout({
   // on the first HTML byte, preventing a flash of wrong theme on page load.
   // <Theme> inside <body> provides the React context boundary for Carbon components.
   const themeClass = `cds--${theme}` as const;
-  const fontClasses = [
-    ibmPlexSans.variable,
-    ibmPlexMono.variable,
-    ibmPlexSerif.variable,
-  ].join(' ');
+  const fontClasses = [ibmPlexSans.variable, ibmPlexMono.variable].join(' ');
 
   return (
     <html lang="en" className={`${themeClass} ${fontClasses}`}>
