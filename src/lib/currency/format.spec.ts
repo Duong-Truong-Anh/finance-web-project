@@ -86,6 +86,13 @@ describe('formatCompact', () => {
       expect(formatCompact(999, 'vi-VN')).toBe('999');
     });
 
+    it('rounds fractional values once so suffix thresholds and display agree', () => {
+      // A fractional tick that rounds across a unit boundary must not slip between
+      // the threshold comparison and the formatted suffix.
+      expect(formatCompact(999_999.6, 'vi-VN')).toBe('1tr');
+      expect(formatCompact(999_999_999.6, 'vi-VN')).toBe('1 tỷ');
+    });
+
     it('prefixes a minus glyph for negative đồng', () => {
       expect(formatCompact(-50_000_000, 'vi-VN')).toBe('-50tr');
     });

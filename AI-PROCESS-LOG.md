@@ -71,6 +71,7 @@ The **pre-Carbon history** (V1 vanilla bento dashboard, Flowstate v0 hand-built 
   - Session 37 (addendum) — Phase 3.2c.2 — Retro skill audit + subtitle removal — 2026-05-23
 - Session 38 — Phase 3.3 — Chart hover latency + defensive CLS work — 2026-05-25
 - Session 39 — Phase 3.4 — Chart narrative: tooltip order, compact ticks, threshold fix — 2026-06-10
+  - Session 39 (addendum) — Phase 3.4 — Copilot review triage — 2026-06-10
 
 ---
 
@@ -3026,6 +3027,31 @@ The strict 6-way concern split wasn't fully achievable: tooltip-order, compact-t
 ### Recommendation for next session
 
 Phase 3.5 (Dashboard reframe) is the natural next step — it absorbs the deferred per-ticker contribution display. Two small follow-ups worth folding in or doing as docs-only PRs: (1) the §7.1 spec drift (Finnhub key header vs POST body) and the derived-state-from-requestKey ADR, both explicitly deferred from this phase; (2) consider whether the line-chart series colors *should* be aligned to the `MilestoneGrid` Tag hues — it's a real legibility gap (tooltip swatch ≠ Tag color), but the fix touches the data-vis-palette discipline and deserves a deliberate decision, not drift.
+
+## Session 39 (addendum) — Phase 3.4: Copilot review triage (2026-06-10)
+
+### What I asked the AI to do
+
+_Assess the GitHub Copilot review on PR #37 — assume each suggestion is wrong until proven right — implement the proven ones, and record the triage._
+
+### PR review triage — Copilot
+
+Copilot left two inline comments.
+
+1. **`format.ts` — VND boundary rounding (ACCEPTED).** Copilot: the vi-VN branch compares the *unrounded* `abs` against the unit thresholds but rounds only in the sub-million branch, so fractional ticks at a boundary mislabel. **Proven right** by trace: `formatCompact(999_999.6, 'vi-VN')` → `"1.000.000"` (no suffix) and `formatCompact(999_999_999.6, 'vi-VN')` → `"1000tr"` (should be `"1 tỷ"`). Carbon tick generators *can* emit non-integer values, so this is a real correctness gap even if current nice-scale ticks are round. Fix: `const abs = Math.round(Math.abs(valueMajor))` once up front, before the threshold comparisons — both cited cases now render `"1tr"` / `"1 tỷ"`. Added a regression test (26 `format` tests total).
+2. **`ProjectionLineChart.tsx` — extract shared `orderedTooltip`/`scenarioRank` (REJECTED).** Copilot: the two copies risk drift; extract a helper taking `scenarioLabels`. The drift concern is legitimate, but this is **N=2** (only the two line charts use it — the stacked-area chart doesn't), and the locked phase scope plus the karpathy N=3 rule explicitly forbid extraction below the third occurrence ("no shared chart-options wrapper… Do not extract anything else"). Inlining at N=2 is the deliberate, rule-governed choice; the right trigger for extraction is a third line chart, not the second. Not implemented.
+
+### Quality gates
+
+| Gate | Result |
+|---|---|
+| `bunx tsc --noEmit` | ✅ 0 errors |
+| `bun run lint` | ✅ 0 errors, 0 warnings |
+| `bun run test` | ✅ 192 passed + 1 skipped (+1 VND boundary regression) |
+
+### Recommendation for next session
+
+Unchanged from the main Session 39 entry — Phase 3.5 (Dashboard reframe) is next.
 
 <!-- ──────────────────────────────────────────────────────────────────── -->
 <!-- APPEND NEW SESSION ENTRIES ABOVE THIS LINE.                          -->

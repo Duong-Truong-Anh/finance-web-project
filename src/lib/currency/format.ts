@@ -39,8 +39,12 @@ export function formatCompact(valueMajor: number, locale: Locale): string {
   }
 
   const sign = valueMajor < 0 ? '-' : '';
-  const abs = Math.abs(valueMajor);
-  if (abs < 1_000_000) return sign + Math.round(abs).toLocaleString('vi-VN');
+  // Round to whole đồng once, up front, so the suffix thresholds and the displayed
+  // value agree. Carbon tick generators can emit fractional values; comparing an
+  // unrounded abs against the thresholds while rounding only in the sub-million
+  // branch mislabels boundaries (999_999.6 → "1.000.000"; 999_999_999.6 → "1000tr").
+  const abs = Math.round(Math.abs(valueMajor));
+  if (abs < 1_000_000) return sign + abs.toLocaleString('vi-VN');
   if (abs < 1_000_000_000) return `${sign}${trimToOneDecimal(abs / 1_000_000)}tr`;
   return `${sign}${trimToOneDecimal(abs / 1_000_000_000)} tỷ`;
 }
