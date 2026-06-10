@@ -45,7 +45,13 @@ export default function DashboardPage({ initialCurrency, initialTheme }: Props) 
   const cfgState = usePortfolioConfig();
 
   // Stable "today" for the lifetime of this mount — never re-created on re-render.
-  const today = useMemo(() => new Date(), []);
+  // Carry the local calendar date in UTC fields so it matches currentMonthIndex's
+  // UTC getters and the user-entered `occurredOn` calendar dates. Without this, a
+  // UTC+7 user near a month boundary reads the wrong month for ~7 hours.
+  const today = useMemo(() => {
+    const now = new Date();
+    return new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+  }, []);
 
   const fx = fxState.status === 'ready' ? fxState.fx : IDENTITY_FX;
   const locale = localeFor(initialCurrency);
