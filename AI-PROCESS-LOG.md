@@ -70,6 +70,7 @@ The **pre-Carbon history** (V1 vanilla bento dashboard, Flowstate v0 hand-built 
 - Session 37 — Phase 3.2c.2 — Per-asset stacked-area chart on Simulation (mid scenario) — 2026-05-23
   - Session 37 (addendum) — Phase 3.2c.2 — Retro skill audit + subtitle removal — 2026-05-23
 - Session 38 — Phase 3.3 — Chart hover latency + defensive CLS work — 2026-05-25
+- Session 39 — Phase 3.4 — Chart narrative: tooltip order, compact ticks, threshold fix — 2026-06-10
 
 ---
 
@@ -2970,6 +2971,61 @@ Measurement protocol: PerformanceObserver `{type:'layout-shift', buffered:true}`
 Phase 3.4 is the natural next step: chart narrative work — tooltip series ordering (Low → Mid → High → Total), Y-axis tick formatter (`$50K / $100K / $250K`), year-5 annotation visibility audit (now that the threshold is `year 5` instead of `month 60`, verify the label renders correctly at that x-position). All three were explicitly scoped out of this phase.
 
 Alternative if perf-tuning continues: investigate why measured CLS reads `0.0000` despite visible jank — try measuring on a narrower viewport (e.g. 375px), or with throttled CPU/network, to see whether the skeleton/tile/font work in this PR shows a measurable delta under those conditions. That would convert this PR's "defensive" framing to "validated under representative conditions."
+
+## Session 39 — Phase 3.4: Chart narrative — tooltip order, compact ticks, threshold audit (2026-06-10)
+
+### What I asked the AI to do
+
+_Make the projection charts legible with three surgical chart-options edits: fix the tooltip series order to Low → Mid → High, give all three charts compact Y-axis ticks via one shared formatter, and audit/fix the year-5 "End of contribution" threshold's visibility across all themes. No data changes._
+
+### What the AI did
+
+- **`src/lib/currency/format.ts`** — added `formatCompact(valueMajor, locale)`. USD uses `Intl` compact currency; VND is hand-rolled (`50tr` / `1 tỷ`). `minimumFractionDigits: 0` pins output across ICU builds.
+- **`src/lib/currency/format.spec.ts`** — 19 boundary-case tests (USD K/M, VND tr/tỷ, zero, negative, sub-million).
+- **`SimulationProjectionChart.tsx` / `ProjectionLineChart.tsx`** — `tooltip.customHTML` reorders the `<li>` rows of Carbon's own rendered markup to Low → Mid → High; `showTotal: false`; compact left-axis ticks.
+- **`PerAssetStackedAreaChart.tsx`** — compact left-axis ticks (tooltip audited, left alone — stacked-area order is deterministic via `ASSET_CLASSES`).
+- **`SimulationProjectionChart.tsx` threshold fix** — moved threshold from the non-functional top-level `options.thresholds` (with a bogus `axis: 'x'`) to `axes.bottom.thresholds`; `fillColor: var(--cds-text-secondary)`.
+- **`e2e/simulation.spec.ts`** — new test asserting tooltip row order + no Total (25th e2e test).
+- **`docs/04_feature_spec.md`** — §4.2 + §3 tooltip-order / threshold / compact-tick convention notes.
+
+### What I learned
+
+- **(a) Tooltip-order lever.** `@carbon/charts` v1.27.10 `TooltipOptions` has **no** sort callback (`itemSortFunction` doesn't exist) — the ruler tooltip hard-sorts rows value-descending (`.sort((u,p) => p.value - u.value)`). The only lever is `customHTML(data, defaultHTML, datum)`, where `data` is **raw** points (no color/format) and `defaultHTML` is the **fully-formatted, swatch-bearing** default markup. So I reorder the `<li>` rows of `defaultHTML` (keeping the swatch-less title row first) rather than rebuild — preserving Carbon's formatting byte-for-byte. `es()` wrapping the output is a sanitizer (not an escaper), so returning `<ul>` markup is safe; Carbon wraps it in `title-tooltip > p`, which auto-closes harmlessly before the `<ul>`.
+- **(b) VND compact display.** `Intl` vi-VN compact emits `50 Tr` / `1 T` / `1,5 T` — capitalised Latin abbreviations, comma decimal, leading space. Unacceptable for the gutter, so a custom branch renders `50tr` / `1 tỷ` (dot decimal, Vietnamese abbreviations). USD `Intl` compact matches the spec natively. Surprise: `maximumFractionDigits: 1` alone makes Node/Vitest's ICU pad `$50.0K` while Bun/Chrome don't — `minimumFractionDigits: 0` normalises all runtimes.
+- **(c) Threshold was never rendering.** The audit didn't just find low contrast — the threshold **never drew a line**. Carbon reads thresholds **per-axis** (`axes.bottom.thresholds`); the top-level `options.thresholds` array (with a non-existent `axis: 'x'` field) was silently ignored since Phase 3.3. After moving it, a second bug surfaced: Carbon strips the leading zero from a numeric token suffix in the line's stroke style (`var(--cds-border-strong-01)` → `var(--cds-border-strong-1)`, undefined → `stroke:none`). `text-secondary` (no numeric suffix) sidesteps it and reads clearly in g90/g100/white.
+- **e2e trigger.** Carbon's ruler tooltip only fires on a `mousemove` that **changes the nearest data column** (a static hover emits MOVE, not SHOW). The test moves between two x positions to force the SHOW.
+
+### Spec drift / discrepancies / things noticed
+
+- The brief's "verified fact" that line-chart series colors already match `MilestoneGrid`'s Tag colors (green/blue/purple) is **inaccurate**: the charts use Carbon's data-vis palette (purple/teal/white in g90; pink/blue/purple in white), so the tooltip swatches do **not** hue-match the Tags. Only the **reading order** matches (the testable criterion). Aligning hues would require a custom color scale (out of scope; would also break the data-vis-palette discipline).
+- Phase 3.3's threshold relocation (month-60 → year-5) left the threshold mis-configured at the top level, so it silently stopped rendering. Worth a glance in future threshold work.
+
+### Quality gates
+
+| Gate | Result |
+|---|---|
+| `bunx tsc --noEmit` | ✅ 0 errors |
+| `bun run lint` | ✅ 0 errors, 0 warnings |
+| `bun run test` | ✅ 191 passed + 1 skipped (172 → 191, +19 `formatCompact`) |
+| `bun run e2e` | ✅ 25/25 (was 24; +1 tooltip-order) |
+| `bun run build` | ✅ all routes |
+| `bun run fallow:check` | ✅ 0 issues in 9 changed files |
+
+### Threshold audit verdict
+
+**Failed, then fixed.** The year-5 threshold rendered no line in any theme (root cause: per-axis config, see learning (c)). After moving to `axes.bottom.thresholds` + `text-secondary`, the dashed vertical line at year 5 is visible in g90, g100, and white (verified via per-theme screenshots). Line anchored at x = year 5 (confirmed in DOM: x1 = x2 at the year-5 pixel). The "End of contribution" label is hidden by default and surfaces on hover — Carbon's built-in threshold UX, not a regression.
+
+### Skill application
+
+`karpathy-guidelines` (surgical; only `formatCompact` extracted at N=3; tooltip `customHTML` left inline at N=2; no chart-options wrapper), `carbon-builder` (tooltip order and tick formatter are first-class options; threshold color is a `var(--cds-…)` token), `fallow` (`fallow:check` clean), `impeccable` (rendered-output rhythm check: all three charts now share one compact-tick rhythm; tooltip order coheres with `MilestoneGrid` Tag order). `frontend-design` not invoked (ADR 007).
+
+### Commit-split note
+
+The strict 6-way concern split wasn't fully achievable: tooltip-order, compact-ticks, and the threshold all co-locate in single Carbon `options` hunks per file, and the `customHTML` helpers fail lint (unused) if split from their option wiring. The threshold fix was isolated into its own `fix(charts)` commit via `git add -p` hunk-splitting; tooltip-order and compact-ticks share one `feat(charts)` commit. Each commit type-checks green.
+
+### Recommendation for next session
+
+Phase 3.5 (Dashboard reframe) is the natural next step — it absorbs the deferred per-ticker contribution display. Two small follow-ups worth folding in or doing as docs-only PRs: (1) the §7.1 spec drift (Finnhub key header vs POST body) and the derived-state-from-requestKey ADR, both explicitly deferred from this phase; (2) consider whether the line-chart series colors *should* be aligned to the `MilestoneGrid` Tag hues — it's a real legibility gap (tooltip swatch ≠ Tag color), but the fix touches the data-vis-palette discipline and deserves a deliberate decision, not drift.
 
 <!-- ──────────────────────────────────────────────────────────────────── -->
 <!-- APPEND NEW SESSION ENTRIES ABOVE THIS LINE.                          -->
