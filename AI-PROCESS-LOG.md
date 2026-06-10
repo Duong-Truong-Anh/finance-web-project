@@ -72,6 +72,7 @@ The **pre-Carbon history** (V1 vanilla bento dashboard, Flowstate v0 hand-built 
 - Session 38 — Phase 3.3 — Chart hover latency + defensive CLS work — 2026-05-25
 - Session 39 — Phase 3.4 — Chart narrative: tooltip order, compact ticks, threshold fix — 2026-06-10
   - Session 39 (addendum) — Phase 3.4 — Copilot review triage — 2026-06-10
+- Session 40 — Phase 3.4.1 — Dashboard "today" seam: $0.00 today's-value + TZ + §8 erratum — 2026-06-10
 
 ---
 
@@ -3052,6 +3053,49 @@ Copilot left two inline comments.
 ### Recommendation for next session
 
 Unchanged from the main Session 39 entry — Phase 3.5 (Dashboard reframe) is next.
+
+## Session 40 — Phase 3.4.1: Dashboard "today" seam (2026-06-10)
+
+### What I asked the AI to do
+
+Fix the verified, user-visible bug where the Dashboard's "Today's value" tiles (low/mid/high) render **$0.00** whenever the user's data starts in the current month. An out-of-pipeline correctness audit (Fable 5, branch `audit/fable-projection`) had already **exonerated the projection engine** — proving 12 invariants including compounding cadence, the month 1–60 window, and exact `byAsset` sums at all 361 points — and pinned the defect to a Dashboard selector off-by-one. Execute the locked scope: three coupled fixes to the "today" seam in one file + one regression test + ADR 009 + a one-line spec erratum. Do **not** touch the engine.
+
+### What the AI did
+
+- **`src/features/dashboard/DashboardPage.tsx` (two surgical edits):**
+  - L156: `safeMonthIndex = Math.min(360, (monthIndex ?? 0) + 1)`. Under the §4 annuity-due convention, `series[k]` is the end of month k with month 1 = the anchor month; "today's value" is `series[offset + 1]`. Without `+1`, the anchor-month case reads `series[0]`, which is always exactly 0 by construction → `$0.00`.
+  - L48: normalized `today` to carry the local calendar date in UTC fields (`new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()))`), matching `currentMonthIndex`'s UTC getters and the user-entered `occurredOn` dates. Closes a ~7-hour month-boundary seam for UTC+7 users. Kept inside the existing mount-stable `useMemo`.
+- **`e2e/dashboard.spec.ts`:** added a regression test that seeds a positive-net transaction dated in the current calendar month (YYYY-MM derived at test time, day 01) with **USD display** to reproduce the exact reported `$0.00` symptom, and asserts the "Today's value (mid)" tile is neither `$0.00` nor the `—` placeholder. `attachErrorGuard` stays active. No `seed.ts` change needed — built the transaction inline.
+- **`docs/decisions/009_dashboard-today-value-convention.md`:** new ADR documenting the `offset + 1` decision (Context → Decision → Consequences), the accepted future-dated-plan edge case (documented, not handled), and that the engine was independently audited and exonerated.
+- **`docs/03_calculation_spec.md` §8:** removed the stray trailing `/ 100` from the VND→USD convert formula — it described major units and contradicted the comment ("VND minor → USD cents") and the integer-minor-units Money discipline. `src/lib/currency/convert.ts` was already correct; only the doc text was wrong.
+
+### What I learned
+
+Nothing new — this was a straightforward execution of a tightly scoped hotfix prompt. The hard work (root-causing the bug and proving the engine clean) was done by the prior Fable audit; the implementer's job was to apply the call-site fix without scope creep. The one mild surprise: `bun run lint` lints only `src app`, not `e2e/`, so the new e2e test's type-safety rests on the project-wide `tsc --noEmit` (which passed) rather than ESLint.
+
+### Spec drift / discrepancies / things noticed
+
+- The §8 erratum is now corrected. The §9 worked example was **not** regenerated (out of scope — it needs a recompute from engine outputs in a dedicated docs pass).
+- Two pre-existing untracked files (`docs/agent/agent-handoff.md`, `temp-insights.md`) predate this branch and were left untouched per the user's instruction; they will be cleaned up on master separately.
+
+### Quality gates
+
+| Gate | Result |
+|---|---|
+| `bunx tsc --noEmit` | ✅ 0 errors |
+| `bun run lint` | ✅ 0 errors, 0 warnings |
+| `bun run test` | ✅ 192 passed + 1 skipped (unchanged — regression is e2e) |
+| `bun run e2e` | ✅ 26/26 (was 25; +1 today's-value test) |
+| `bun run build` | ✅ all routes built |
+| `bun run fallow:check` | ✅ 0 regressions in changed files |
+
+### Karpathy discipline
+
+Two surgical edits in one file; no `safeMonthIndex` helper extraction at N=1. `currentMonthIndex` and the entire `src/lib/projection/**` engine untouched (audit-confirmed correct, contract locked). Every changed line traces to the prompt's five outcomes.
+
+### Recommendation for next session
+
+Phase 3.5 (Dashboard reframe / per-ticker amounts / KPI tile redesign) is next, and is the right place to revisit the documented future-dated-plan edge from ADR 009. A separate, optional docs pass should regenerate the §9 worked example from current engine outputs; it was deliberately deferred here. Fable's engine probes remain available to promote into the suite if desired.
 
 <!-- ──────────────────────────────────────────────────────────────────── -->
 <!-- APPEND NEW SESSION ENTRIES ABOVE THIS LINE.                          -->
