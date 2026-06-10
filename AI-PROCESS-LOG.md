@@ -73,6 +73,7 @@ The **pre-Carbon history** (V1 vanilla bento dashboard, Flowstate v0 hand-built 
 - Session 39 — Phase 3.4 — Chart narrative: tooltip order, compact ticks, threshold fix — 2026-06-10
   - Session 39 (addendum) — Phase 3.4 — Copilot review triage — 2026-06-10
 - Session 40 — Phase 3.4.1 — Dashboard "today" seam: $0.00 today's-value + TZ + §8 erratum — 2026-06-10
+  - Session 40 (addendum) — Phase 3.4.1 — Copilot PR #38 triage (clean, no comments) — 2026-06-10
 
 ---
 
@@ -3096,6 +3097,29 @@ Two surgical edits in one file; no `safeMonthIndex` helper extraction at N=1. `c
 ### Recommendation for next session
 
 Phase 3.5 (Dashboard reframe / per-ticker amounts / KPI tile redesign) is next, and is the right place to revisit the documented future-dated-plan edge from ADR 009. A separate, optional docs pass should regenerate the §9 worked example from current engine outputs; it was deliberately deferred here. Fable's engine probes remain available to promote into the suite if desired.
+
+## Session 40 (addendum) — Phase 3.4.1: Copilot PR #38 triage (2026-06-10)
+
+### What I asked the AI to do
+
+Fetch the GitHub Copilot review on PR #38, assess each suggestion adversarially (assume wrong until proven right), implement the legitimate ones, and record an addendum.
+
+### What the AI did
+
+- Fetched the Copilot review via `gh pr view 38` and the inline-comment API. **Copilot reviewed all 5 of 5 changed files and generated no comments** — review state `COMMENTED`, body confirming "generated no comments". The inline-comment endpoint returned empty.
+- No suggestions to triage and nothing to implement. No source changes this addendum — log-only.
+
+### What I learned
+
+Nothing new. A clean Copilot pass on a tightly scoped 5-file hotfix is the expected outcome; the adversarial-triage discipline still applied, it simply had no input to act on.
+
+### Spec drift / discrepancies / things noticed
+
+None. The PR is unchanged from the Session 40 state; quality gates from the main entry stand.
+
+### Recommendation for next session
+
+Unchanged from the main Session 40 entry — Phase 3.5 (Dashboard reframe) is next.
 
 <!-- ──────────────────────────────────────────────────────────────────── -->
 <!-- APPEND NEW SESSION ENTRIES ABOVE THIS LINE.                          -->
