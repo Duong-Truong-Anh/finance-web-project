@@ -133,7 +133,7 @@ The FX snapshot has the form `{ base: 'USD', rates: { VND, USD } }`. Conversion 
 
 ```
 convert({ amount, currency: 'VND' }, 'USD', fx)
-  = round(amount / fx.rates.VND × 100) / 100   // VND minor → USD cents
+  = round(amount / fx.rates.VND × 100)         // VND minor → USD cents
 
 convert({ amount, currency: 'USD' }, 'VND', fx)
   = round(amount × fx.rates.VND / 100)         // USD cents → VND minor
