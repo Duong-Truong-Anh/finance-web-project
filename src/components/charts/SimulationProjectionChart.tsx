@@ -63,6 +63,21 @@ export default function SimulationProjectionChart({ projection, displayCurrency,
         scaleType: ScaleTypes.LINEAR,
         title: 'Year',
         includeZero: true,
+        // Carbon renders thresholds per-axis, not from a top-level options.thresholds
+        // array. A threshold on the bottom (x) axis draws a vertical reference line at
+        // that year. Phase 3.3 placed it at options.thresholds with a non-existent
+        // `axis: 'x'` field, so the line never rendered at all (Phase 3.4 theme audit).
+        thresholds: [
+          {
+            value: 5,
+            label: 'End of contribution',
+            // Carbon Charts pipes fillColor through a path that strips the leading zero
+            // from a numeric token suffix (`border-strong-01` → the undefined
+            // `border-strong-1`, rendering stroke:none). text-secondary has no numeric
+            // suffix to mangle and is a high-contrast token across all four themes.
+            fillColor: 'var(--cds-text-secondary)',
+          },
+        ],
       },
       left: {
         mapsTo: 'value',
@@ -75,14 +90,6 @@ export default function SimulationProjectionChart({ projection, displayCurrency,
     // summed Total row would mislead — suppress it (Carbon's line-chart default is on).
     tooltip: { customHTML: orderedTooltip, showTotal: false },
     points: { enabled: false },
-    thresholds: [
-      {
-        axis: 'x' as const,
-        value: 5,
-        label: 'End of contribution',
-        fillColor: 'var(--cds-border-subtle-01)',
-      },
-    ],
     height: '440px',
     theme,
   };
