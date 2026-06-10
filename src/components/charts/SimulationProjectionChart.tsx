@@ -3,6 +3,7 @@ import { LineChart } from '@carbon/charts-react';
 import { ScaleTypes } from '@carbon/charts';
 import type { Projection } from '@/src/lib/projection';
 import type { Currency } from '@/src/lib/currency/types';
+import { formatCompact, type Locale } from '@/src/lib/currency/format';
 import type { Theme } from '@/src/lib/settings/repository';
 
 interface Props {
@@ -21,7 +22,29 @@ function toMajor(amount: number, currency: Currency): number {
   return currency === 'VND' ? amount : amount / 100;
 }
 
+// Carbon Charts v1.27.10 sorts ruler-tooltip rows by value descending and exposes
+// no sort hook (TooltipOptions has no itemSortFunction). customHTML is the only
+// lever, so we reorder the <li> rows inside Carbon's own rendered defaultHTML —
+// swatches, color classes, and value formatting stay byte-identical; only the
+// reading order changes to Low → Mid → High, matching MilestoneGrid's Tag order.
+function orderedTooltip(_data: unknown, defaultHTML: string): string {
+  const rows = defaultHTML.match(/<li>[\s\S]*?<\/li>/g);
+  if (!rows) return defaultHTML;
+  // The title row (shared x-axis label) carries no color swatch; keep it first.
+  const head = rows.filter((li) => !li.includes('tooltip-color'));
+  const series = rows
+    .filter((li) => li.includes('tooltip-color'))
+    .sort((a, b) => scenarioRank(a) - scenarioRank(b));
+  return `<ul class="multi-tooltip">${[...head, ...series].join('')}</ul>`;
+}
+
+function scenarioRank(li: string): number {
+  const i = SCENARIO_LABELS.findIndex((label) => li.includes(label));
+  return i === -1 ? SCENARIO_LABELS.length : i;
+}
+
 export default function SimulationProjectionChart({ projection, displayCurrency, theme }: Props) {
+  const locale: Locale = displayCurrency === 'VND' ? 'vi-VN' : 'en-US';
   const data = projection.scenarios.flatMap((scenario, si) =>
     Array.from({ length: TOTAL_YEARS }, (_, y) => ({
       group: SCENARIO_LABELS[si],
@@ -45,8 +68,12 @@ export default function SimulationProjectionChart({ projection, displayCurrency,
         mapsTo: 'value',
         title: `Value (${displayCurrency})`,
         includeZero: true,
+        ticks: { formatter: (tick: number | Date) => formatCompact(Number(tick), locale) },
       },
     },
+    // Low/Mid/High are mutually-exclusive scenarios, not additive components, so a
+    // summed Total row would mislead — suppress it (Carbon's line-chart default is on).
+    tooltip: { customHTML: orderedTooltip, showTotal: false },
     points: { enabled: false },
     thresholds: [
       {
