@@ -153,7 +153,11 @@ export default function DashboardPage({ initialCurrency, initialTheme }: Props) 
 
   // ── Populated dashboard ────────────────────────────────────────────────────
   // monthIndex is non-null here (transactions.length > 0)
-  const safeMonthIndex = monthIndex ?? 0;
+  // series[k] is the END of month k with month 1 = the anchor month, and each
+  // contribution is invested at the start of its month (spec §4 annuity-due).
+  // "Today's value" is therefore series[offset + 1]; without +1, series[0] —
+  // always exactly 0 by construction — renders whenever today is in the anchor month.
+  const safeMonthIndex = Math.min(360, (monthIndex ?? 0) + 1);
 
   // Current-month net flow
   const todayYM = `${today.getUTCFullYear()}-${String(today.getUTCMonth() + 1).padStart(2, '0')}`;
