@@ -88,7 +88,7 @@ At `md`: KPI tiles become 2x2 (`md={4}` each). At `sm`: stacked.
 
 ### 2.4 Interactions
 
-- Hovering the line chart reveals Carbon Charts' default tooltip (month, value per scenario).
+- Hovering the line chart reveals the tooltip with one row per scenario, ordered **Low → Mid → High** (the `MilestoneGrid` Tag reading order), with **no Total row**. See §4.2 Region B for the ordering mechanism; the Dashboard chart shares the convention.
 - Clicking a KPI tile routes to its destination.
 - "View all" routes to `/cash-flow`.
 - Theme switch in header re-themes the chart automatically (Carbon Charts honors Carbon themes natively).
@@ -232,14 +232,23 @@ Visible section heading `<p class="cds--type-productive-heading-03">30-year proj
 above a `<div role="figure" aria-labelledby="sim-chart-heading">` wrapping the chart. The
 Carbon Charts `<LineChart>` is configured with `title: ''`; the accessible name flows from
 the page heading through the figure's aria-labelledby. Three series ("Low (15%)",
-"Mid (17.5%)", "High (20%)") at 31-point yearly density (year 0..30). Carbon Charts'
-built-in tooltip surfaces all three values on hover; data-vis palette positions 1–3 carry
-the series colors. A single threshold reference line at year 5 marks the end of the
-contribution window. Height ~440px. Y-axis title `Value (${displayCurrency})`. X-axis title
-`Year`; auto-ticks. The Dashboard line chart uses the same 31-yearly-point convention but
-remains a separate component — it uses different scenario labels ("15% growth" vs
-"Low (15%)"), carries no threshold line, and renders at a different height. The
-presentation-level downsample is the same; the framing differs.
+"Mid (17.5%)", "High (20%)") at 31-point yearly density (year 0..30). The hover tooltip
+surfaces all three values in **fixed Low → Mid → High order** (the `MilestoneGrid` Tag
+reading order), overriding Carbon's default value-descending sort. Ordering is enforced via
+`tooltip.customHTML` — the only ordering lever in `@carbon/charts` ≤1.27 — by reordering the
+`<li>` rows of Carbon's own rendered markup, so swatches and value formatting are preserved.
+**No Total row** (`showTotal: false`): the scenarios are mutually exclusive, not additive, so
+a sum would mislead. Data-vis palette positions 1–3 carry the series colors. A single
+threshold reference line at year 5 marks the end of the contribution window — configured
+under `axes.bottom.thresholds` (Carbon reads thresholds per-axis; a top-level
+`options.thresholds` array is silently ignored) with `fillColor: var(--cds-text-secondary)`
+so the line is legible across all four themes. Height ~440px. Y-axis title
+`Value (${displayCurrency})`; ticks are **compact** (`$50K`/`$1M`, `50tr`/`1 tỷ`) via the
+shared `formatCompact` helper. X-axis title `Year`. The Dashboard line chart uses the same
+31-yearly-point convention and the same tooltip-order + compact-tick treatment but remains a
+separate component — it uses different scenario labels ("15% growth" vs "Low (15%)"), carries
+no threshold line, and renders at a different height. The presentation-level downsample is the
+same; the framing differs.
 
 **Region B (cont.) — Per-asset stacked-area chart** (`<Column lg={16}>`):
 

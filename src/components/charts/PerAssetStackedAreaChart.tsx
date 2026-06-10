@@ -4,6 +4,7 @@ import { ScaleTypes } from '@carbon/charts';
 import type { Projection } from '@/src/lib/projection';
 import { ASSET_CLASSES } from '@/src/lib/portfolio';
 import type { Currency } from '@/src/lib/currency/types';
+import { formatCompact, type Locale } from '@/src/lib/currency/format';
 import type { Theme } from '@/src/lib/settings/repository';
 import { ASSET_LABELS } from '@/src/features/simulation/PerAssetSummary';
 
@@ -22,6 +23,7 @@ export default function PerAssetStackedAreaChart({
   displayCurrency,
   theme,
 }: Props) {
+  const locale: Locale = displayCurrency === 'VND' ? 'vi-VN' : 'en-US';
   const mid = projection.scenarios[1];
 
   // Yearly downsampling (mirrors SimulationProjectionChart): 31 points × 5 assets = 155 rows.
@@ -47,6 +49,7 @@ export default function PerAssetStackedAreaChart({
         mapsTo: 'value',
         title: `Value (${displayCurrency})`,
         includeZero: true,
+        ticks: { formatter: (tick: number | Date) => formatCompact(Number(tick), locale) },
       },
     },
     points: { enabled: false },

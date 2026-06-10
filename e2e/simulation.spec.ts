@@ -138,6 +138,43 @@ test('populated — allocation tile, chart, 9 milestone tiles, and 5-row per-ass
   await expect(page.getByText('Year 30: Mid (17.5%)')).toBeVisible();
 });
 
+test('line chart tooltip lists scenarios Low → Mid → High (not value-descending)', async ({
+  page,
+  context,
+}) => {
+  await seedStorage(context, { transactions: [SALARY, RENT, GROCERIES] });
+  await seedPortfolio(context, FULL_PORTFOLIO);
+  await page.goto('/simulation');
+
+  const backdrop = page
+    .locator('[role="figure"][aria-labelledby="sim-chart-heading"] .chart-grid-backdrop')
+    .first();
+  await backdrop.scrollIntoViewIfNeeded();
+  const box = await backdrop.boundingBox();
+  if (!box) throw new Error('chart backdrop has no bounding box');
+
+  // Carbon raises the ruler (multi-series) tooltip on a mousemove that changes the
+  // nearest data column — a single static move only emits a MOVE, not a SHOW. So we
+  // move to one x, then to a different x to force the SHOW with all scenarios at that year.
+  const y = box.y + box.height * 0.6;
+  await page.mouse.move(box.x + box.width * 0.3, y, { steps: 5 });
+  await page.mouse.move(box.x + box.width * 0.7, y, { steps: 10 });
+
+  const tooltip = page.locator('.multi-tooltip');
+  await expect(tooltip).toBeVisible({ timeout: 4000 });
+
+  const text = (await tooltip.innerText()).replace(/\s+/g, ' ');
+  const low = text.indexOf('Low (15%)');
+  const mid = text.indexOf('Mid (17.5%)');
+  const high = text.indexOf('High (20%)');
+
+  expect(low, `tooltip text: ${text}`).toBeGreaterThanOrEqual(0);
+  expect(mid).toBeGreaterThan(low);
+  expect(high).toBeGreaterThan(mid);
+  // Mutually-exclusive scenarios: no summed Total row.
+  expect(text).not.toContain('Total');
+});
+
 test('per-asset stacked-area chart renders below the projection chart on populated state', async ({
   page,
   context,
