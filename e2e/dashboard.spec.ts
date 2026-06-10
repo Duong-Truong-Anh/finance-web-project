@@ -93,6 +93,44 @@ test('populated dashboard — KPI tiles, chart, and recent-5 table render', asyn
   await expect(tableRows).toHaveCount(4);
 });
 
+test("today's value — anchor-month data renders non-zero, not $0.00", async ({
+  page,
+  context,
+}) => {
+  // Regression for the off-by-one: data starting in the CURRENT calendar month gives
+  // monthIndex === 0. Reading series[0] (always exactly 0) rendered $0.00 in all three
+  // today's-value tiles. The fix reads series[offset + 1]. Derive YYYY-MM at test time
+  // so this is deterministic regardless of run date; use day 01 to stay safely in-month.
+  const now = new Date();
+  const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const thisMonthSalary: Transaction = {
+    id: '01HWEPYCYW0000000000000040',
+    createdAt: `${ym}-01T00:00:00.000Z`,
+    updatedAt: `${ym}-01T00:00:00.000Z`,
+    kind: 'income',
+    name: 'This Month Salary',
+    amount: { amount: 30000000, currency: 'VND' },
+    occurredOn: `${ym}-01`,
+    notes: null,
+  };
+
+  // USD display reproduces the exact reported symptom ($0.00) when the bug is present.
+  await seedStorage(context, { transactions: [thisMonthSalary], currency: 'USD' });
+  await page.goto('/');
+
+  const todayTile = page
+    .locator('.cds--tile--clickable')
+    .filter({ hasText: "Today's value (mid)" });
+  await expect(todayTile).toBeVisible();
+
+  // Wait for the projection to resolve (USD value rendered), then assert it is neither
+  // the $0.00 bug nor the em-dash loading placeholder. The tile's sub-line carries the
+  // low/high values too, so "$0.00" anywhere in the tile would flag the regression.
+  await expect(todayTile).toContainText('$', { timeout: 8000 });
+  await expect(todayTile).not.toContainText('$0.00');
+  await expect(todayTile).not.toContainText('—');
+});
+
 test('currency reflow — Contributed tile value changes when display currency toggles', async ({
   page,
   context,
