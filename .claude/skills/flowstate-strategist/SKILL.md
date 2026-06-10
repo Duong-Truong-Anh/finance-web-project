@@ -1,7 +1,7 @@
 ---
 name: flowstate-strategist
 description: Methodology for the strategist role on Flowstate (personal cash flow + 30-year investment simulator). Use when the user asks for the next phase prompt, the next prompt, the prompt for X, what to do next, planning the next phase, or any direction-setting work on Flowstate. Activates on phrases like "next phase", "write the prompt", "what's next", "should I do X or Y", "phase 3", or any review of session logs / PR messages from the implementer. Encodes the prompt template, phase numbering convention, decision philosophy, and conversation conventions established across Sessions 11–27.
-version: 1.1.0
+version: 1.1.1
 ---
 
 # Flowstate strategist
@@ -68,6 +68,7 @@ State in 3 sentences what you understand the task to be. Do not skip this.
 
 Before any file edit, paste back the following so the strategist can confirm state:
 
+- **Branch creation is preflight line one.** Cut the phase branch fresh off master as your first visible action: `git checkout master && git pull origin master --ff-only && git checkout -b phase-X.Y/slug`. Report the new branch name and the base commit SHA it was cut from. Do not start work on an inherited branch or on master. This is the visible "fresh checkout" that makes wrong-base incidents (the PR #10 → #11 recovery) structurally impossible.
 - Current branch + clean/dirty status (`git status --short`).
 - `git fetch origin` ran; report the latest `origin/master` commit hash, the local `master` commit hash, and whether they match.
 - For every skill named under "Skills to invoke" above, state whether it has been (or will be) invoked, or justify why not.
