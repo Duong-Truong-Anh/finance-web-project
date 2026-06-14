@@ -1,7 +1,7 @@
 ---
 name: flowstate-strategist
 description: Methodology for the strategist role on Flowstate (personal cash flow + 30-year investment simulator). Use when the user asks for the next phase prompt, the next prompt, the prompt for X, what to do next, planning the next phase, or any direction-setting work on Flowstate. Activates on phrases like "next phase", "write the prompt", "what's next", "should I do X or Y", "phase 3", or any review of session logs / PR messages from the implementer. Encodes the prompt template, phase numbering convention, decision philosophy, and conversation conventions established across Sessions 11–27.
-version: 1.2.0
+version: 1.2.1
 ---
 
 # Flowstate strategist
@@ -57,7 +57,7 @@ You are continuing implementation on Flowstate. [State of master in 1-2 sentence
 - [Other skills as needed: carbon-builder, impeccable, fallow, etc., each with .claude/skills/... path and a one-line reason.]
 - **No `[skill]`.** [Why excluded if relevant.]
 
-**Carbon MCP (`carbon-mcp`):** [Mandatory line — declare whether the live IBM source of truth plays a role this phase. Either: "Not needed — [why, e.g. no new Carbon component/token/chart surface]." OR: "In play. Use `docs_search` for usage/accessibility/do's-and-don'ts on [component]; `code_search` for the version-pinned props/variants/composition of [component] (confirm before hand-writing markup); `get_charts` for any Carbon Charts work — it is the **only** authoritative charts retrieval, including the TypeScript options interface via `include_interfaces` (do NOT read `dist/*.d.ts` or guess). Expectation: verify [specific facts] against the server before writing, and note in the session log's `What I learned` what you confirmed or what diverged from assumption."]
+**Carbon MCP (`carbon-mcp`):** [Mandatory line — declare whether the live IBM source of truth plays a role this phase. Either: "Not needed — [why, e.g. no new Carbon component/token/chart surface]." OR: "In play. Use `docs_search` for usage/accessibility/do's-and-don'ts on [component]; `code_search` for the version-pinned props/variants/composition of [component] (confirm before hand-writing markup); `get_charts` for any Carbon Charts work — it is the **only** authoritative charts retrieval, including the TypeScript options interface via `include_interfaces` (do NOT read `dist/*.d.ts` or guess). Expectation: verify [specific facts] against the server before writing, and note in the session log's `What I learned` what you confirmed or what diverged from assumption. **Run this session in the terminal** — the Claude extension's MCP client is broken (ADR 010); if the `carbon-mcp` tools are not reachable, fall back to the live Carbon GitHub source + installed `@carbon/react` types via `tsc` (the same source the MCP wraps) — do not block or guess. Test reachability by calling a tool, never by `mcp list`."]
 
 ## Required reading (in order)
 

@@ -73,3 +73,13 @@ Operational rules:
   fall back to `carbon-builder` + the library source; prompts should degrade to
   "MCP not available — verify against `node_modules/@carbon/*`" rather than
   block.
+- **Client matters more than the server.** `carbon-mcp` is reachable from
+  **terminal-run** Claude Code but NOT from the **Claude extension** build in
+  Antigravity IDE — the extension's MCP integration is broken (its `mcp list`
+  was non-functional from the start, and remote-HTTP tools never enter the
+  session's callable inventory, even after an app restart and a fresh
+  conversation). The server, token, and config are constant across both
+  clients; only the client differs. Therefore: run MCP-dependent sessions —
+  especially the implementer doing Carbon work — in the **terminal**, and
+  verify capability by **calling a tool** (e.g. a `docs_search`), never by
+  `mcp list` (a connection check is not a capability check).
