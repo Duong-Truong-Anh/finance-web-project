@@ -40,8 +40,10 @@ export default function PerTickerSummary({ projection, tickers, locale }: Props)
         </StructuredListRow>
       </StructuredListHead>
       <StructuredListBody>
-        {tickers.map((ticker) => (
-          <StructuredListRow key={ticker.symbol}>
+        {tickers.map((ticker, i) => (
+          // Composite key: the portfolio schema does not enforce symbol
+          // uniqueness, so symbol alone can collide across slots.
+          <StructuredListRow key={`${ticker.symbol}-${i}`}>
             <StructuredListCell>
               <span>{ticker.symbol}</span>
               {ticker.description && (

@@ -265,6 +265,33 @@ test('per-ticker breakdown — renders entered symbols with non-zero allocated a
   await expect(aaplRow).toContainText(/[1-9]/);
 });
 
+test('per-ticker breakdown — duplicate symbols render distinct rows without a React key collision', async ({
+  page,
+  context,
+}) => {
+  // The portfolio schema does not enforce symbol uniqueness, so two slots can
+  // hold the same symbol. Keying rows by symbol alone would emit a duplicate-key
+  // console.error — caught by attachErrorGuard's afterEach assertion.
+  const DUP_PORTFOLIO: PortfolioConfig = {
+    allocation: { stocks: 0.5, savings: 0.2, cash: 0.1, gold: 0.1, usd: 0.1 },
+    tickers: [ticker('AAPL'), ticker('AAPL')],
+    updatedAt: '2026-05-01T00:00:00.000Z',
+  };
+  await seedStorage(context, { transactions: [SALARY, RENT, GROCERIES] });
+  await seedPortfolio(context, DUP_PORTFOLIO);
+  await page.goto('/simulation');
+
+  const list = page.locator(
+    '[aria-label="Per-ticker breakdown at year 30, mid scenario"]',
+  );
+  await expect(list).toBeVisible();
+
+  // Both duplicate slots render as their own row (head row excluded).
+  await expect(
+    list.locator('.cds--structured-list-row', { hasText: 'AAPL' }),
+  ).toHaveCount(2);
+});
+
 test('live price renders under the ComboBox when a symbol is committed and a Finnhub key is set', async ({
   page,
   context,
