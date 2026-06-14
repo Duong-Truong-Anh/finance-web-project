@@ -75,6 +75,7 @@ The **pre-Carbon history** (V1 vanilla bento dashboard, Flowstate v0 hand-built 
 - Session 40 — Phase 3.4.1 — Dashboard "today" seam: $0.00 today's-value + TZ + §8 erratum — 2026-06-10
   - Session 40 (addendum) — Phase 3.4.1 — Copilot PR #38 triage (clean, no comments) — 2026-06-10
 - Session 41 — Phase 3.5.1 — Per-ticker contribution + projected value (StructuredList, brief §5) — 2026-06-14
+  - Session 41 (addendum) — Phase 3.5.1 — Copilot PR #39 triage (2 valid) + Carbon-source UI verify — 2026-06-14
 
 ---
 
@@ -3157,6 +3158,44 @@ Master tip was `b35cd11` (one commit ahead of the `dacde9a` named in the handoff
 ### Recommendation for next session
 
 Phase 3.5.2: the Dashboard per-ticker view and the KPI-tile / milestone-hero reframe (plus the line-chart-color vs MilestoneGrid-Tag-hue decision) remain open and were explicitly out of scope here. The §9 worked-example regeneration is a separate docs pass.
+
+## Session 41 (addendum) — Phase 3.5.1: Copilot PR #39 triage + Carbon-source UI verify (2026-06-14)
+
+### What I asked the AI to do
+
+_Fetch the GitHub Copilot review on PR #39, assess each suggestion (assume wrong until proven right), implement the legitimate ones, and verify the feature UI against the Carbon design source._
+
+### What the AI did
+
+Copilot left two inline comments; both proved legitimate on inspection:
+
+- **Duplicate React key (PerTickerSummary.tsx:45) — VALID, fixed.** The portfolio schema (`tickers: z.array(tickerSelectionSchema).max(5)`) has no uniqueness refinement, and nothing in `SimulationPage`/`computeNextTickers` dedupes, so two slots can hold the same symbol. `key={ticker.symbol}` would then collide → a React duplicate-key `console.error` (which the e2e `attachErrorGuard` treats as a failure) plus row-reuse risk. Changed the key to `` `${ticker.symbol}-${i}` ``. Added a regression e2e seeding `[AAPL, AAPL]` that asserts two distinct rows render with the error guard clean (28 e2e now, was 27).
+- **Spec overclaim (docs/04_feature_spec.md:297) — VALID, fixed.** The spec text claimed the per-ticker view fulfils the brief's per-stock "10/20/30-year milestones" requirement, but the table only shows Year 30 (the locked phase scope: Ticker / Contributed / Year-30 Mid). Adding Year 10/20 columns would be out-of-scope scope expansion, so narrowed the claim instead: the named per-ticker breakdown fulfils "amount allocated to each stock code" + the named Year-30 value; the per-stock 10/20/30 *magnitudes* already appear in the milestone grid's anonymous ÷5 line.
+
+**Carbon UI verification.** The `carbon-mcp` server is connected at the CLI level, but its tools (`docs_search`/`code_search`/`get_charts`) are not exposed into this agent session's callable tool set, so they could not be invoked directly. Verified instead against the live Carbon source on GitHub (the same source `carbon-mcp` wraps) + the installed `@carbon/react` types via `tsc`: `StructuredListRow.head` and `StructuredListCell.head` are current non-deprecated booleans; `StructuredListWrapper` spreads `...other` and handles the kebab `aria-label` (the current form); the only deprecated StructuredList props are `label` (Wrapper) and `defaultChecked` (Input), neither used.
+
+### What I learned
+
+`carbon-mcp` showing "✔ Connected" in `claude mcp list` does **not** guarantee its tools are reachable from a given agent turn — the tool schemas have to be in the (deferred) tool inventory, and here they weren't. The honest fallback is the raw Carbon GitHub source, which is authoritative and matches what the MCP serves. Also: a connection-level health check is not a capability check.
+
+### Spec drift / discrepancies / things noticed
+
+The portfolio schema permits duplicate ticker symbols. This phase only hardened the *rendering* against it (stable keys); whether duplicates should be prevented at input/validation time is a separate product question, not in scope here. Noted for a future phase rather than fixed.
+
+### Quality gates
+
+| Gate | Result |
+|---|---|
+| `bunx tsc --noEmit` | ✅ 0 errors |
+| `bun run lint` | ✅ 0 errors, 0 warnings |
+| `bun run test` | ✅ 192 passed, 1 skipped |
+| `bun run e2e` | ✅ 28/28 (was 27; +1 duplicate-symbol regression test) |
+| `bun run build` | ✅ all routes |
+| `bun run fallow:check` | ✅ 0 issues in changed files |
+
+### Recommendation for next session
+
+Unchanged from the main Session 41 entry — Phase 3.5.2 next. Consider, separately, whether the portfolio schema should reject duplicate ticker symbols at validation time (currently allowed; only the render is now collision-safe).
 
 <!-- ──────────────────────────────────────────────────────────────────── -->
 <!-- APPEND NEW SESSION ENTRIES ABOVE THIS LINE.                          -->
