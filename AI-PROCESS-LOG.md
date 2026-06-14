@@ -78,6 +78,7 @@ The **pre-Carbon history** (V1 vanilla bento dashboard, Flowstate v0 hand-built 
   - Session 41 (addendum) — Phase 3.5.1 — Copilot PR #39 triage (2 valid) + Carbon-source UI verify — 2026-06-14
 - Session 42 — Phase 3.5.2 — Dashboard reframe: milestone hero + KPI comprehension — 2026-06-14
   - Session 42 (addendum) — Phase 3.5.2 — Copilot PR #40 triage (1 of 2 valid) — 2026-06-14
+  - Session 42 (addendum 2) — Phase 3.5.2 — Standing default: auto-wait + triage Copilot after every PR — 2026-06-14
 
 ---
 
@@ -3276,6 +3277,33 @@ None.
 ### Recommendation for next session
 
 Unchanged from the main Session 42 entry — Phase 3.5.3 (chart-series-color alignment) is next, with the codebase-wide `var(--cds-spacing-*)` no-op cleanup as a separate candidate.
+
+## Session 42 (addendum 2) — Phase 3.5.2: Standing default — auto-wait + triage Copilot after every PR (2026-06-14)
+
+### What I asked the AI to do
+
+_Make "wait for the Copilot review and triage it" the standing default after opening any PR, so the user never has to monitor review latency or re-issue the instruction. Save it as project memory and document it per standard procedure._
+
+### What the AI did
+
+- **Saved a `feedback`-type project memory** (`feedback_copilot_autowait.md`, indexed in `MEMORY.md`): after every `gh pr create`, launch a `run_in_background` poll (foreground `sleep` is blocked, but a backgrounded command sleeps and re-invokes the agent on exit), ~60s interval, ~5 min cap, exit early when the review lands; then triage assume-wrong-until-proven, implement only legitimate items, and log an addendum. On timeout, report rather than poll silently.
+- **Caught and fixed a real bug in the poll query during review** (the load-bearing part of this addendum): the first draft filtered on login `copilot-pull-request-reviewer`, which matches nothing. Verified against PR #40's REST API: review authors are `copilot-pull-request-reviewer[bot]` (the `[bot]` suffix is required on REST; GraphQL `gh pr view --json reviews` strips it, which is why the main-session manual fetch still worked), and inline-comment authors are `Copilot`. The corrected poll checks **both** surfaces with the exact logins, so it can't silently always TIMEOUT.
+
+### What I learned
+
+The REST and GraphQL GitHub APIs disagree on bot login formatting: REST appends `[bot]` (`copilot-pull-request-reviewer[bot]`), GraphQL does not. A poll written against one API with the other's login string fails silently. Always pin the detection to the exact API + login it will actually call, and verify against a live PR before trusting it.
+
+### Spec drift / discrepancies / things noticed
+
+None. (Memory lives in the agent memory store, not the repo; only this log entry is committed.)
+
+### Quality gates
+
+N/A — documentation + memory only; no code changed.
+
+### Recommendation for next session
+
+Unchanged — Phase 3.5.3 (chart-series-color alignment) next. The Copilot auto-wait is now automatic for any PR opened in this project; no user prompt needed.
 
 <!-- ──────────────────────────────────────────────────────────────────── -->
 <!-- APPEND NEW SESSION ENTRIES ABOVE THIS LINE.                          -->
