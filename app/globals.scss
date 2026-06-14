@@ -22,3 +22,15 @@ code,
 pre {
   font-family: var(--font-ibm-plex-mono, 'IBM Plex Mono', 'Menlo', 'Courier New', monospace);
 }
+
+// Dashboard milestone hero: a containerless editorial region separated from the KPI
+// tiles below by a single tonal hairline (No-Shadow Rule), with breathing room below.
+// Carbon's pre-compiled CSS does not expose --cds-spacing-* as runtime custom
+// properties (ADR 002 bundles Carbon as static CSS), and @carbon/layout SCSS tokens
+// can't be @use'd under this loader, so these paddings use the literal rem values of
+// Carbon spacing tokens. They are static (theme-independent), so this stays portable.
+.flowstate-dashboard-hero {
+  padding-block-end: 2rem; // $spacing-07
+  margin-block-end: 1rem; // $spacing-05
+  border-block-end: 1px solid var(--cds-border-subtle);
+}
