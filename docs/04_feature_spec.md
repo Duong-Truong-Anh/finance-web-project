@@ -56,18 +56,32 @@ Onboarding does **not** render the SideNav. The `<Header>` is present but the Si
 
 ### 2.1 Goal
 
-A single-screen answer to "where am I?" — the at-a-glance condensed view. The user with five seconds gets the four numbers that matter (this month's net flow, total contributed, current portfolio value at mid-scenario, 30-year mid-scenario projection) and a sparkline of the trajectory. No data entry. No deep configuration. Click-throughs to `/cash-flow` and `/simulation` for anything more.
+A single-screen answer to "where am I, and where is this heading?" The user with five seconds gets the long-view payoff first (the milestone hero), then three insight tiles that ground today in the present, then the trajectory chart. No data entry. No deep configuration. Click-throughs to `/cash-flow` and `/simulation` for anything more.
+
+> **Phase 3.5.2 reframe.** The Dashboard was four flat scalar tiles (This month / Contributed / Today's value / In 30 years) above the chart. Flat scalars stated *what* the number was but not *what it meant*. The reframe (a) absorbs the standalone "In 30 years" scalar into a **milestone hero** that makes the long-term outcome tangible, and (b) recasts the remaining tiles from raw numbers into insight framings (investable relationship / contribution progress / growth-to-date). This is a comprehension/composition phase; the engine, anchor logic, and projection chart are unchanged.
 
 ### 2.2 Carbon composition
 
-Top row: four `<ClickableTile>` KPI tiles. Each tile is `<Column lg={4}>`.
+**Milestone hero** (`<Column lg={16}>`, containerless). The emotional headline: the Year-30 **mid** value as the largest thing on screen (`cds--type-productive-heading-07`, light weight, tabular-nums), embedded in honest "current pace" prose, with the Year-10 / Year-20 mid values as supporting waypoints and the Low–High range for honesty. No Tile, no shadow, no accent chrome (DESIGN.md No-Shadow Rule; avoids the hero-metric card cliché). Separated from the tiles below by a 1px `border-subtle` hairline. A `<Button kind="ghost">See the full projection →</Button>` links to `/simulation`.
 
-| Tile | Headline number | Sub-line | Click destination |
+Hero copy (concrete, projection-framed — never a promise):
+
+> 30-year projection
+> At your current pace, your portfolio could reach
+> **{yr30 mid}**
+> by around {anchorYear + 30}, in the mid scenario (17.5% a year).
+> Could land anywhere from {yr30 low} to {yr30 high}, depending on how markets perform.
+> On the way — In 10 years (by around {anchorYear + 10}): {yr10 mid} · In 20 years (by around {anchorYear + 20}): {yr20 mid}
+
+The concrete year is derived from the anchor (earliest transaction year) + horizon; "by around" absorbs the month-360 boundary approximation. The mid scenario is **17.5%/yr**; the 15–20% spread is carried by the Low–High range line, not conflated into the mid label.
+
+**KPI tiles** — three `<ClickableTile>` tiles. On `lg`: `5 / 6 / 5` (the progress tile is wider for its bar).
+
+| Tile | Headline (number leads) | Below | Click |
 |---|---|---|---|
-| **This month** | Net flow (current month, in display currency) | "Inflow X − Outflow Y" | `/cash-flow` |
-| **Contributed** | Total contributed across all entered months | "from N months entered" | `/cash-flow` |
-| **Today's value (mid)** | Portfolio value at the current month, mid scenario (17.5%) | "low: X · high: Y" smaller | `/simulation` |
-| **In 30 years (mid)** | Yr30 mid-scenario value | "low: X · high: Y" smaller | `/simulation` |
+| **This month** | Net flow (current month) | "Inflow X · Outflow Y"; in-window relationship line: surplus goes into investments / no surplus this month | `/cash-flow` |
+| **Contribution progress** | Total contributed | `<ProgressBar value={N} max={60}>` "N of 60 months" + "You invest for 5 years, then it compounds for 25 more." (after month 60: "Contribution window complete. Now compounding.") | `/cash-flow` |
+| **Growth so far** | Growth-to-date = today's mid value − total contributed (Signal Rule: ArrowUp + support-success when > 0) | "Value X · Contributed Y" + "What your contributions have earned so far, mid scenario." | `/simulation` |
 
 Below: a single Carbon Charts `<LineChart>` showing the three projection scenarios for the full 30-year horizon at 31-point yearly density (year 0..30), smaller height ~280px. The `lg={16}` row.
 
@@ -78,13 +92,14 @@ Below the chart: a `<DataTable>` with the most recent 5 transactions. Header has
 ```
 <Grid>
   <Column lg={16}><h1 className="cds--type-productive-heading-04">Dashboard</h1></Column>
-  <Column lg={4}><Tile/></Column> × 4
+  <Column lg={16}><MilestoneHero/></Column>
+  <Column lg={5}/><Column lg={6}/><Column lg={5}>  (3 KPI ClickableTiles)
   <Column lg={16}><LineChart/></Column>
   <Column lg={16}><DataTable size="sm" rows={5}/></Column>
 </Grid>
 ```
 
-At `md`: KPI tiles become 2x2 (`md={4}` each). At `sm`: stacked.
+At `md`: hero full-width; KPI tiles reflow (`md={4}/{4}/{8}`). At `sm`: stacked.
 
 ### 2.4 Interactions
 
@@ -102,7 +117,7 @@ If transactions count = 0, the Dashboard renders a single empty-state `<Tile>` s
 > Add your first income or expense to start projecting.
 > `<Button kind="primary">Add a transaction</Button>` → routes to `/cash-flow?action=new`.
 
-KPI tiles and chart are not rendered in the empty state.
+The milestone hero, KPI tiles, and chart are not rendered in the empty state. While transactions exist but the portfolio config is still loading, the hero and tiles render skeletons (the hero falls back to its loading state; tiles show `—`).
 
 ### 2.6 Keyboard & a11y
 
