@@ -76,6 +76,7 @@ The **pre-Carbon history** (V1 vanilla bento dashboard, Flowstate v0 hand-built 
   - Session 40 (addendum) — Phase 3.4.1 — Copilot PR #38 triage (clean, no comments) — 2026-06-10
 - Session 41 — Phase 3.5.1 — Per-ticker contribution + projected value (StructuredList, brief §5) — 2026-06-14
   - Session 41 (addendum) — Phase 3.5.1 — Copilot PR #39 triage (2 valid) + Carbon-source UI verify — 2026-06-14
+- Session 42 — Phase 3.5.2 — Dashboard reframe: milestone hero + KPI comprehension — 2026-06-14
 
 ---
 
@@ -3196,6 +3197,50 @@ The portfolio schema permits duplicate ticker symbols. This phase only hardened 
 ### Recommendation for next session
 
 Unchanged from the main Session 41 entry — Phase 3.5.2 next. Consider, separately, whether the portfolio schema should reject duplicate ticker symbols at validation time (currently allowed; only the render is now collision-safe).
+
+## Session 42 — Phase 3.5.2: Dashboard reframe — milestone hero + KPI comprehension (2026-06-14)
+
+### What I asked the AI to do
+
+_Reframe the Dashboard for comprehension and motivation: add a prominent milestone hero making the 30-year outcome tangible (Year-30 mid headline tied to a concrete year, Year-10/20 waypoints, low–high range, honest "current pace" framing), and recast the four flat KPI scalar tiles into three insight-bearing tiles (investable relationship / N-of-60 contribution progress / growth-to-date). Composition/copy phase only — no engine, anchor, or chart changes. `impeccable` is the lead skill; design checkpoint (composition + copy) approved before any code._
+
+### What the AI did
+
+- **`src/features/dashboard/MilestoneHero.tsx` (new).** Containerless editorial hero (no Tile/shadow/accent chrome — avoids the hero-metric cliché). Year-30 mid value as the largest thing on screen (`cds--type-productive-heading-07`, light/300, tabular-nums), wrapped in honest prose ("At your current pace… by around {anchorYear+30}, in the mid scenario (17.5% a year)"), low–high honesty line, "On the way" Year-10/20 waypoints, and a `<Button kind="ghost">See the full projection →</Button>` to `/simulation`. Spacing via Carbon `<Stack>`.
+- **`src/features/dashboard/KpiTile.tsx`.** Extended: `status?: 'positive' | 'negative'` (Signal Rule — ArrowUp+support-success / ArrowDown+support-error) replacing the old `negative` bool; optional `children` slot; body wrapped in `<Stack gap={3}>` so internal spacing is real (compiled) instead of relying on the no-op `--cds-spacing-*` inline vars.
+- **`src/features/dashboard/DashboardPage.tsx`.** Slotted the hero (full-width, above the tiles); removed the standalone "In 30 years" tile (absorbed by hero); reframed the three tiles — This month (+ in-window relationship line), Contribution progress (`<ProgressBar value={N} max={60}>` + "N of 60 months" + window copy), Growth so far (today-mid − totalContributed, inline `Money` subtraction, N=1). Derived `anchorYear` inline for the concrete-year copy; updated the loading skeleton to hero + 3 tiles.
+- **`app/globals.scss`.** Added `.flowstate-dashboard-hero` (bottom hairline `border-subtle` + padding/margin) using literal rem values of Carbon spacing tokens (documented), since neither runtime `--cds-spacing-*` nor `@use '@carbon/layout'` is available here.
+- **`docs/04_feature_spec.md` §2.** Documented the hero + reframed tiles + exact copy + the 4→3 reduction + responsive layout; noted hero/tiles skeleton on cfg-loading.
+- **`e2e/dashboard.spec.ts`.** Retargeted existing tests to the reframed labels (exact match — "this month" collides with helper copy under strict mode), the off-by-one regression now reads the Growth-so-far tile's "Value" sub, the reflow test reads the Contribution progress tile; added one focused test asserting the hero renders a real Year-30 amount + waypoints. 28 → 29 e2e.
+
+### What I learned
+
+- **`--cds-spacing-*` are not runtime CSS custom properties in this app.** ADR 002 bundles Carbon as pre-compiled CSS, which exposes color theme tokens (`--cds-text-primary`, etc.) but **not** the spacing scale as `--cds-*` vars. A browser probe proved it: the existing Dashboard `<h1>` `marginBlockEnd: var(--cds-spacing-07)` computes to **0px**, and `getPropertyValue('--cds-spacing-07')` is empty on `<html>`, `<body>`, and descendants. So every inline `style={{ … 'var(--cds-spacing-XX)' }}` in the codebase is a silently-dropped no-op; existing visual rhythm comes from Carbon component defaults + Grid, not those declarations. The fix that honors token discipline: Carbon `<Stack>`/`<Grid>` (gap compiles to a literal rem via `--cds-stack-gap`), and documented literal-rem token values for the rare border/padding case. `@use '@carbon/layout'` to get `$spacing-*` SCSS tokens is **also** out — it hits the same `@forward 'scss/convert'` resolution failure ADR 002 documents.
+- **Background dev server lifecycle on Windows.** `kill %jobid` did not terminate the Next/Turbopack node tree; the stale server kept serving old chunks (HMR not reflecting edits), which masqueraded as "my edit isn't working." Had to `Stop-Process` the PID holding port 3000. Lesson: when a render doesn't match the source, verify the server actually restarted before debugging the code.
+- **`SkeletonText` does not accept a `style` prop** (typed props only) — tsc caught it.
+- **Carbon MCP was not reachable** this session (no `code_search`/`docs_search` tools exposed). Fell back to the installed `@carbon/react@1.106.0` / `@carbon/type` types per the prompt: confirmed `ProgressBar` props (`label` required, `helperText`, `value`, `max`, `size`, `status`) and that `hideLabel` keeps the accessible name (label rendered `cds--visually-hidden` with `aria-labelledby` on `role="progressbar"`), and that `productive-heading-06/07` exist (42/54px, light) for the hero.
+
+### Spec drift / discrepancies / things noticed
+
+- The phase prompt referred to the Dashboard as "§3"; it is **§2** in `docs/04_feature_spec.md` (§3 is Cash Flow). Documented under §2 as the user confirmed; flagging the mapping per their instruction.
+- **Possible engine/brief divergence to flag for a later phase (logged, not fixed):** the engine allocates **100% of positive net flow** into the portfolio (`calc spec §3` line 54 — the five asset weights sum to 1.00, no uninvested remainder), whereas the assignment brief mentioned a 30–50% investment slice. That slider was deferred (Phase 1.W7). Because "investable this month" ≈ the tile's own net-flow figure, the planned second number would have double-printed — so Tile 1 uses a relationship line instead of a redundant amount.
+
+### Quality gates
+
+| Gate | Result |
+|---|---|
+| `bunx tsc --noEmit` | ✅ 0 errors |
+| `bun run lint` | ✅ 0 errors, 0 warnings |
+| `bun run test` | ✅ 192 passed, 1 skipped (no new unit tests — growth-to-date is an inline N=1 subtraction, no util) |
+| `bun run e2e` | ✅ 29 passed (was 28; +1 hero test) |
+| `bun run build` | ✅ all routes |
+| `bun run fallow:check` | ✅ 0 issues in 6 changed files |
+
+Three-theme screenshot pass (g90 / g100 / white): clean, no leaks, hairline divider renders, Signal-Rule growth (green + ArrowUp) and status tags correct, hero number dominant.
+
+### Recommendation for next session
+
+Phase 3.5.3 (the deferred decision): align the projection line-chart series colors with the Simulation MilestoneGrid Tag hues so Low/Mid/High read consistently across surfaces. Separately, consider a small follow-up to migrate the remaining no-op `var(--cds-spacing-*)` inline styles across the dashboard (and audit the rest of the app) to `<Stack>`/documented literals — this session fixed only the touched components, but the pattern is codebase-wide and currently relies on Carbon component defaults masking it.
 
 <!-- ──────────────────────────────────────────────────────────────────── -->
 <!-- APPEND NEW SESSION ENTRIES ABOVE THIS LINE.                          -->
