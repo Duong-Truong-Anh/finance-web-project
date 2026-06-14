@@ -292,9 +292,12 @@ fulfils the per-asset chart originally deferred to Phase 3.2c.
   performance (the live Finnhub quote is decorative only, per ADR 008). With fewer than
   five tickers, only the entered rows render — the ÷5 divisor is fixed per the brief; the
   unentered slots are simply unnamed. This view **fulfils brief §5's "amount allocated to
-  each stock code" and per-stock "portfolio value at the 10/20/30-year milestones" output
-  requirement** by naming each entered symbol against its allocated contribution and
-  projected value (previously only implicit in the milestone grid's anonymous ÷5 divisor).
+  each stock code" output requirement** by naming each entered symbol against its allocated
+  contribution and its Year-30 (Mid) projected value (previously only implicit in the
+  milestone grid's anonymous ÷5 divisor). The per-stock magnitudes at all three
+  10/20/30-year milestones remain available in the milestone grid above (its `Per ticker:`
+  ÷5 line, across each horizon and scenario); the per-ticker breakdown adds the *naming*
+  and a single representative Year-30 value, not a third 10/20/30 table.
 
 ### 4.3 Layout
 
