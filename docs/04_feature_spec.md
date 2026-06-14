@@ -281,6 +281,23 @@ fulfils the per-asset chart originally deferred to Phase 3.2c.
   Columns: Asset, Contributed (months 1–60), Year 30 — Mid (17.5%). Reads from
   `projection.scenarios[1].byAsset[asset]`. This is the per-asset year-30 scalar
   drill-down; the shape-over-time view is the stacked-area chart in Region B above.
+- **Per-ticker breakdown:** `<StructuredListWrapper>` (`<PerTickerSummary>`) with one row
+  per *entered* ticker, gated on `localTickers.length > 0`. Heading
+  `productive-heading-03` + a `body-compact-01` subtitle ("Each ticker receives an equal
+  1/5 share of the 50% stocks allocation."). Columns: Ticker (symbol primary, description
+  secondary in `text-secondary`), Contributed (months 1–60), Year 30 — Mid (17.5%). Each
+  amount is the stocks sleeve ÷ 5 (`Math.round` on the minor units), read from
+  `projection.scenarios[1].byAsset.stocks`. Every row shows the *same* two amounts: the
+  engine treats the stocks sleeve as one pool and does not model individual ticker
+  performance (the live Finnhub quote is decorative only, per ADR 008). With fewer than
+  five tickers, only the entered rows render — the ÷5 divisor is fixed per the brief; the
+  unentered slots are simply unnamed. This view **fulfils brief §5's "amount allocated to
+  each stock code" output requirement** by naming each entered symbol against its allocated
+  contribution and its Year-30 (Mid) projected value (previously only implicit in the
+  milestone grid's anonymous ÷5 divisor). The per-stock magnitudes at all three
+  10/20/30-year milestones remain available in the milestone grid above (its `Per ticker:`
+  ÷5 line, across each horizon and scenario); the per-ticker breakdown adds the *naming*
+  and a single representative Year-30 value, not a third 10/20/30 table.
 
 ### 4.3 Layout
 
@@ -300,6 +317,7 @@ fulfils the per-asset chart originally deferred to Phase 3.2c.
 
   <Column lg={16}>"Milestone outcomes" + <MilestoneGrid/></Column>
   <Column lg={16}>"Per-asset breakdown" + <PerAssetSummary/></Column>
+  <Column lg={16} when localTickers.length > 0>"Per-ticker breakdown" + <PerTickerSummary/></Column>
 </Grid>
 ```
 

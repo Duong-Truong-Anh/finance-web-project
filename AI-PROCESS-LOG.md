@@ -74,6 +74,8 @@ The **pre-Carbon history** (V1 vanilla bento dashboard, Flowstate v0 hand-built 
   - Session 39 (addendum) — Phase 3.4 — Copilot review triage — 2026-06-10
 - Session 40 — Phase 3.4.1 — Dashboard "today" seam: $0.00 today's-value + TZ + §8 erratum — 2026-06-10
   - Session 40 (addendum) — Phase 3.4.1 — Copilot PR #38 triage (clean, no comments) — 2026-06-10
+- Session 41 — Phase 3.5.1 — Per-ticker contribution + projected value (StructuredList, brief §5) — 2026-06-14
+  - Session 41 (addendum) — Phase 3.5.1 — Copilot PR #39 triage (2 valid) + Carbon-source UI verify — 2026-06-14
 
 ---
 
@@ -3120,6 +3122,80 @@ None. The PR is unchanged from the Session 40 state; quality gates from the main
 ### Recommendation for next session
 
 Unchanged from the main Session 40 entry — Phase 3.5 (Dashboard reframe) is next.
+
+## Session 41 — Phase 3.5.1: Per-ticker contribution + projected value (2026-06-14)
+
+### What I asked the AI to do
+
+_Close the brief's §5 output requirement to display the "amount allocated to each stock code" and the per-stock "portfolio value at the 10/20/30-year milestones," which were only implicit in the milestone grid's anonymous ÷5 divisor. Add one presentational component on the Simulation page that names each entered ticker and its allocated contribution + year-30 projected value, mirroring `PerAssetSummary`. No engine changes; Mid scenario only._
+
+### What the AI did
+
+- **New `src/features/simulation/PerTickerSummary.tsx`** (`'use client'`): a `StructuredListWrapper` mirroring `PerAssetSummary`'s composition, one row per *entered* ticker. Columns: Ticker (symbol primary + description in `text-secondary` `label-01`), Contributed (months 1–60), Year 30: Mid (17.5%). Reads `projection.scenarios[1].byAsset.stocks`; inlines a local `divideByFive` (mirror of `MilestoneGrid`'s, `Math.round` on minor units) — not extracted (N=2). `tabular-nums` on money cells.
+- **`SimulationPage.tsx`**: imported and slotted the breakdown into Region C as a new `<Column lg={16}>` after the Per-asset breakdown, gated on `localTickers.length > 0`, with `productive-heading-03` heading + `body-compact-01` subtitle ("Each ticker receives an equal 1/5 share of the 50% stocks allocation."). Added `marginBlockEnd` spacing to the now-non-terminal Per-asset column to match Region C rhythm.
+- **`docs/04_feature_spec.md` §4 Region C**: documented the per-ticker breakdown, cited that it fulfils brief §5's "amount allocated to each stock code" + per-stock milestone-value output (removed the "implicit" framing); updated the §4.3 layout diagram.
+- **`e2e/simulation.spec.ts`**: +1 test asserting the "Per-ticker breakdown" heading is visible and all 5 seeded symbols render with a non-zero formatted amount. Scoped the pre-existing per-asset `getByText('Year 30: Mid (17.5%)')` assertion to its table's aria-label (the new table reuses that column header, which otherwise tripped Playwright strict mode).
+
+### What I learned
+
+The new component reuses the exact "Year 30: Mid (17.5%)" column header as `PerAssetSummary`, so the existing populated-state e2e's unscoped `getByText` started matching two `columnheader` nodes and failed strict mode. The fix is on the test side (scope to the per-asset list's aria-label), not the component — a reminder that adding a second instance of a shared label is a silent way to break a sibling's by-text locator. Also confirmed `TickerSelection` carries `exchange`/`pickedAt` beyond the `{symbol, description}` shorthand in the prompt; the component only reads `symbol` + `description`, so no design change.
+
+### Spec drift / discrepancies / things noticed
+
+Master tip was `b35cd11` (one commit ahead of the `dacde9a` named in the handoff — the Carbon-MCP workflow chore); branched from `b35cd11`. No spec drift in the calculation contract; the equal-split (every row shows the same number) is correct and expected because the engine treats stocks as one pool and the live Finnhub quote is decorative (ADR 008).
+
+### Quality gates
+
+| Gate | Result |
+|---|---|
+| `bunx tsc --noEmit` | ✅ 0 errors |
+| `bun run lint` | ✅ 0 errors, 0 warnings |
+| `bun run test` | ✅ 192 passed, 1 skipped |
+| `bun run e2e` | ✅ 27/27 (was 26; +1 per-ticker render test) |
+| `bun run build` | ✅ all routes |
+| `bun run fallow:check` | ✅ 0 issues in changed files |
+
+### Recommendation for next session
+
+Phase 3.5.2: the Dashboard per-ticker view and the KPI-tile / milestone-hero reframe (plus the line-chart-color vs MilestoneGrid-Tag-hue decision) remain open and were explicitly out of scope here. The §9 worked-example regeneration is a separate docs pass.
+
+## Session 41 (addendum) — Phase 3.5.1: Copilot PR #39 triage + Carbon-source UI verify (2026-06-14)
+
+### What I asked the AI to do
+
+_Fetch the GitHub Copilot review on PR #39, assess each suggestion (assume wrong until proven right), implement the legitimate ones, and verify the feature UI against the Carbon design source._
+
+### What the AI did
+
+Copilot left two inline comments; both proved legitimate on inspection:
+
+- **Duplicate React key (PerTickerSummary.tsx:45) — VALID, fixed.** The portfolio schema (`tickers: z.array(tickerSelectionSchema).max(5)`) has no uniqueness refinement, and nothing in `SimulationPage`/`computeNextTickers` dedupes, so two slots can hold the same symbol. `key={ticker.symbol}` would then collide → a React duplicate-key `console.error` (which the e2e `attachErrorGuard` treats as a failure) plus row-reuse risk. Changed the key to `` `${ticker.symbol}-${i}` ``. Added a regression e2e seeding `[AAPL, AAPL]` that asserts two distinct rows render with the error guard clean (28 e2e now, was 27).
+- **Spec overclaim (docs/04_feature_spec.md:297) — VALID, fixed.** The spec text claimed the per-ticker view fulfils the brief's per-stock "10/20/30-year milestones" requirement, but the table only shows Year 30 (the locked phase scope: Ticker / Contributed / Year-30 Mid). Adding Year 10/20 columns would be out-of-scope scope expansion, so narrowed the claim instead: the named per-ticker breakdown fulfils "amount allocated to each stock code" + the named Year-30 value; the per-stock 10/20/30 *magnitudes* already appear in the milestone grid's anonymous ÷5 line.
+
+**Carbon UI verification.** The `carbon-mcp` server is connected at the CLI level, but its tools (`docs_search`/`code_search`/`get_charts`) are not exposed into this agent session's callable tool set, so they could not be invoked directly. Verified instead against the live Carbon source on GitHub (the same source `carbon-mcp` wraps) + the installed `@carbon/react` types via `tsc`: `StructuredListRow.head` and `StructuredListCell.head` are current non-deprecated booleans; `StructuredListWrapper` spreads `...other` and handles the kebab `aria-label` (the current form); the only deprecated StructuredList props are `label` (Wrapper) and `defaultChecked` (Input), neither used.
+
+### What I learned
+
+`carbon-mcp` showing "✔ Connected" in `claude mcp list` does **not** guarantee its tools are reachable from a given agent turn — the tool schemas have to be in the (deferred) tool inventory, and here they weren't. The honest fallback is the raw Carbon GitHub source, which is authoritative and matches what the MCP serves. Also: a connection-level health check is not a capability check.
+
+### Spec drift / discrepancies / things noticed
+
+The portfolio schema permits duplicate ticker symbols. This phase only hardened the *rendering* against it (stable keys); whether duplicates should be prevented at input/validation time is a separate product question, not in scope here. Noted for a future phase rather than fixed.
+
+### Quality gates
+
+| Gate | Result |
+|---|---|
+| `bunx tsc --noEmit` | ✅ 0 errors |
+| `bun run lint` | ✅ 0 errors, 0 warnings |
+| `bun run test` | ✅ 192 passed, 1 skipped |
+| `bun run e2e` | ✅ 28/28 (was 27; +1 duplicate-symbol regression test) |
+| `bun run build` | ✅ all routes |
+| `bun run fallow:check` | ✅ 0 issues in changed files |
+
+### Recommendation for next session
+
+Unchanged from the main Session 41 entry — Phase 3.5.2 next. Consider, separately, whether the portfolio schema should reject duplicate ticker symbols at validation time (currently allowed; only the render is now collision-safe).
 
 <!-- ──────────────────────────────────────────────────────────────────── -->
 <!-- APPEND NEW SESSION ENTRIES ABOVE THIS LINE.                          -->

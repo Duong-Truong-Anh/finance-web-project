@@ -133,9 +133,15 @@ test('populated — allocation tile, chart, 9 milestone tiles, and 5-row per-ass
   // Region C — 9 milestone gridcells (3 horizons × 3 scenarios)
   await expect(page.getByRole('gridcell')).toHaveCount(9);
 
-  // Region C — per-asset summary: 5 asset rows under the header row
+  // Region C — per-asset summary: 5 asset rows under the header row.
+  // Scope the year-30 header to the per-asset table — the per-ticker breakdown
+  // below it reuses the same column header.
   await expect(page.getByText('Per-asset breakdown')).toBeVisible();
-  await expect(page.getByText('Year 30: Mid (17.5%)')).toBeVisible();
+  await expect(
+    page
+      .getByLabel('Per-asset summary at year 30, mid scenario')
+      .getByText('Year 30: Mid (17.5%)'),
+  ).toBeVisible();
 });
 
 test('line chart tooltip lists scenarios Low → Mid → High (not value-descending)', async ({
@@ -232,6 +238,58 @@ test('dropdown selection commits the full TickerSelection (symbol + description)
 
   // After reload, the persisted description carries through
   await expect(page.getByRole('combobox', { name: 'Ticker 1' })).toHaveValue(/AAPL.*Apple Inc\./);
+});
+
+test('per-ticker breakdown — renders entered symbols with non-zero allocated amounts', async ({
+  page,
+  context,
+}) => {
+  await seedStorage(context, { transactions: [SALARY, RENT, GROCERIES] });
+  await seedPortfolio(context, FULL_PORTFOLIO);
+  await page.goto('/simulation');
+
+  await expect(page.getByText('Per-ticker breakdown')).toBeVisible();
+
+  const list = page.locator(
+    '[aria-label="Per-ticker breakdown at year 30, mid scenario"]',
+  );
+  await expect(list).toBeVisible();
+
+  // One row per entered ticker — all 5 seeded symbols named.
+  for (const symbol of ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA']) {
+    await expect(list.getByText(symbol, { exact: true })).toBeVisible();
+  }
+
+  // The AAPL row carries a non-zero formatted money amount (stocks ÷ 5).
+  const aaplRow = list.locator('.cds--structured-list-row', { hasText: 'AAPL' });
+  await expect(aaplRow).toContainText(/[1-9]/);
+});
+
+test('per-ticker breakdown — duplicate symbols render distinct rows without a React key collision', async ({
+  page,
+  context,
+}) => {
+  // The portfolio schema does not enforce symbol uniqueness, so two slots can
+  // hold the same symbol. Keying rows by symbol alone would emit a duplicate-key
+  // console.error — caught by attachErrorGuard's afterEach assertion.
+  const DUP_PORTFOLIO: PortfolioConfig = {
+    allocation: { stocks: 0.5, savings: 0.2, cash: 0.1, gold: 0.1, usd: 0.1 },
+    tickers: [ticker('AAPL'), ticker('AAPL')],
+    updatedAt: '2026-05-01T00:00:00.000Z',
+  };
+  await seedStorage(context, { transactions: [SALARY, RENT, GROCERIES] });
+  await seedPortfolio(context, DUP_PORTFOLIO);
+  await page.goto('/simulation');
+
+  const list = page.locator(
+    '[aria-label="Per-ticker breakdown at year 30, mid scenario"]',
+  );
+  await expect(list).toBeVisible();
+
+  // Both duplicate slots render as their own row (head row excluded).
+  await expect(
+    list.locator('.cds--structured-list-row', { hasText: 'AAPL' }),
+  ).toHaveCount(2);
 });
 
 test('live price renders under the ComboBox when a symbol is committed and a Finnhub key is set', async ({
