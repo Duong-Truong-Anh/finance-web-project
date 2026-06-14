@@ -1,10 +1,11 @@
 'use client';
 import type { ReactNode } from 'react';
 import { ClickableTile, Stack } from '@carbon/react';
+import { ArrowDown, ArrowUp } from '@carbon/icons-react';
+
 // gap value: Carbon $spacing-02. --cds-spacing-* is not a runtime var here (ADR 002),
 // so the icon/value gap uses the token's literal rem; it is static and theme-portable.
 const ICON_VALUE_GAP = '0.25rem';
-import { ArrowDown, ArrowUp } from '@carbon/icons-react';
 
 interface Props {
   label: string;
