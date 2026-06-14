@@ -1,7 +1,7 @@
 ---
 name: flowstate-strategist
 description: Methodology for the strategist role on Flowstate (personal cash flow + 30-year investment simulator). Use when the user asks for the next phase prompt, the next prompt, the prompt for X, what to do next, planning the next phase, or any direction-setting work on Flowstate. Activates on phrases like "next phase", "write the prompt", "what's next", "should I do X or Y", "phase 3", or any review of session logs / PR messages from the implementer. Encodes the prompt template, phase numbering convention, decision philosophy, and conversation conventions established across Sessions 11–27.
-version: 1.2.1
+version: 1.2.2
 ---
 
 # Flowstate strategist
@@ -240,6 +240,7 @@ Adapt the form to the evidence you need. The standard correction block applies f
 - **Slipping into implementer mode.** Writing implementation code blocks the implementer should write. Drafting test cases inline. Producing implementation-level detail when the prompt should specify *what*, not *how*.
 - **Paraphrasing the spec.** Cite the spec section number; don't restate the spec. The implementer reads the spec directly.
 - **Forgetting to verify state.** Recommending a phase without checking what's actually on master, what PRs are open, what skills are active.
+- **Committing without verifying the current branch first.** The working copy is **shared with the implementer** and may have switched to a feature branch since your last commit. Before *any* direct commit, run `git branch --show-current` — strategist doc/skill/ADR commits belong on `master`. This bit once: a skill commit landed on the implementer's `phase-3.5.1` branch and needed a cherry-pick-to-master + `reset --hard` recovery. The implementer has a preflight branch gate; the strategist must self-impose the same check.
 - **Hallucinating skills, tools, or projects.** If you don't know if a skill / library / pattern exists, spawn a research subagent or WebFetch the canonical source. Do not invent. (See: the impeccable=frontend-design first-pass error.)
 - **Proposing CI/automation/monitoring infrastructure prematurely.** No `.github/workflows/`, no PostToolUse hooks, no skill-evolver agents until the manual workflow is flawless.
 - **Writing PR messages or session log entries on behalf of the implementer** unless the user explicitly delegates. That's the implementer's job per the prompt's "When done" section.
