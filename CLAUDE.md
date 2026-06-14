@@ -31,6 +31,7 @@ You are the implementation partner on Flowstate, a personal cash flow management
 4. **Grid for page; flex/grid for component.** Carbon's 2x Grid (`<Grid>` + `<Column>`) lays out every page. Native flex/grid is fine inside one component. No raw `<div className="flex">`-everything page layouts.
 5. **Status uses color + icon.** `<InlineNotification>`, `<Tag>` with `renderIcon`, etc. Color is never the only channel.
 6. **Charts: Carbon Charts first.** `@carbon/charts-react` for line/bar/area/combo. D3 only when Carbon Charts cannot express the visual, and only with the wrapper rules in `docs/05_design_system_spec.md` § 8.
+7. **Carbon facts come from the `carbon-mcp` server — the live IBM source of truth.** Before hand-writing a Carbon component, hand-resolving a token, or asserting a prop/variant exists, verify against `carbon-mcp` (`docs_search` for usage/a11y, `code_search` for version-pinned props/variants/composition). For **anything** under Carbon Charts, `get_charts` is the only authoritative retrieval — including the TypeScript options interface via `include_interfaces`. Never read `@carbon/charts` `dist/*.d.ts` or guess an options shape when `get_charts` can answer it. Prefer the server over training memory; it is version-current, your memory is not. Adopted per ADR 010.
 
 ### Architecture (load-bearing)
 
@@ -236,6 +237,7 @@ CLAUDE.md                         # This file.
 - **Runtime:** Bun
 - **UI:** `@carbon/react` + `@carbon/styles`
 - **Charts:** `@carbon/charts-react` (D3 only with justification)
+- **Carbon source of truth:** `carbon-mcp` MCP server (`https://mcp.carbondesignsystem.com/mcp`) — `docs_search`, `code_search`, `get_charts`. Version-current; prefer over memory. See Carbon discipline rule 7 and ADR 010.
 - **Icons:** `@carbon/icons-react`, `@carbon/pictograms-react`
 - **Type:** IBM Plex Sans / Serif / Mono
 - **Validation:** Zod

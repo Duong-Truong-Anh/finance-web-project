@@ -1,7 +1,7 @@
 ---
 name: flowstate-strategist
 description: Methodology for the strategist role on Flowstate (personal cash flow + 30-year investment simulator). Use when the user asks for the next phase prompt, the next prompt, the prompt for X, what to do next, planning the next phase, or any direction-setting work on Flowstate. Activates on phrases like "next phase", "write the prompt", "what's next", "should I do X or Y", "phase 3", or any review of session logs / PR messages from the implementer. Encodes the prompt template, phase numbering convention, decision philosophy, and conversation conventions established across Sessions 11–27.
-version: 1.1.1
+version: 1.2.0
 ---
 
 # Flowstate strategist
@@ -56,6 +56,8 @@ You are continuing implementation on Flowstate. [State of master in 1-2 sentence
 - `karpathy-guidelines` (`.claude/skills/karpathy-guidelines`) — [why for this phase].
 - [Other skills as needed: carbon-builder, impeccable, fallow, etc., each with .claude/skills/... path and a one-line reason.]
 - **No `[skill]`.** [Why excluded if relevant.]
+
+**Carbon MCP (`carbon-mcp`):** [Mandatory line — declare whether the live IBM source of truth plays a role this phase. Either: "Not needed — [why, e.g. no new Carbon component/token/chart surface]." OR: "In play. Use `docs_search` for usage/accessibility/do's-and-don'ts on [component]; `code_search` for the version-pinned props/variants/composition of [component] (confirm before hand-writing markup); `get_charts` for any Carbon Charts work — it is the **only** authoritative charts retrieval, including the TypeScript options interface via `include_interfaces` (do NOT read `dist/*.d.ts` or guess). Expectation: verify [specific facts] against the server before writing, and note in the session log's `What I learned` what you confirmed or what diverged from assumption."]
 
 ## Required reading (in order)
 
@@ -251,8 +253,13 @@ Adapt the form to the evidence you need. The standard correction block applies f
 | `karpathy-guidelines` | Surgical scope discipline. Required for every prompt. | `.claude/skills/karpathy-guidelines` |
 | `fallow` | Static analysis: dead code, boundaries, complexity, duplication. Trimmed to Flowstate's used rules per ADR 006. | `.claude/skills/fallow` |
 | `update-config` | Project-level `.claude/settings.json` edits (skill disables, permissions). | system-level |
+| `carbon-mcp` (MCP server) | The **live IBM source of truth** for Carbon. `docs_search` (usage/a11y/style), `code_search` (version-pinned component props/variants/composition, icons, pictograms), `get_charts` (authoritative Carbon Charts source + TS option interfaces). | remote: `https://mcp.carbondesignsystem.com/mcp` |
 
 `frontend-design` is **disabled at project scope** per ADR 007. Do not invoke or reference it for Flowstate work.
+
+### Carbon MCP vs `carbon-builder` — they are complementary, not redundant
+
+`carbon-mcp` is the **authoritative, version-pinned facts** server (does this prop exist in v11? is this component behind a feature flag? what is the current `TooltipOptions` shape?). `carbon-builder` is the **project-discipline** layer (token-before-value, theme-over-palette, the audit). Use the MCP to *resolve a fact*; use `carbon-builder` to *enforce the rule*. When they appear to conflict, the MCP wins on the fact and `carbon-builder` still governs how the fact is applied. Adopted per ADR 010. Both roles (strategist and implementer) may call the MCP; the strategist uses it to write grounded prompts, the implementer to verify before writing code. Hard rule: for anything under Carbon Charts, `get_charts` is the only retrieval tool — never `code_search`, never reading `dist/*.d.ts`, never guessing the options interface.
 
 ## Reading session log entries critically
 
