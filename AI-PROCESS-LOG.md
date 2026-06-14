@@ -77,6 +77,7 @@ The **pre-Carbon history** (V1 vanilla bento dashboard, Flowstate v0 hand-built 
 - Session 41 — Phase 3.5.1 — Per-ticker contribution + projected value (StructuredList, brief §5) — 2026-06-14
   - Session 41 (addendum) — Phase 3.5.1 — Copilot PR #39 triage (2 valid) + Carbon-source UI verify — 2026-06-14
 - Session 42 — Phase 3.5.2 — Dashboard reframe: milestone hero + KPI comprehension — 2026-06-14
+  - Session 42 (addendum) — Phase 3.5.2 — Copilot PR #40 triage (1 of 2 valid) — 2026-06-14
 
 ---
 
@@ -3241,6 +3242,40 @@ Three-theme screenshot pass (g90 / g100 / white): clean, no leaks, hairline divi
 ### Recommendation for next session
 
 Phase 3.5.3 (the deferred decision): align the projection line-chart series colors with the Simulation MilestoneGrid Tag hues so Low/Mid/High read consistently across surfaces. Separately, consider a small follow-up to migrate the remaining no-op `var(--cds-spacing-*)` inline styles across the dashboard (and audit the rest of the app) to `<Stack>`/documented literals — this session fixed only the touched components, but the pattern is codebase-wide and currently relies on Carbon component defaults masking it.
+
+## Session 42 (addendum) — Phase 3.5.2: Copilot PR #40 triage (2026-06-14)
+
+### What I asked the AI to do
+
+_Fetch the GitHub Copilot review on PR #40, assess each comment assuming it is wrong until proven right, implement only the legitimate ones, and log the triage._
+
+### What the AI did
+
+Copilot left two inline comments. Triaged both:
+
+- **KpiTile.tsx line 7 — "imports must come before other statements; `ICON_VALUE_GAP` between imports will cause a parse/compile error." → Partially valid (rationale wrong, nit right). Fixed.** The "compile error" claim is false: `bunx tsc`, `bun run lint`, and `bun run build` all passed in the main session — ES module `import`s are hoisted, so a `const` between two imports is legal and compiles. But interleaving an import after a statement is poor style, so I moved the `ICON_VALUE_GAP` const (and its comment) below all three imports. No behavior change; tsc + lint re-confirmed clean.
+- **DashboardPage.tsx line 294 — "ProgressBar renders live `investingMonths` when `projReady` is false, showing misleading progress; gate it on `projReady`." → Rejected (not proven; would reduce consistency).** `investingMonths` derives from `monthIndex` = `currentMonthIndex(transactions, today)`, which is projection-independent and available as soon as transactions load. So "N of 60 months" during the brief cfg-load window is *accurate*, not misleading. Moreover, the other two tiles (This month, Growth so far) already render their secondary content with `—` placeholder values during that same cold-load window; gating only the Contribution-progress tile would make its loading behavior inconsistent with its siblings. Current behavior is correct and intentional — no change.
+
+### What I learned
+
+Nothing new — straightforward review triage. Reinforced that Copilot's stated rationales need independent verification: here the "compile error" claim was demonstrably false (gates green), yet a weaker style point underneath it was still worth acting on.
+
+### Spec drift / discrepancies / things noticed
+
+None.
+
+### Quality gates
+
+| Gate | Result |
+|---|---|
+| `bunx tsc --noEmit` | ✅ 0 errors |
+| `bun run lint` | ✅ 0 errors, 0 warnings |
+
+(Only the touched-file gates re-run; the import move is a no-op for runtime, so test/e2e/build are unchanged from the main session.)
+
+### Recommendation for next session
+
+Unchanged from the main Session 42 entry — Phase 3.5.3 (chart-series-color alignment) is next, with the codebase-wide `var(--cds-spacing-*)` no-op cleanup as a separate candidate.
 
 <!-- ──────────────────────────────────────────────────────────────────── -->
 <!-- APPEND NEW SESSION ENTRIES ABOVE THIS LINE.                          -->
