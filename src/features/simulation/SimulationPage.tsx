@@ -19,6 +19,7 @@ import AllocationTile from './AllocationTile';
 import TickerInputTile from './TickerInputTile';
 import MilestoneGrid from './MilestoneGrid';
 import PerAssetSummary from './PerAssetSummary';
+import PerTickerSummary from './PerTickerSummary';
 import SimulationEmptyState from './SimulationEmptyState';
 import SimulationProjectionChart from '@/src/components/charts/SimulationProjectionChart';
 import PerAssetStackedAreaChart from '@/src/components/charts/PerAssetStackedAreaChart';
@@ -300,7 +301,7 @@ export default function SimulationPage({ initialCurrency, initialTheme }: Props)
         />
       </Column>
 
-      <Column sm={4} md={8} lg={16}>
+      <Column sm={4} md={8} lg={16} style={{ marginBlockEnd: 'var(--cds-spacing-07)' }}>
         <p
           className="cds--type-productive-heading-03"
           style={{ marginBlockEnd: 'var(--cds-spacing-05)' }}
@@ -309,6 +310,31 @@ export default function SimulationPage({ initialCurrency, initialTheme }: Props)
         </p>
         <PerAssetSummary projection={projection} locale={locale} />
       </Column>
+
+      {localTickers.length > 0 && (
+        <Column sm={4} md={8} lg={16}>
+          <p
+            className="cds--type-productive-heading-03"
+            style={{ marginBlockEnd: 'var(--cds-spacing-03)' }}
+          >
+            Per-ticker breakdown
+          </p>
+          <p
+            className="cds--type-body-compact-01"
+            style={{
+              color: 'var(--cds-text-secondary)',
+              marginBlockEnd: 'var(--cds-spacing-05)',
+            }}
+          >
+            Each ticker receives an equal 1/5 share of the 50% stocks allocation.
+          </p>
+          <PerTickerSummary
+            projection={projection}
+            tickers={localTickers}
+            locale={locale}
+          />
+        </Column>
+      )}
     </Grid>
   );
 }
