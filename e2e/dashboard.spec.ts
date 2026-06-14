@@ -78,11 +78,18 @@ test('populated dashboard — KPI tiles, chart, and recent-5 table render', asyn
   await seedStorage(context, { transactions: [SALARY, RENT, GROCERIES] });
   await page.goto('/');
 
-  // All four KPI tile labels must be visible
-  await expect(page.getByText('This month')).toBeVisible();
-  await expect(page.getByText('Contributed')).toBeVisible();
-  await expect(page.getByText("Today's value (mid)")).toBeVisible();
-  await expect(page.getByText('In 30 years (mid)')).toBeVisible();
+  // Milestone hero renders the 30-year projection (waypoints + CTA), resolved (no em-dash placeholder)
+  const hero = page.getByRole('region', { name: '30-year projection' });
+  await expect(hero).toBeVisible();
+  await expect(hero).toContainText('On the way', { timeout: 8000 });
+  await expect(hero.getByRole('link', { name: /See the full projection/ })).toBeVisible();
+  await expect(hero).not.toContainText('—');
+
+  // All three reframed KPI tile labels must be visible (exact: the helper copy
+  // also contains "this month", which trips strict mode on a substring match)
+  await expect(page.getByText('This month', { exact: true })).toBeVisible();
+  await expect(page.getByText('Contribution progress', { exact: true })).toBeVisible();
+  await expect(page.getByText('Growth so far', { exact: true })).toBeVisible();
 
   // Projection chart SVG should be present
   await expect(page.locator('.cds--chart-holder svg, [data-carbon-chart] svg').first()).toBeVisible({ timeout: 8000 });
@@ -91,6 +98,23 @@ test('populated dashboard — KPI tiles, chart, and recent-5 table render', asyn
   const tableRows = page.getByRole('row');
   // header row + 3 data rows = at least 4 rows total
   await expect(tableRows).toHaveCount(4);
+});
+
+test('milestone hero — renders the year-30 mid value as a real amount', async ({
+  page,
+  context,
+}) => {
+  // USD display so the rendered value carries a "$"; assert the hero resolves to a
+  // concrete amount (not the "—" loading placeholder) and shows the 10y/20y waypoints.
+  await seedStorage(context, { transactions: [VND_INCOME], currency: 'USD' });
+  await page.goto('/');
+
+  const hero = page.getByRole('region', { name: '30-year projection' });
+  await expect(hero).toBeVisible();
+  await expect(hero).toContainText('$', { timeout: 8000 });
+  await expect(hero).not.toContainText('—');
+  await expect(hero).toContainText('In 10 years');
+  await expect(hero).toContainText('In 20 years');
 });
 
 test("today's value — anchor-month data renders non-zero, not $0.00", async ({
@@ -118,17 +142,18 @@ test("today's value — anchor-month data renders non-zero, not $0.00", async ({
   await seedStorage(context, { transactions: [thisMonthSalary], currency: 'USD' });
   await page.goto('/');
 
-  const todayTile = page
+  // The "Growth so far" tile carries today's mid value in its sub-line
+  // ("Value $X · Contributed $Y"); series[0] (always 0) would surface as $0.00 there.
+  const growthTile = page
     .locator('.cds--tile--clickable')
-    .filter({ hasText: "Today's value (mid)" });
-  await expect(todayTile).toBeVisible();
+    .filter({ hasText: 'Growth so far' });
+  await expect(growthTile).toBeVisible();
 
   // Wait for the projection to resolve (USD value rendered), then assert it is neither
-  // the $0.00 bug nor the em-dash loading placeholder. The tile's sub-line carries the
-  // low/high values too, so "$0.00" anywhere in the tile would flag the regression.
-  await expect(todayTile).toContainText('$', { timeout: 8000 });
-  await expect(todayTile).not.toContainText('$0.00');
-  await expect(todayTile).not.toContainText('—');
+  // the $0.00 bug nor the em-dash loading placeholder.
+  await expect(growthTile).toContainText('$', { timeout: 8000 });
+  await expect(growthTile).not.toContainText('$0.00');
+  await expect(growthTile).not.toContainText('—');
 });
 
 test('currency reflow — Contributed tile value changes when display currency toggles', async ({
@@ -138,8 +163,10 @@ test('currency reflow — Contributed tile value changes when display currency t
   await seedStorage(context, { transactions: [VND_INCOME] });
   await page.goto('/');
 
-  // Capture the initial Contributed tile text (VND)
-  const contributedTile = page.locator('.cds--tile--clickable').filter({ hasText: 'Contributed' });
+  // Capture the initial Contribution progress tile text (VND)
+  const contributedTile = page
+    .locator('.cds--tile--clickable')
+    .filter({ hasText: 'Contribution progress' });
   await expect(contributedTile).toBeVisible();
   const vndText = await contributedTile.textContent();
 
@@ -147,7 +174,7 @@ test('currency reflow — Contributed tile value changes when display currency t
   await page.getByRole('button', { name: /Display currency: VND/ }).click();
   await page.locator('label', { hasText: 'USD – US Dollar' }).click();
 
-  // After reflow, Contributed tile should show a different value
+  // After reflow, the contributed value should change to a USD amount
   await expect(contributedTile).not.toContainText(vndText ?? '');
   await expect(contributedTile).toContainText('$');
 });
