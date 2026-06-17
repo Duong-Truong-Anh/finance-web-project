@@ -79,6 +79,8 @@ The **pre-Carbon history** (V1 vanilla bento dashboard, Flowstate v0 hand-built 
 - Session 42 — Phase 3.5.2 — Dashboard reframe: milestone hero + KPI comprehension — 2026-06-14
   - Session 42 (addendum) — Phase 3.5.2 — Copilot PR #40 triage (1 of 2 valid) — 2026-06-14
   - Session 42 (addendum 2) — Phase 3.5.2 — Standing default: auto-wait + triage Copilot after every PR — 2026-06-14
+- Session 43 — Phase 3.6.1 — Spacing-token remediation (foundation + light routes) + ADR 011 — 2026-06-17
+  - Session 43 (addendum) — Phase 3.6.1 — Copilot PR #41 triage: reconcile design-system spec with ADR 011 — 2026-06-17
 
 ---
 
@@ -3304,6 +3306,82 @@ N/A — documentation + memory only; no code changed.
 ### Recommendation for next session
 
 Unchanged — Phase 3.5.3 (chart-series-color alignment) next. The Copilot auto-wait is now automatic for any PR opened in this project; no user prompt needed.
+
+## Session 43 — Phase 3.6.1: Spacing-token remediation (foundation + light routes) (2026-06-17)
+
+### What I asked the AI to do
+
+_Fix a codebase-wide silent defect found in Session 42: `var(--cds-spacing-*)` inline styles resolve to 0px in this pre-compiled-Carbon build (ADR 002), so most intentional spacing is dead code masked by component defaults. Establish the correct spacing pattern, remediate the no-ops without changing how pages look, correct CLAUDE.md rule 1, and write ADR 011. The 80-site audit was split into two PRs; this session is 3.6.1 — the foundation (pattern + ADR + rule) plus the light routes (Dashboard + Cash-flow). Implementer role; appearance-preserving correctness, not redesign._
+
+### What the AI did
+
+- **Browser-probe (preflight):** confirmed on `:root` (`.cds--g90`) that `--cds-spacing-05/07` return empty (→ 0px) while `--cds-text-primary` resolves to `#f4f4f4`; an `h1` and a fresh `div` with `var(--cds-spacing-07)` both compute to `0px`.
+- **ADR 011** (`docs/decisions/011_spacing-token-runtime-unavailability.md`): Context (probe evidence + ADR 002 root cause) → Decision (`<Stack gap>`/`<Grid>` + documented literal rem) → Consequences.
+- **CLAUDE.md rule 1:** amended to state spacing is special — never `var(--cds-spacing-*)`; use Stack/Grid/literal-rem. Color/type token discipline kept intact; removed the now-false `var(--cds-spacing-05)`/`@include layout.breakpoint` examples.
+- **app/globals.scss:** added a header SPACING CONVENTION comment (mechanisms + the rem-per-token cheat row).
+- **Dashboard** (`DashboardPage.tsx`, `EmptyState.tsx`): removed 8 dead margin no-ops (all 0px → appearance unchanged); restored skeleton-tile `minBlockSize` to `10rem` literal (CLS guard); empty state restored to flex-centered Tile with literal `3rem` padding + `1rem` gap.
+- **Cash-flow** (`CashFlowPage.tsx`, `EmptyState.tsx`, `ImportCsvModal.tsx`, `TransactionModal.tsx`, `TransactionTable.tsx`): action toolbar kept as native flex with a literal `0.5rem` gap (dropped the redundant `marginBlockEnd`); empty state flex-centered + literal padding/gap; modal/empty-tab paddings → documented literal rem.
+- **Verification:** before/after screenshots in g90 (Dashboard pixel-identical; Cash-flow identical bar a +8px button gap; empty states centered + padded), spot-checked g100 + white (no theme leaks).
+
+### What I learned
+
+- **A horizontal `<Stack>` is `display: grid`, not flex.** My first cut replaced the cash-flow button row and both empty-state layouts with `<Stack>`. Result: the toolbar buttons spread full-width (grid auto-columns), and the empty-state pictogram/button went left-aligned (grid `align-items: center` controls the block axis; horizontal centering needs `justify-items`, and a fixed-width child won't center / a Button would stretch). The fix was to keep native flex (rule 4 permits flex inside one component) with a documented literal `rem` gap. Lesson for 3.6.2: `<Stack gap>` is right for simple stacked siblings, but not for centered or clustered layouts — verify each conversion visually, don't assume Stack is a drop-in for every flex container.
+- **`<Stack>`'s `gap` does compile** (the outer `<Stack gap={7}>` on Cash-flow renders real spacing via the grid `gap`), confirming the prompt's mechanism — but the grid layout model is the catch.
+
+### Spec drift / discrepancies / things noticed
+
+- `docs/05_design_system_spec.md` §12 still lists `padding: var(--cds-spacing-05)` as the canonical example (now false). Out of scope here (this phase amends CLAUDE.md + ADR only); flagged for a docs pass. The `.claude/skills/carbon-builder` cheatsheet also maps px → `var(--cds-spacing-*)`; that skill is upstream/vendored and was left untouched.
+- Dashboard h1 → first section sits a little tight (~15px from line-height) now that the 0px margin is removed. This is unchanged from before (the margin was already a no-op); per phase scope, cramped rhythm is noted, not fixed.
+
+### Quality gates
+
+| Gate | Result |
+|---|---|
+| `bunx tsc --noEmit` | ✅ exit 0 |
+| `bun run lint` | ✅ exit 0 |
+| `bun run test` | ✅ 192 passed, 1 skipped |
+| `bun run e2e` | ✅ full suite green on a warm server (dashboard + cash-flow pass; 5 reload-heavy persistence tests in untouched specs flaked on cold-start parallel compile, all pass on re-run) |
+| `bun run build` | ✅ exit 0 |
+| `bun run fallow:check` | ✅ 0 issues in 11 changed files, no regressions |
+
+### Phase split
+
+80 no-op sites across 19 files exceeded the preflight >40 split threshold. Strategist chose two PRs: **3.6.1** (this session) = foundation + Dashboard (11) + Cash-flow (7) ≈ 18 sites; **3.6.2** (next) = Simulation (34) + Settings (26) + shared header CurrencySwitcher (2) ≈ 62 sites, cut off master after 3.6.1 merges.
+
+### Recommendation for next session
+
+Phase 3.6.2 — remediate the heavy routes (Simulation + Settings + the shared `CurrencySwitcher`) on a branch cut off master after this merges, inheriting the blessed pattern. Carry forward the Stack-is-grid lesson: convert per-site with visual verification, default to appearance-preserving, and apply intended values only where 0px is a visible defect (call those out in the PR). Watch for ambiguous parity-vs-intent sites in Simulation/Settings — if a layout fights the change, stop and split 3.6.2 further rather than forcing a mechanical pass.
+
+## Session 43 (addendum) — Phase 3.6.1: Copilot PR #41 triage (2026-06-17)
+
+### What I asked the AI to do
+
+_Fetch the GitHub Copilot review on PR #41, assess each suggestion assume-wrong-until-proven, implement the legitimate ones, and record an addendum._
+
+### What the AI did
+
+- Copilot left **one** inline comment (no formal approve/request-changes verdict), on `CLAUDE.md` rule 1: the amended spacing guidance now conflicts with `docs/05_design_system_spec.md` — which rule 1 still cites as "the full token discipline" — specifically §1's `var(--cds-spacing-05)` "Do" example, §7.1's spacing table + "never use `0.5rem` one-off" rule, and the §12 audit item.
+- **Verdict: valid.** Verified against the file — §1 line 12 did show `padding: var(--cds-spacing-05)` (the exact 0px no-op this phase removes), and §7.1 forbade the documented literal rem ADR 011 sanctions. Leaving the cited spec contradictory would let a future contributor reproduce the no-op, defeating the phase's goal. While verifying I also caught a **pre-existing factual error**: §7.1 listed `spacing-09 = 64px`; Carbon's `spacing-09` is **48px** (64px is `spacing-10`).
+- **Implemented** (`docs/05_design_system_spec.md`, commit `80b23b5`): §1 spacing "Do" → `<Stack gap>`/`<Grid>` or documented literal rem + an ADR 011 spacing-exception paragraph; §7.1 added a rem column, fixed `spacing-09` 64→48, amended the one-off rule to permit a documented literal rem equal to a scale token; §12 audit item now reads Stack/Grid/literal-rem with zero `var(--cds-spacing-*)`. Color/type/motion/breakpoint discipline untouched.
+
+### What I learned
+
+- The earlier session's "flag §12 for a later docs pass" deferral was the wrong call: the rule correction and the spec it cites are a single unit — correcting one without the other ships a self-contradicting ruleset. Copilot caught exactly that. For 3.6.2, reconcile spec + rule together in the same pass.
+
+### Spec drift / discrepancies / things noticed
+
+- Fixed the long-standing `spacing-09 = 64px` error in §7.1 (unrelated to the no-op defect; surfaced by the reconciliation).
+- The vendored `.claude/skills/carbon-builder` cheatsheet still maps px → `var(--cds-spacing-*)`. Left untouched (upstream skill, not project source); not load-bearing for project code review.
+
+### Quality gates
+
+| Gate | Result |
+|---|---|
+| Docs-only change | ✅ no code touched; tsc/lint/test/build/fallow unaffected from the main entry |
+
+### Recommendation for next session
+
+Unchanged — Phase 3.6.2 (heavy routes: Simulation + Settings + shared header), cut off master after #41 merges, inheriting the now-consistent spacing discipline (CLAUDE.md rule 1 + docs/05 + ADR 011 all aligned). Carry the Stack-is-grid lesson.
 
 <!-- ──────────────────────────────────────────────────────────────────── -->
 <!-- APPEND NEW SESSION ENTRIES ABOVE THIS LINE.                          -->

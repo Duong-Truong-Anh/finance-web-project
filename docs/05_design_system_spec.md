@@ -9,13 +9,15 @@ Every color, spacing, type, motion, and breakpoint value emitted by Flowstate is
 | Don't | Do |
 |---|---|
 | `color: #161616` | `color: var(--cds-text-primary)` |
-| `padding: 16px` | `padding: var(--cds-spacing-05)` |
+| `padding: 16px` | `<Stack gap={5}>` / `<Grid>` gap, or `'1rem' /* --cds-spacing-05 */` (see spacing exception below) |
 | `font-size: 14px; line-height: 18px` | `@include type.type-style('label-02')` |
 | `@media (min-width: 1056px)` | `@include layout.breakpoint('lg')` |
 | `transition: 240ms ease-in-out` | `transition: $duration-moderate-01 motion(standard, productive)` |
 | `border: 1px solid #393939` | `border: 1px solid var(--cds-border-subtle-01)` |
 
 A pixel literal in a CSS file is a code smell. ESLint + Stylelint enforce token usage where mechanically detectable; PR review covers the rest.
+
+**Spacing exception (ADR 011).** Carbon ships pre-compiled here (ADR 002), so the `--cds-spacing-*` scale is **not** a runtime CSS variable — `var(--cds-spacing-*)` in an inline style silently resolves to `0px`. Spacing therefore goes through Carbon layout components (`<Stack gap>`, `<Grid>`/`<Column>`, whose gaps compile to real values) or a documented literal `rem` equal to the token (e.g. `padding: '3rem' /* --cds-spacing-09 */`). Color, type, motion, and breakpoint tokens are unaffected and remain mandatory.
 
 ## 2. Theme strategy
 
@@ -138,15 +140,16 @@ Status is **always paired with an icon** (`<InlineNotification>` includes one by
 
 Carbon's spacing scale (`spacing-01` … `spacing-13`). The most common values:
 
-| Token | px | Used for |
-|---|---|---|
-| `spacing-03` | 8 | Inline gap, small icon-text gap |
-| `spacing-05` | 16 | Default Tile padding, form field gap |
-| `spacing-06` | 24 | Section gap inside a Tile |
-| `spacing-07` | 32 | Page-section vertical rhythm |
-| `spacing-09` | 64 | Page heading bottom margin |
+| Token | px | rem | Used for |
+|---|---|---|---|
+| `spacing-03` | 8 | 0.5rem | Inline gap, small icon-text gap |
+| `spacing-05` | 16 | 1rem | Default Tile padding, form field gap |
+| `spacing-06` | 24 | 1.5rem | Section gap inside a Tile |
+| `spacing-07` | 32 | 2rem | Page-section vertical rhythm |
+| `spacing-09` | 48 | 3rem | Empty-state / large Tile padding |
+| `spacing-13` | 160 | 10rem | Reserved min-block-size (CLS guard) |
 
-Never use values outside the scale. Never use `0.5rem` or `18px` as a one-off.
+Apply spacing via `<Stack gap>` / `<Grid>` gaps, or a documented literal `rem` **equal to a scale token** (commented with the token name) per ADR 011 — never `var(--cds-spacing-*)` (a 0px no-op) and never an off-scale value like `18px` or a bare `0.5rem` without its token comment.
 
 ### 7.2 Grid
 
@@ -234,7 +237,7 @@ Mental checklist run before any PR is opened. Every item is a tick or an explici
 
 ```
 [ ] All colors are theme/palette tokens — zero raw hex
-[ ] All spacing is from the spacing scale — zero arbitrary px/rem
+[ ] All spacing is via <Stack>/<Grid> gap or a literal rem equal to a scale token (ADR 011) — zero `var(--cds-spacing-*)`, zero off-scale px/rem
 [ ] All breakpoints are Carbon — zero hardcoded media queries
 [ ] All type is type-style — zero ad-hoc font-size/weight/line-height
 [ ] All interactive primitives are Carbon — no hand-rolled buttons/inputs/modals

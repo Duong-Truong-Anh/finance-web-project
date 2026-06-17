@@ -136,7 +136,7 @@ export default function TransactionModal({
             title="Storage full"
             subtitle={storageError}
             lowContrast
-            style={{ marginBottom: 'var(--cds-spacing-05)' }}
+            style={{ marginBottom: '1rem' /* --cds-spacing-05 */ }}
           />
         )}
         <Stack gap={5}>

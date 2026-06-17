@@ -86,7 +86,10 @@ export default function CashFlowPage({ initialCurrency, initialTheme }: Props) {
     <Stack gap={7}>
       <h1 className="cds--type-productive-heading-04">Cash flow</h1>
 
-      <div style={{ display: 'flex', gap: 'var(--cds-spacing-03)', marginBlockEnd: 'var(--cds-spacing-05)' }}>
+      {/* Native flex toolbar (rule 4: flex inside one component). Gap is a literal
+          rem equal to $spacing-03 since --cds-spacing-* is not a runtime var (ADR 011);
+          a horizontal <Stack> renders display:grid and spreads the buttons full-width. */}
+      <div style={{ display: 'flex', gap: '0.5rem' /* --cds-spacing-03 */ }}>
         <Button kind="primary" renderIcon={Add} onClick={openCreate}>
           Add transaction
         </Button>

@@ -79,12 +79,7 @@ export default function DashboardPage({ initialCurrency, initialTheme }: Props) 
     return (
       <Grid>
         <Column sm={4} md={8} lg={16}>
-          <h1
-            className="cds--type-productive-heading-04"
-            style={{ marginBlockEnd: 'var(--cds-spacing-07)' }}
-          >
-            Dashboard
-          </h1>
+          <h1 className="cds--type-productive-heading-04">Dashboard</h1>
         </Column>
 
         <Column sm={4} md={8} lg={16}>
@@ -95,7 +90,7 @@ export default function DashboardPage({ initialCurrency, initialTheme }: Props) 
 
         {[5, 6, 5].map((span, i) => (
           <Column key={i} sm={4} md={i === 2 ? 8 : 4} lg={span}>
-            <Tile style={{ height: '100%', minBlockSize: 'var(--cds-spacing-13)' }}>
+            <Tile style={{ height: '100%', minBlockSize: '10rem' /* --cds-spacing-13 */ }}>
               <SkeletonText width="60%" />
               <SkeletonText width="80%" heading />
               <SkeletonText width="50%" />
@@ -103,11 +98,11 @@ export default function DashboardPage({ initialCurrency, initialTheme }: Props) 
           </Column>
         ))}
 
-        <Column sm={4} md={8} lg={16} style={{ marginBlockStart: 'var(--cds-spacing-07)' }}>
+        <Column sm={4} md={8} lg={16}>
           <SkeletonPlaceholder style={{ width: '100%', height: '280px' }} />
         </Column>
 
-        <Column sm={4} md={8} lg={16} style={{ marginBlockStart: 'var(--cds-spacing-07)' }}>
+        <Column sm={4} md={8} lg={16}>
           <DataTableSkeleton
             headers={[
               { header: 'Date' },
@@ -128,12 +123,7 @@ export default function DashboardPage({ initialCurrency, initialTheme }: Props) 
     return (
       <Grid>
         <Column sm={4} md={8} lg={16}>
-          <h1
-            className="cds--type-productive-heading-04"
-            style={{ marginBlockEnd: 'var(--cds-spacing-07)' }}
-          >
-            Dashboard
-          </h1>
+          <h1 className="cds--type-productive-heading-04">Dashboard</h1>
           <InlineNotification
             kind="error"
             title="Failed to load transactions"
@@ -153,12 +143,7 @@ export default function DashboardPage({ initialCurrency, initialTheme }: Props) 
     return (
       <Grid>
         <Column sm={4} md={8} lg={16}>
-          <h1
-            className="cds--type-productive-heading-04"
-            style={{ marginBlockEnd: 'var(--cds-spacing-07)' }}
-          >
-            Dashboard
-          </h1>
+          <h1 className="cds--type-productive-heading-04">Dashboard</h1>
           <EmptyState />
         </Column>
       </Grid>
@@ -229,12 +214,7 @@ export default function DashboardPage({ initialCurrency, initialTheme }: Props) 
   return (
     <Grid>
       <Column sm={4} md={8} lg={16}>
-        <h1
-          className="cds--type-productive-heading-04"
-          style={{ marginBlockEnd: 'var(--cds-spacing-07)' }}
-        >
-          Dashboard
-        </h1>
+        <h1 className="cds--type-productive-heading-04">Dashboard</h1>
       </Column>
 
       {/* Milestone hero — the 30-year outcome at the current pace */}
@@ -310,7 +290,7 @@ export default function DashboardPage({ initialCurrency, initialTheme }: Props) 
       {/* Projection chart — reserve 280px slot while cfg loads so the chart's
           arrival doesn't grow page height. tx-ready-before-cfg-ready is a real
           intermediate state on cold load. */}
-      <Column sm={4} md={8} lg={16} style={{ marginBlockStart: 'var(--cds-spacing-07)' }}>
+      <Column sm={4} md={8} lg={16}>
         {projReady ? (
           <ProjectionLineChart
             projection={projection}
@@ -323,7 +303,7 @@ export default function DashboardPage({ initialCurrency, initialTheme }: Props) 
       </Column>
 
       {/* Recent transactions */}
-      <Column sm={4} md={8} lg={16} style={{ marginBlockStart: 'var(--cds-spacing-07)' }}>
+      <Column sm={4} md={8} lg={16}>
         <RecentTransactionsTable
           transactions={transactions}
           displayCurrency={initialCurrency}
