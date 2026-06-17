@@ -12,16 +12,16 @@ const ASSET_LABELS: Record<AssetClass, string> = {
 
 export default function AllocationTile() {
   return (
-    <Tile style={{ padding: 'var(--cds-spacing-06)' }}>
+    <Tile style={{ padding: '1.5rem' /* --cds-spacing-06 */ }}>
       <p
         className="cds--type-productive-heading-03"
-        style={{ marginBlockEnd: 'var(--cds-spacing-05)' }}
+        style={{ marginBlockEnd: '1rem' /* --cds-spacing-05 */ }}
       >
         Asset allocation
       </p>
       <p
         className="cds--type-label-01"
-        style={{ color: 'var(--cds-text-helper)', marginBlockEnd: 'var(--cds-spacing-06)' }}
+        style={{ color: 'var(--cds-text-helper)', marginBlockEnd: '1.5rem' /* --cds-spacing-06 */ }}
       >
         Fixed allocation per the brief. Each net-flow contribution is split across the five
         classes in these proportions. The 50% stocks slice is split equally across the
@@ -31,7 +31,7 @@ export default function AllocationTile() {
         style={{
           display: 'flex',
           flexDirection: 'column',
-          gap: 'var(--cds-spacing-04)',
+          gap: '0.75rem' /* --cds-spacing-04 */,
           listStyle: 'none',
           padding: 0,
           margin: 0,

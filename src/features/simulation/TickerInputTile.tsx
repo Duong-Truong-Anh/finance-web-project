@@ -92,7 +92,7 @@ function PriceRow({ state, refresh, symbol }: PriceRowProps) {
   const rowStyle = {
     display: 'flex',
     alignItems: 'center',
-    gap: 'var(--cds-spacing-03)',
+    gap: '0.5rem' /* --cds-spacing-03 */,
     minHeight: '1.5rem',
   } as const;
 
@@ -284,7 +284,7 @@ export default function TickerInputTile({
       style={{
         display: 'flex',
         flexDirection: 'column',
-        gap: 'var(--cds-spacing-03)',
+        gap: '0.5rem' /* --cds-spacing-03 */,
       }}
     >
       <ComboBox

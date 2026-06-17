@@ -38,11 +38,11 @@ export default function CurrencySwitcher({ current }: { current: CurrencyType })
         onClick={() => setOpen((o) => !o)}
         isActive={open}
       >
-        <span className="cds--label-01" style={{ padding: '0 var(--cds-spacing-02)' }}>
+        <span className="cds--label-01" style={{ padding: '0 0.25rem' /* --cds-spacing-02 */ }}>
           {current}
         </span>
       </HeaderGlobalAction>
-      <PopoverContent style={{ padding: 'var(--cds-spacing-05)' }}>
+      <PopoverContent style={{ padding: '1rem' /* --cds-spacing-05 */ }}>
         <RadioButtonGroup
           legendText="Display currency"
           name="flowstate-currency"

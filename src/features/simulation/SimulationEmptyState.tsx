@@ -13,8 +13,8 @@ export default function SimulationEmptyState() {
         flexDirection: 'column',
         alignItems: 'center',
         textAlign: 'center',
-        gap: 'var(--cds-spacing-05)',
-        padding: 'var(--cds-spacing-09)',
+        gap: '1rem' /* --cds-spacing-05 */,
+        padding: '3rem' /* --cds-spacing-09 */,
       }}
     >
       <AddDocument aria-hidden="true" />
