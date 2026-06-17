@@ -126,7 +126,11 @@ Status is **always paired with an icon** (`<InlineNotification>` includes one by
 
 ### 6.3 Palette steps for chart series
 
-`@carbon/charts` defaults are honored. Override only for series count > 14 (we never exceed 3) or to enforce specific accessibility contrasts. The three projection scenarios use Carbon's standard `data-vis` palette positions 1, 2, 3 (the `Cyan`, `Purple`, `Magenta` family by default in `g90`). They re-color automatically across themes.
+`@carbon/charts` defaults are honored. Override only for series count > 14 (we never exceed 3) or to enforce specific accessibility contrasts.
+
+**Exception — scenario color identity (ADR 012):** the projection **line** charts (Simulation + Dashboard) do *not* use the data-vis palette. Each Low / Mid / High series is colored from the matching MilestoneGrid Tag hue — **green = Low, blue = Mid, purple = High** — via `options.color.scale` keyed to the Carbon **foreground** tag tokens (`var(--cds-tag-color-green | blue | purple)`, ordered in `src/components/charts/scenario-colors.ts`). This is a deliberate, ADR-012-authorized deviation from the data-vis-palette rule below, so a scenario reads as one color across its chart series, its tooltip swatch (Carbon derives the swatch from the same scale), and its Tag. The tag tokens are runtime CSS vars that re-resolve per theme, so theme parity holds; the foreground token (not the pale pill `tag-background`) is used because its theme inversion is contrast-appropriate to the chart surface. The **per-asset stacked-area** chart is per-asset, not per-scenario, and keeps the data-vis palette.
+
+Outside that exception, the data-vis palette is the default. (Historically the three scenarios used `data-vis` palette positions 1, 2, 3 — the `Cyan`, `Purple`, `Magenta` family in `g90`; ADR 012 replaced that for the line charts.)
 
 ### 6.4 What we don't do
 
@@ -182,6 +186,8 @@ Carbon Charts ships theming, accessibility, tooltips, legends, downloads, and re
 | Simulation | 30-year area chart, three series with thresholds | `@carbon/charts-react` `<AreaChart>` | Carbon supports thresholds + multi-series. |
 | Reports (print) | Static thumbnail variants of the above | Same components, smaller size | Reuse. |
 | *(if added)* Sankey of net flow → investment → 5 stocks | **D3** | Carbon Charts has no Sankey. Stretch goal only. |
+
+**Scenario series color (Dashboard + Simulation line charts):** the Low / Mid / High series are colored from the MilestoneGrid Tag hues (green / blue / purple) via `options.color.scale`, not the data-vis palette — see §6.3 and ADR 012. One change to the scale recolors the series and the tooltip swatch together, keeping chart, tooltip, and Tag a single color identity per scenario. The per-asset stacked-area chart keeps the data-vis palette.
 
 ### 8.3 D3 rules — when justified
 

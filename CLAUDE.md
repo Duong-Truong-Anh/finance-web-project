@@ -170,7 +170,7 @@ Sessions 1–18 are not rewritten. This standard applies to Session 19 onward.
 - **Computing money with floats.** No. Integer minor units.
 - **Using `support-error` for "this number is negative" without an icon or minus glyph.** Status pairs color with another channel.
 - **Skipping the `<Theme>` wrapper.** The whole app is themed by the root `<Theme>`. New surfaces nested in a different theme use `<Theme theme="...">` explicitly.
-- **Differentiating chart series by anything other than Carbon's data-vis palette.** Custom colors break theme parity.
+- **Differentiating chart series by anything other than Carbon's data-vis palette.** Custom colors break theme parity. *Exception:* the projection **line** charts color Low/Mid/High from the MilestoneGrid Tag hues (green/blue/purple) via theme-safe tag tokens — a scoped, deliberate deviation, see ADR 012 and spec §6.3/§8. Theme parity is preserved because the colors are tokens, not hand-picked hex.
 - **Writing copy as lorem ipsum or AI-generic ("Welcome to your dashboard! Get started by..."). Empty-state copy is concrete, sourced templates in `docs/04_feature_spec.md`.
 - **Adding analytics, tooltips on body text, or "helpful" walkthroughs that aren't in the spec.** Don't.
 - **Storing the Finnhub key in client-readable code.** It lives in Settings (LocalStorage, user-supplied) or `process.env` (server-only). Never in source.
