@@ -80,6 +80,7 @@ The **pre-Carbon history** (V1 vanilla bento dashboard, Flowstate v0 hand-built 
   - Session 42 (addendum) — Phase 3.5.2 — Copilot PR #40 triage (1 of 2 valid) — 2026-06-14
   - Session 42 (addendum 2) — Phase 3.5.2 — Standing default: auto-wait + triage Copilot after every PR — 2026-06-14
 - Session 43 — Phase 3.6.1 — Spacing-token remediation (foundation + light routes) + ADR 011 — 2026-06-17
+  - Session 43 (addendum) — Phase 3.6.1 — Copilot PR #41 triage: reconcile design-system spec with ADR 011 — 2026-06-17
 
 ---
 
@@ -3350,6 +3351,37 @@ _Fix a codebase-wide silent defect found in Session 42: `var(--cds-spacing-*)` i
 ### Recommendation for next session
 
 Phase 3.6.2 — remediate the heavy routes (Simulation + Settings + the shared `CurrencySwitcher`) on a branch cut off master after this merges, inheriting the blessed pattern. Carry forward the Stack-is-grid lesson: convert per-site with visual verification, default to appearance-preserving, and apply intended values only where 0px is a visible defect (call those out in the PR). Watch for ambiguous parity-vs-intent sites in Simulation/Settings — if a layout fights the change, stop and split 3.6.2 further rather than forcing a mechanical pass.
+
+## Session 43 (addendum) — Phase 3.6.1: Copilot PR #41 triage (2026-06-17)
+
+### What I asked the AI to do
+
+_Fetch the GitHub Copilot review on PR #41, assess each suggestion assume-wrong-until-proven, implement the legitimate ones, and record an addendum._
+
+### What the AI did
+
+- Copilot left **one** inline comment (no formal approve/request-changes verdict), on `CLAUDE.md` rule 1: the amended spacing guidance now conflicts with `docs/05_design_system_spec.md` — which rule 1 still cites as "the full token discipline" — specifically §1's `var(--cds-spacing-05)` "Do" example, §7.1's spacing table + "never use `0.5rem` one-off" rule, and the §12 audit item.
+- **Verdict: valid.** Verified against the file — §1 line 12 did show `padding: var(--cds-spacing-05)` (the exact 0px no-op this phase removes), and §7.1 forbade the documented literal rem ADR 011 sanctions. Leaving the cited spec contradictory would let a future contributor reproduce the no-op, defeating the phase's goal. While verifying I also caught a **pre-existing factual error**: §7.1 listed `spacing-09 = 64px`; Carbon's `spacing-09` is **48px** (64px is `spacing-10`).
+- **Implemented** (`docs/05_design_system_spec.md`, commit `80b23b5`): §1 spacing "Do" → `<Stack gap>`/`<Grid>` or documented literal rem + an ADR 011 spacing-exception paragraph; §7.1 added a rem column, fixed `spacing-09` 64→48, amended the one-off rule to permit a documented literal rem equal to a scale token; §12 audit item now reads Stack/Grid/literal-rem with zero `var(--cds-spacing-*)`. Color/type/motion/breakpoint discipline untouched.
+
+### What I learned
+
+- The earlier session's "flag §12 for a later docs pass" deferral was the wrong call: the rule correction and the spec it cites are a single unit — correcting one without the other ships a self-contradicting ruleset. Copilot caught exactly that. For 3.6.2, reconcile spec + rule together in the same pass.
+
+### Spec drift / discrepancies / things noticed
+
+- Fixed the long-standing `spacing-09 = 64px` error in §7.1 (unrelated to the no-op defect; surfaced by the reconciliation).
+- The vendored `.claude/skills/carbon-builder` cheatsheet still maps px → `var(--cds-spacing-*)`. Left untouched (upstream skill, not project source); not load-bearing for project code review.
+
+### Quality gates
+
+| Gate | Result |
+|---|---|
+| Docs-only change | ✅ no code touched; tsc/lint/test/build/fallow unaffected from the main entry |
+
+### Recommendation for next session
+
+Unchanged — Phase 3.6.2 (heavy routes: Simulation + Settings + shared header), cut off master after #41 merges, inheriting the now-consistent spacing discipline (CLAUDE.md rule 1 + docs/05 + ADR 011 all aligned). Carry the Stack-is-grid lesson.
 
 <!-- ──────────────────────────────────────────────────────────────────── -->
 <!-- APPEND NEW SESSION ENTRIES ABOVE THIS LINE.                          -->
