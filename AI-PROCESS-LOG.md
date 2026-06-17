@@ -82,6 +82,7 @@ The **pre-Carbon history** (V1 vanilla bento dashboard, Flowstate v0 hand-built 
 - Session 43 — Phase 3.6.1 — Spacing-token remediation (foundation + light routes) + ADR 011 — 2026-06-17
   - Session 43 (addendum) — Phase 3.6.1 — Copilot PR #41 triage: reconcile design-system spec with ADR 011 — 2026-06-17
 - Session 44 — Phase 3.6.2 — Spacing-token remediation (heavy routes: Simulation + Settings + CurrencySwitcher) — 2026-06-17
+- Session 45 — Phase 3.5.3 — Scenario chart-color alignment (Low/Mid/High = Tag hues) + ADR 012 — 2026-06-17
 
 ---
 
@@ -3436,6 +3437,59 @@ All changes restore an authored token literal that the build had collapsed to `0
 ### Recommendation for next session
 
 Phase 3.6.x spacing work is complete — all ~80 no-op sites across the codebase are remediated (3.6.1 foundation + Dashboard + Cash-flow; 3.6.2 Simulation + Settings + shell). Two clean-up threads remain noted but unstarted: (1) the vendored `carbon-builder` cheatsheet's wrong px → `var(--cds-spacing-*)` mapping (a separate, low-priority skill patch), and (2) **Phase 3.5.3 chart-color work**, which was explicitly out of scope here and is the natural next feature. Recommend 3.5.3 next.
+
+## Session 45 — Phase 3.5.3: scenario chart-color alignment (Low/Mid/High = Tag hues) (2026-06-17)
+
+### What I asked the AI to do
+
+_Close the Session 39 cross-surface inconsistency: the projection line charts colored Low/Mid/High from Carbon's data-vis palette (g90 purple/teal/white), which did not match the MilestoneGrid Tags (green Low / blue Mid / purple High), so a tooltip swatch and its milestone Tag were different colors. Give each scenario one color identity across chart series, tooltip swatch, and Tag — via a custom theme-safe color scale on the two line charts, ADR 012 for the deviation, and a spec note. Out: the per-asset stacked-area chart and the Tags themselves._
+
+### What the AI did
+
+- **`src/components/charts/scenario-colors.ts` (new):** single `SCENARIO_LINE_COLORS` constant — `['var(--cds-tag-color-green)', 'var(--cds-tag-color-blue)', 'var(--cds-tag-color-purple)']` in Low→Mid→High order. One source of the identity so the two charts cannot drift.
+- **`SimulationProjectionChart.tsx` / `ProjectionLineChart.tsx`:** added `options.color.scale`, built by zipping each chart's own `SCENARIO_LABELS` (`'Low (15%)'…` vs `'15% growth'…`) with `SCENARIO_LINE_COLORS`. No data/order/tooltip-structure change; the Phase 3.4 `customHTML` tooltip reorderer is untouched.
+- **`docs/decisions/012_scenario-color-identity.md` (new):** Context → Decision → Consequences for the scoped rule-3 deviation, incl. the foreground-vs-pill-background token reasoning and the per-theme tag-token inversion table.
+- **`docs/05_design_system_spec.md`:** §6.3 exception block + §8.2 note documenting the convention and that it overrides the data-vis palette per ADR 012; per-asset stacked chart keeps the palette.
+- **`CLAUDE.md`:** one-line ADR-012 pointer on the data-vis-palette pitfall (reconciles rule + spec + ADR).
+- **Verification:** `get_charts` (terminal MCP) confirmed `LineChartOptions.color.scale` is a `{ [group]: colorString }` map. Browser-probed both charts in g90/g100/white: every line stroke resolves to the exact tag-color hex, equal byte-for-byte to the milestone Tag colors.
+
+### What I learned
+
+- **`get_charts` color-scale findings:** `LineChartOptions.color` is `{ gradient?, pairing?, scale? }`; `scale` is a plain group→color-string object (the `lineCustomColorOptions` example uses raw hex, but a `var(--cds-*)` string works because Carbon applies scale colors via CSS where `var()` resolves — the same mechanism as the existing threshold `fillColor` and spec §8.3's `var(--cds-charts-1)`). The empirical question "does `var()` resolve in the series **stroke** specifically" resolved **yes**: g90/g100 strokes came back `rgb(167,240,186)/rgb(208,226,255)/rgb(232,218,255)`, white `rgb(14,96,39)/rgb(0,67,206)/rgb(105,41,196)` — the exact per-theme `--cds-tag-color-*` values. No hex fallback needed.
+- **Tag tokens invert by theme**, and the **foreground** `--cds-tag-color-*` is the contrast-correct one for a chart line in every theme (light hue on dark plot, dark hue on light plot); the pale `--cds-tag-background-*` would be a near-invisible line. Carbon emits these as runtime CSS custom properties (unlike the spacing scale, ADR 011), so they re-resolve per theme.
+- **Carbon binds the line tooltip's pointer events in a way that resists synthetic `dispatchEvent` mousemove** under headless browse — the live ruler tooltip would not trigger via JS dispatch. Not a blocker: the legend swatch and tooltip swatch are both derived from the same `color.scale` as the stroke, so the programmatic stroke==Tag proof plus the visible legend swatches plus the passing `simulation.spec:147` tooltip test cover the swatch==Tag claim.
+
+### Spec drift / discrepancies / things noticed
+
+- Spec §8.2 still lists the Simulation chart as `<AreaChart>` "three series with thresholds"; the implementation is a `<LineChart>` (the per-asset chart is the area chart). Pre-existing, noted not fixed — out of this phase's scope.
+- The `.gitignore` carries a pre-existing untracked `.gstack/` ignore (gstack browse tooling); left unstaged, not part of this PR.
+
+### Quality gates
+
+| Gate | Result |
+|---|---|
+| `bunx tsc --noEmit` | ✅ clean |
+| `bun run lint` | ✅ clean |
+| `bun run test` | ✅ 192 passed, 1 skipped |
+| `bun run e2e` | ✅ 29/29 (serial; see note) |
+| `bun run build` | ✅ clean |
+| `bun run fallow:check` | ✅ 0 regressions (7 changed files) |
+
+**e2e note:** the full parallel run flaked 21/29 with `page.goto` `load`-event timeouts (Turbopack dev cold-compiling every route at once under multiple workers — reproduced identically on clean master, and on routes with no chart). A warm server + `--workers=1` is fully green (29/29, 24.7s), including `simulation.spec:147` (tooltip Low→Mid→High order preserved). Environmental, not the change.
+
+### Pinned per-theme proof (stroke == Tag color, both charts)
+
+| Theme | green (Low) | blue (Mid) | purple (High) |
+|---|---|---|---|
+| g90 | `#a7f0ba` | `#d0e2ff` | `#e8daff` |
+| g100 | `#a7f0ba` | `#d0e2ff` | `#e8daff` |
+| white | `#0e6027` | `#0043ce` | `#6929c4` |
+
+In every theme the line stroke equals the milestone Tag color exactly. Blue vs purple are most distinct in white (saturated); in g90/g100 they are pale pastels that run close only in the dense early-year region, always separated by vertical order + legend + tooltip labels. No console errors in any theme on either route (no theme leak).
+
+### Recommendation for next session
+
+Phase 3.5.3 closes the last known cross-surface color inconsistency. Natural next threads: (1) the §8.2 AreaChart-vs-LineChart spec erratum (trivial doc fix, could fold into any chart-touching phase); (2) the vendored `carbon-builder` cheatsheet's wrong px → `var(--cds-spacing-*)` mapping noted in Session 44 (low-priority skill patch); (3) if a future phase adds chart interactivity, revisit whether the live ruler tooltip warrants a Playwright-driven (not synthetic-dispatch) visual assertion. Recommend triaging the Copilot review on this PR first, then picking up the §8.2 erratum opportunistically.
 
 <!-- ──────────────────────────────────────────────────────────────────── -->
 <!-- APPEND NEW SESSION ENTRIES ABOVE THIS LINE.                          -->
