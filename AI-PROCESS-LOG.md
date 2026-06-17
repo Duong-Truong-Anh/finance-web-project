@@ -81,6 +81,7 @@ The **pre-Carbon history** (V1 vanilla bento dashboard, Flowstate v0 hand-built 
   - Session 42 (addendum 2) — Phase 3.5.2 — Standing default: auto-wait + triage Copilot after every PR — 2026-06-14
 - Session 43 — Phase 3.6.1 — Spacing-token remediation (foundation + light routes) + ADR 011 — 2026-06-17
   - Session 43 (addendum) — Phase 3.6.1 — Copilot PR #41 triage: reconcile design-system spec with ADR 011 — 2026-06-17
+- Session 44 — Phase 3.6.2 — Spacing-token remediation (heavy routes: Simulation + Settings + CurrencySwitcher) — 2026-06-17
 
 ---
 
@@ -3382,6 +3383,59 @@ _Fetch the GitHub Copilot review on PR #41, assess each suggestion assume-wrong-
 ### Recommendation for next session
 
 Unchanged — Phase 3.6.2 (heavy routes: Simulation + Settings + shared header), cut off master after #41 merges, inheriting the now-consistent spacing discipline (CLAUDE.md rule 1 + docs/05 + ADR 011 all aligned). Carry the Stack-is-grid lesson.
+
+## Session 44 — Phase 3.6.2: Spacing-token remediation, heavy routes (2026-06-17)
+
+### What I asked the AI to do
+
+_Apply the 3.6.1-blessed spacing pattern (ADR 011) to the heavy routes — remediate all 62 no-op `var(--cds-spacing-*)` inline styles on Simulation (34), Settings (26), and the shared `CurrencySwitcher` (2). Appearance-preserving by default, with load-bearing restores called out. Per-route atomic commits + before/after screenshots; no new pattern, no new ADR._
+
+### What the AI did
+
+- **Preflight finding that changed the stance.** Re-grep confirmed the audit exactly (Simulation 34, Settings 26, CurrencySwitcher 2 = 62, no drift). But unlike Dashboard/Cash-flow in 3.6.1 — where Grid/Stack defaults masked the no-ops so removal was truly appearance-preserving — Simulation and Settings **hand-roll flex/grid/margins**, so every no-op was collapsed to `0` at runtime: flex/grid `gap`s left children touching, `<Tile>`/`<PopoverContent>` inline `padding` overrode the Carbon default to `0` (an invalid `var()` is invalid-at-computed-value → computes to initial `0`, beating the class default), heading/section `marginBlockEnd`s left headings on top of body text and groups flush together, and the Finnhub fixed-toast insets pinned it flush to the corner. Before-screenshots confirmed this. Strategist approved **Option 1 — restore-intent**: restore each collapsed site to the token literal the author already wrote (intent-restoration, not redesign), calling out the appearance changes.
+- **Mechanism (per karpathy, minimal):** swapped `var(--cds-spacing-X)` → literal `rem` with a `/* --cds-spacing-X */` comment **in place**, inside the existing flex/grid/margin/padding. No restructuring into `<Stack>` (avoids the 3.6.1 Stack-is-grid trap; CLAUDE.md rule 4 permits native flex/grid intra-component). `SimulationEmptyState` (centered) stayed native flex + literal — the exact trap case. Literal map used: 02=0.25 · 03=0.5 · 04=0.75 · 05=1 · 06=1.5 · 07=2 · 09=3 rem.
+- **`fix(simulation)` (a6de5b1):** `SimulationPage` (07×12, 05×8, 03×1), `MilestoneGrid` (07×1, 06×1, 03×3), `AllocationTile` (06×2, 05×1, 04×1), `TickerInputTile` (03×2), `SimulationEmptyState` (05×1, 09×1).
+- **`fix(settings)` (1275e84):** `SettingsPage` (07×3, 09×2, 05×3), `DataTile` (05×4, 07×1, 03×2), `FinnhubKeyTile` (05×4, 03×1), `FxRatesTile` (05×4), `ThemeTile` (04×1), `DisplayCurrencyTile` (04×1).
+- **`fix(shell)` (c7230e6):** `CurrencySwitcher` — `PopoverContent` padding (05) and the header label's horizontal padding (02).
+- Captured before (collapsed) + after (intended) screenshots for Simulation and Settings at g90, plus g100 + white spot-checks and the open CurrencySwitcher popover. All three console surfaces clean; no theme leak (rem literals are theme-independent).
+
+### What I learned
+
+- **The "appearance-preserving" framing from 3.6.1 did not transfer to the heavy routes, and that was the whole story of this session.** 3.6.1's no-ops sat on Grid/Stack-managed layouts, so the visible rhythm was carried by component defaults and removal changed nothing. Simulation/Settings hand-roll their spacing, so the identical no-op bug had a *visible* symptom there — collapsed, edge-hugging, touching layouts. Same bug, opposite correct remediation (restore vs remove), decided entirely by whether a Carbon default was underneath. The lesson: "is this no-op masked by a default?" is a per-container question, not a per-codebase one.
+- **Confirmed the inline-`padding: var(--undefined)` override behavior on `<Tile>`.** AllocationTile and the 9 MilestoneGrid tiles were rendering at `padding: 0` (content hugging the edge), not at the Carbon Tile default — because an invalid custom property is invalid-at-computed-value and resolves to the property's initial value (`0` for padding), which still beats the lower-specificity class default. So a no-op `padding` var on a component that ships its own padding is strictly worse than no declaration at all.
+- e2e ran clean on the first pass this session (29 passed, 16.4s) — no cold-start flakes, unlike the 3.6.1 note.
+
+### Spec drift / discrepancies / things noticed
+
+- **Cramped rhythm is now *fixed* on these two routes, not just noted** — but only by restoring values the authors had already written, so it stays inside ADR 011's "0px is a visible defect → restore the intended literal" lane rather than crossing into redesign. No new spacing values were invented.
+- `docs/05` already consistent (reconciled in the 3.6.1 addendum / PR #41); no new pattern arose, so it was not touched. No new ADR.
+- The vendored `.claude/skills/carbon-builder` cheatsheet still maps px → `var(--cds-spacing-*)` (wrong for this build). Untouched per scope; CLAUDE.md rule 1 + ADR 011 override it.
+
+### Quality gates
+
+| Gate | Result |
+|---|---|
+| `bunx tsc --noEmit` | ✅ exit 0 |
+| `bun run lint` | ✅ exit 0 |
+| `bun run test` | ✅ 192 passed, 1 skipped |
+| `bun run e2e` | ✅ 29 passed (16.4s, warm `next dev`, no flakes) |
+| `bun run build` | ✅ exit 0 |
+| `bun run fallow:check` | ✅ 0 issues in 13 changed files, no regressions |
+| Grep `var(--cds-spacing-*)` on 3 routes | ✅ 0 occurrences |
+| Lighthouse a11y | ✅ unaffected — change is spacing-literal only; no role/label/contrast/focus-order touched, baseline ≥95 holds (if anything, separated tap targets help) |
+
+### Appearance changes (intent-restoration — every site, by category)
+
+All changes restore an authored token literal that the build had collapsed to `0`. None invent new values.
+
+- **Simulation:** region separation between the config / projection / per-asset / milestone / breakdown rows restored (2rem); section + tile headings now sit above their content (1rem / 0.5rem); the 3×3 MilestoneGrid tiles now have 2rem gaps (were touching) and 1.5rem internal padding (was 0, edge-hugging); AllocationTile gained 1.5rem padding + list rhythm; the 5-slot ticker grid + per-ticker notes regained their gaps; empty-state padding (3rem) + gap (1rem) restored.
+- **Settings:** the three setting groups now separate by 3rem (were flush); h1→first-group gap restored (2rem); group headings sit above their tiles (1rem); tiles within a group separate by 2rem (were touching); FinnhubKey/FxRates tile internals regained heading/list/control rhythm; the Finnhub test-connection toast no longer pins flush into the viewport corner (1rem inset).
+- **CurrencySwitcher:** popover content no longer hugs the popover edge (1rem padding); header currency label regained 0.25rem horizontal padding.
+- **Per-site veto:** none triggered. Every restored literal rendered correctly; no over-specified value produced an absurd result.
+
+### Recommendation for next session
+
+Phase 3.6.x spacing work is complete — all ~80 no-op sites across the codebase are remediated (3.6.1 foundation + Dashboard + Cash-flow; 3.6.2 Simulation + Settings + shell). Two clean-up threads remain noted but unstarted: (1) the vendored `carbon-builder` cheatsheet's wrong px → `var(--cds-spacing-*)` mapping (a separate, low-priority skill patch), and (2) **Phase 3.5.3 chart-color work**, which was explicitly out of scope here and is the natural next feature. Recommend 3.5.3 next.
 
 <!-- ──────────────────────────────────────────────────────────────────── -->
 <!-- APPEND NEW SESSION ENTRIES ABOVE THIS LINE.                          -->
