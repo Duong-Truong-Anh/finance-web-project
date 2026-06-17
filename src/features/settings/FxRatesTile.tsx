@@ -69,7 +69,7 @@ export function FxRatesTile({ settings, onSet }: Props) {
 
   return (
     <Tile style={{ border: '1px solid var(--cds-border-subtle-01)' }}>
-      <p className="cds--type-productive-heading-01" style={{ marginBlockEnd: 'var(--cds-spacing-05)' }}>
+      <p className="cds--type-productive-heading-01" style={{ marginBlockEnd: '1rem' /* --cds-spacing-05 */ }}>
         FX rates
       </p>
 
@@ -80,11 +80,11 @@ export function FxRatesTile({ settings, onSet }: Props) {
           title="FX rates unavailable."
           subtitle="Click Refresh now to try again."
           hideCloseButton
-          style={{ marginBlockEnd: 'var(--cds-spacing-05)' }}
+          style={{ marginBlockEnd: '1rem' /* --cds-spacing-05 */ }}
         />
       )}
       {fxState.status === 'ready' && (
-        <StructuredListWrapper isCondensed style={{ marginBlockEnd: 'var(--cds-spacing-05)' }}>
+        <StructuredListWrapper isCondensed style={{ marginBlockEnd: '1rem' /* --cds-spacing-05 */ }}>
           <StructuredListBody>
             <StructuredListRow>
               <StructuredListCell>USD → VND</StructuredListCell>
@@ -107,7 +107,7 @@ export function FxRatesTile({ settings, onSet }: Props) {
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'flex-start',
-          gap: 'var(--cds-spacing-05)',
+          gap: '1rem' /* --cds-spacing-05 */,
         }}
       >
         <Button

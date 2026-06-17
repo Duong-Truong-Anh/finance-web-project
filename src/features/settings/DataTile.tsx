@@ -51,8 +51,8 @@ export function DataTile() {
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'flex-start',
-            gap: 'var(--cds-spacing-05)',
-            marginBlockEnd: 'var(--cds-spacing-07)',
+            gap: '1rem' /* --cds-spacing-05 */,
+            marginBlockEnd: '2rem' /* --cds-spacing-07 */,
           }}
         >
           <div
@@ -60,7 +60,7 @@ export function DataTile() {
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'flex-start',
-              gap: 'var(--cds-spacing-03)',
+              gap: '0.5rem' /* --cds-spacing-03 */,
             }}
           >
             <Button kind="tertiary" size="sm" disabled>
@@ -76,7 +76,7 @@ export function DataTile() {
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'flex-start',
-              gap: 'var(--cds-spacing-03)',
+              gap: '0.5rem' /* --cds-spacing-03 */,
             }}
           >
             <Button kind="tertiary" size="sm" disabled>
@@ -92,12 +92,12 @@ export function DataTile() {
         <div
           style={{
             borderBlockStart: '1px solid var(--cds-border-subtle-01)',
-            paddingBlockStart: 'var(--cds-spacing-05)',
+            paddingBlockStart: '1rem' /* --cds-spacing-05 */,
           }}
         >
           <p
             className="cds--body-01"
-            style={{ marginBlockEnd: 'var(--cds-spacing-05)', color: 'var(--cds-text-secondary)' }}
+            style={{ marginBlockEnd: '1rem' /* --cds-spacing-05 */, color: 'var(--cds-text-secondary)' }}
           >
             Resetting all data permanently deletes all transactions, portfolio configuration, and
             settings. There is no undo. Export your data first if you want to keep a backup.
@@ -119,7 +119,7 @@ export function DataTile() {
         onRequestSubmit={handleConfirm}
         onSecondarySubmit={() => setModalOpen(false)}
       >
-        <p style={{ marginBlockEnd: 'var(--cds-spacing-05)' }}>
+        <p style={{ marginBlockEnd: '1rem' /* --cds-spacing-05 */ }}>
           This will permanently delete all transactions, portfolio configuration, and settings.
           There is no undo. Export your data first if you want to keep a backup.
         </p>

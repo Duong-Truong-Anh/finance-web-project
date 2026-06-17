@@ -19,7 +19,7 @@ export function DisplayCurrencyTile({ settings, onSet }: Props) {
       <p
         aria-hidden="true"
         className="cds--type-productive-heading-01"
-        style={{ marginBlockEnd: 'var(--cds-spacing-04)' }}
+        style={{ marginBlockEnd: '0.75rem' /* --cds-spacing-04 */ }}
       >
         Display currency
       </p>

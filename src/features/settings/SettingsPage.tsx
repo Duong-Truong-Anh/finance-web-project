@@ -30,34 +30,34 @@ export function SettingsPage() {
       <h1
         id="settings-heading"
         className="cds--type-productive-heading-04"
-        style={{ marginBlockEnd: 'var(--cds-spacing-07)' }}
+        style={{ marginBlockEnd: '2rem' /* --cds-spacing-07 */ }}
       >
         Settings
       </h1>
 
-      <section aria-labelledby="settings-group-display" style={{ marginBlockEnd: 'var(--cds-spacing-09)' }}>
+      <section aria-labelledby="settings-group-display" style={{ marginBlockEnd: '3rem' /* --cds-spacing-09 */ }}>
         <h2
           id="settings-group-display"
           className="cds--type-productive-heading-03"
-          style={{ marginBlockEnd: 'var(--cds-spacing-05)', color: 'var(--cds-text-secondary)' }}
+          style={{ marginBlockEnd: '1rem' /* --cds-spacing-05 */, color: 'var(--cds-text-secondary)' }}
         >
           Display preferences
         </h2>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--cds-spacing-07)' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' /* --cds-spacing-07 */ }}>
           <DisplayCurrencyTile settings={settings} onSet={set} />
           <ThemeTile settings={settings} onSet={set} />
         </div>
       </section>
 
-      <section aria-labelledby="settings-group-integrations" style={{ marginBlockEnd: 'var(--cds-spacing-09)' }}>
+      <section aria-labelledby="settings-group-integrations" style={{ marginBlockEnd: '3rem' /* --cds-spacing-09 */ }}>
         <h2
           id="settings-group-integrations"
           className="cds--type-productive-heading-03"
-          style={{ marginBlockEnd: 'var(--cds-spacing-05)', color: 'var(--cds-text-secondary)' }}
+          style={{ marginBlockEnd: '1rem' /* --cds-spacing-05 */, color: 'var(--cds-text-secondary)' }}
         >
           Integrations
         </h2>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--cds-spacing-07)' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' /* --cds-spacing-07 */ }}>
           <FinnhubKeyTile settings={settings} onSet={set} />
           <FxRatesTile settings={settings} onSet={set} />
         </div>
@@ -67,7 +67,7 @@ export function SettingsPage() {
         <h2
           id="settings-group-data"
           className="cds--type-productive-heading-03"
-          style={{ marginBlockEnd: 'var(--cds-spacing-05)', color: 'var(--cds-text-secondary)' }}
+          style={{ marginBlockEnd: '1rem' /* --cds-spacing-05 */, color: 'var(--cds-text-secondary)' }}
         >
           Data
         </h2>

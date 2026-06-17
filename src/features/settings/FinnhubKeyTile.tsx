@@ -117,7 +117,7 @@ export function FinnhubKeyTile({ settings, onSet }: Props) {
     <Tile style={{ border: '1px solid var(--cds-border-subtle-01)' }}>
       <p
         className="cds--type-productive-heading-01"
-        style={{ marginBlockEnd: 'var(--cds-spacing-05)' }}
+        style={{ marginBlockEnd: '1rem' /* --cds-spacing-05 */ }}
       >
         Finnhub API key
       </p>
@@ -129,7 +129,7 @@ export function FinnhubKeyTile({ settings, onSet }: Props) {
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
         onBlur={handleBlur}
-        style={{ marginBlockEnd: 'var(--cds-spacing-05)' }}
+        style={{ marginBlockEnd: '1rem' /* --cds-spacing-05 */ }}
       />
       <Button kind="tertiary" size="sm" onClick={handleTest} disabled={testing}>
         Test connection
@@ -138,11 +138,11 @@ export function FinnhubKeyTile({ settings, onSet }: Props) {
         <div
           style={{
             position: 'fixed',
-            insetBlockEnd: 'var(--cds-spacing-05)',
-            insetInlineEnd: 'var(--cds-spacing-05)',
+            insetBlockEnd: '1rem' /* --cds-spacing-05 */,
+            insetInlineEnd: '1rem' /* --cds-spacing-05 */,
             display: 'flex',
             flexDirection: 'column',
-            gap: 'var(--cds-spacing-03)',
+            gap: '0.5rem' /* --cds-spacing-03 */,
             zIndex: 9000,
           }}
           role="status"
