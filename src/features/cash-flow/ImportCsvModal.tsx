@@ -76,7 +76,7 @@ export default function ImportCsvModal({ open, onClose, addMany }: Props) {
           hideCloseButton
           title="Import failed"
           subtitle={importError}
-          style={{ marginBlockEnd: 'var(--cds-spacing-05)' }}
+          style={{ marginBlockEnd: '1rem' /* --cds-spacing-05 */ }}
         />
       )}
 
@@ -101,7 +101,7 @@ export default function ImportCsvModal({ open, onClose, addMany }: Props) {
           <p
             style={{
               marginBlockEnd:
-                (state.errors.length > 0) ? 'var(--cds-spacing-05)' : undefined,
+                (state.errors.length > 0) ? '1rem' /* --cds-spacing-05 */ : undefined,
             }}
           >
             <strong>{state.valid.length}</strong> valid row

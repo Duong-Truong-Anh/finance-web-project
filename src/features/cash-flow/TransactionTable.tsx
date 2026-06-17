@@ -139,7 +139,7 @@ export default function TransactionTable({
     return (
       <p
         className="cds--type-body-01"
-        style={{ padding: 'var(--cds-spacing-05)', color: 'var(--cds-text-secondary)' }}
+        style={{ padding: '1rem' /* --cds-spacing-05 */, color: 'var(--cds-text-secondary)' }}
       >
         {kind === 'income'
           ? 'No income transactions yet.'

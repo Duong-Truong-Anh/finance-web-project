@@ -11,8 +11,11 @@ export default function EmptyState() {
         flexDirection: 'column',
         alignItems: 'center',
         textAlign: 'center',
-        gap: 'var(--cds-spacing-05)',
-        padding: 'var(--cds-spacing-09)',
+        // Literal rems equal to Carbon tokens; --cds-spacing-* is not a runtime var
+        // (ADR 011). Native flex centering (a horizontal/grid Stack won't center a
+        // fixed-width pictogram) — rule 4 permits flex inside one component.
+        gap: '1rem' /* --cds-spacing-05 */,
+        padding: '3rem' /* --cds-spacing-09 */,
       }}
     >
       <CashFlowPictogram

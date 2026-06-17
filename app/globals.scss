@@ -1,6 +1,18 @@
 // Carbon base styles are loaded via the pre-compiled CSS import in layout.tsx.
 // See docs/decisions/002_carbon-sass-turbopack.md for why @use '@carbon/styles'
 // is not used here despite the spec's original intention.
+//
+// SPACING CONVENTION (ADR 011): the pre-compiled CSS does NOT expose the
+// --cds-spacing-* scale as runtime custom properties, so `var(--cds-spacing-XX)`
+// in an inline style silently resolves to 0px. Apply spacing through mechanisms
+// that compile to a real value instead:
+//   • <Stack gap={n}> for sibling rhythm (gap compiles via --cds-stack-gap)
+//   • <Grid>/<Column> for page layout and gutters
+//   • a literal rem equal to the token, commented with the token name, for the
+//     rare standalone border/padding/min-size case — e.g. padding: 3rem; // $spacing-09
+// Color and type tokens (var(--cds-text-primary), cds--type-*) DO resolve and
+// remain mandatory. Carbon spacing scale: 02=0.25rem 03=0.5rem 05=1rem 06=1.5rem
+// 07=2rem 09=3rem 13=10rem.
 
 html,
 body {
