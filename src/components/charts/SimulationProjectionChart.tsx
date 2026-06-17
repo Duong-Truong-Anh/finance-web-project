@@ -5,6 +5,7 @@ import type { Projection } from '@/src/lib/projection';
 import type { Currency } from '@/src/lib/currency/types';
 import { formatCompact, type Locale } from '@/src/lib/currency/format';
 import type { Theme } from '@/src/lib/settings/repository';
+import { SCENARIO_LINE_COLORS } from './scenario-colors';
 
 interface Props {
   projection: Projection;
@@ -17,6 +18,13 @@ interface Props {
 // points caused ~1s tooltip latency in manual QA. Mirrors ProjectionLineChart.
 const TOTAL_YEARS = 31;
 const SCENARIO_LABELS = ['Low (15%)', 'Mid (17.5%)', 'High (20%)'] as const;
+
+// One color identity per scenario (ADR 012): green = Low, blue = Mid, purple =
+// High, matching the MilestoneGrid Tags. Keyed by this chart's own group labels;
+// Carbon derives both the line stroke and the tooltip swatch from this scale.
+const SCENARIO_COLOR_SCALE = Object.fromEntries(
+  SCENARIO_LABELS.map((label, i) => [label, SCENARIO_LINE_COLORS[i]]),
+);
 
 function toMajor(amount: number, currency: Currency): number {
   return currency === 'VND' ? amount : amount / 100;
@@ -89,6 +97,7 @@ export default function SimulationProjectionChart({ projection, displayCurrency,
     // Low/Mid/High are mutually-exclusive scenarios, not additive components, so a
     // summed Total row would mislead — suppress it (Carbon's line-chart default is on).
     tooltip: { customHTML: orderedTooltip, showTotal: false },
+    color: { scale: SCENARIO_COLOR_SCALE },
     points: { enabled: false },
     height: '440px',
     theme,
