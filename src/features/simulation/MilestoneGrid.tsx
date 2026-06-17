@@ -35,7 +35,7 @@ export default function MilestoneGrid({ projection, displayCurrency, locale }: P
       style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(3, 1fr)',
-        gap: 'var(--cds-spacing-07)',
+        gap: '2rem' /* --cds-spacing-07 */,
       }}
     >
       {HORIZONS.flatMap((horizon) =>
@@ -51,7 +51,7 @@ export default function MilestoneGrid({ projection, displayCurrency, locale }: P
               key={`${horizon.key}-${scenario.variant}`}
               role="gridcell"
               aria-label={`${horizon.label}, ${tag.name} scenario, ${totalLabel}`}
-              style={{ padding: 'var(--cds-spacing-06)' }}
+              style={{ padding: '1.5rem' /* --cds-spacing-06 */ }}
             >
               <p
                 className="cds--type-label-01"
@@ -63,8 +63,8 @@ export default function MilestoneGrid({ projection, displayCurrency, locale }: P
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 'var(--cds-spacing-03)',
-                  marginBlock: 'var(--cds-spacing-03)',
+                  gap: '0.5rem' /* --cds-spacing-03 */,
+                  marginBlock: '0.5rem' /* --cds-spacing-03 */,
                 }}
               >
                 <Tag size="sm" type={tag.type}>
@@ -87,7 +87,7 @@ export default function MilestoneGrid({ projection, displayCurrency, locale }: P
                 className="cds--type-body-compact-01"
                 style={{
                   color: 'var(--cds-text-secondary)',
-                  marginBlockStart: 'var(--cds-spacing-03)',
+                  marginBlockStart: '0.5rem' /* --cds-spacing-03 */,
                   fontVariantNumeric: 'tabular-nums',
                 }}
               >

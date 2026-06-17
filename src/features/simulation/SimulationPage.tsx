@@ -105,7 +105,7 @@ export default function SimulationPage({ initialCurrency, initialTheme }: Props)
         <Column sm={4} md={8} lg={16}>
           <h1
             className="cds--type-productive-heading-04"
-            style={{ marginBlockEnd: 'var(--cds-spacing-07)' }}
+            style={{ marginBlockEnd: '2rem' /* --cds-spacing-07 */ }}
           >
             Simulation
           </h1>
@@ -115,7 +115,7 @@ export default function SimulationPage({ initialCurrency, initialTheme }: Props)
             style={{
               width: '100%',
               height: '360px',
-              marginBlockStart: 'var(--cds-spacing-07)',
+              marginBlockStart: '2rem' /* --cds-spacing-07 */,
             }}
           />
         </Column>
@@ -130,7 +130,7 @@ export default function SimulationPage({ initialCurrency, initialTheme }: Props)
         <Column sm={4} md={8} lg={16}>
           <h1
             className="cds--type-productive-heading-04"
-            style={{ marginBlockEnd: 'var(--cds-spacing-07)' }}
+            style={{ marginBlockEnd: '2rem' /* --cds-spacing-07 */ }}
           >
             Simulation
           </h1>
@@ -151,7 +151,7 @@ export default function SimulationPage({ initialCurrency, initialTheme }: Props)
         <Column sm={4} md={8} lg={16}>
           <h1
             className="cds--type-productive-heading-04"
-            style={{ marginBlockEnd: 'var(--cds-spacing-07)' }}
+            style={{ marginBlockEnd: '2rem' /* --cds-spacing-07 */ }}
           >
             Simulation
           </h1>
@@ -175,7 +175,7 @@ export default function SimulationPage({ initialCurrency, initialTheme }: Props)
         <Column sm={4} md={8} lg={16}>
           <h1
             className="cds--type-productive-heading-04"
-            style={{ marginBlockEnd: 'var(--cds-spacing-07)' }}
+            style={{ marginBlockEnd: '2rem' /* --cds-spacing-07 */ }}
           >
             Simulation
           </h1>
@@ -196,21 +196,21 @@ export default function SimulationPage({ initialCurrency, initialTheme }: Props)
       <Column sm={4} md={8} lg={16}>
         <h1
           className="cds--type-productive-heading-04"
-          style={{ marginBlockEnd: 'var(--cds-spacing-07)' }}
+          style={{ marginBlockEnd: '2rem' /* --cds-spacing-07 */ }}
         >
           Simulation
         </h1>
       </Column>
 
       {/* Region A: Configuration */}
-      <Column sm={4} md={8} lg={5} style={{ marginBlockEnd: 'var(--cds-spacing-07)' }}>
+      <Column sm={4} md={8} lg={5} style={{ marginBlockEnd: '2rem' /* --cds-spacing-07 */ }}>
         <AllocationTile />
       </Column>
 
-      <Column sm={4} md={8} lg={11} style={{ marginBlockEnd: 'var(--cds-spacing-07)' }}>
+      <Column sm={4} md={8} lg={11} style={{ marginBlockEnd: '2rem' /* --cds-spacing-07 */ }}>
         <p
           className="cds--type-productive-heading-03"
-          style={{ marginBlockEnd: 'var(--cds-spacing-05)' }}
+          style={{ marginBlockEnd: '1rem' /* --cds-spacing-05 */ }}
         >
           Your stocks (5 slots)
         </p>
@@ -218,7 +218,7 @@ export default function SimulationPage({ initialCurrency, initialTheme }: Props)
           style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(5, 1fr)',
-            gap: 'var(--cds-spacing-05)',
+            gap: '1rem' /* --cds-spacing-05 */,
           }}
         >
           {slotIndices.map((i) => {
@@ -239,7 +239,7 @@ export default function SimulationPage({ initialCurrency, initialTheme }: Props)
           })}
         </div>
         {missing > 0 && (
-          <div style={{ marginBlockStart: 'var(--cds-spacing-05)' }}>
+          <div style={{ marginBlockStart: '1rem' /* --cds-spacing-05 */ }}>
             <InlineNotification
               kind="info"
               lowContrast
@@ -251,11 +251,11 @@ export default function SimulationPage({ initialCurrency, initialTheme }: Props)
       </Column>
 
       {/* Region B: Projection chart */}
-      <Column sm={4} md={8} lg={16} style={{ marginBlockEnd: 'var(--cds-spacing-07)' }}>
+      <Column sm={4} md={8} lg={16} style={{ marginBlockEnd: '2rem' /* --cds-spacing-07 */ }}>
         <p
           id="sim-chart-heading"
           className="cds--type-productive-heading-03"
-          style={{ marginBlockEnd: 'var(--cds-spacing-05)' }}
+          style={{ marginBlockEnd: '1rem' /* --cds-spacing-05 */ }}
         >
           30-year projection
         </p>
@@ -269,11 +269,11 @@ export default function SimulationPage({ initialCurrency, initialTheme }: Props)
       </Column>
 
       {/* Region B (cont.): Per-asset stacked-area chart (mid scenario only) */}
-      <Column sm={4} md={8} lg={16} style={{ marginBlockEnd: 'var(--cds-spacing-07)' }}>
+      <Column sm={4} md={8} lg={16} style={{ marginBlockEnd: '2rem' /* --cds-spacing-07 */ }}>
         <p
           id="sim-stacked-heading"
           className="cds--type-productive-heading-03"
-          style={{ marginBlockEnd: 'var(--cds-spacing-05)' }}
+          style={{ marginBlockEnd: '1rem' /* --cds-spacing-05 */ }}
         >
           Per-asset growth (Mid scenario)
         </p>
@@ -287,10 +287,10 @@ export default function SimulationPage({ initialCurrency, initialTheme }: Props)
       </Column>
 
       {/* Region C: Milestones + per-asset summary */}
-      <Column sm={4} md={8} lg={16} style={{ marginBlockEnd: 'var(--cds-spacing-07)' }}>
+      <Column sm={4} md={8} lg={16} style={{ marginBlockEnd: '2rem' /* --cds-spacing-07 */ }}>
         <p
           className="cds--type-productive-heading-03"
-          style={{ marginBlockEnd: 'var(--cds-spacing-05)' }}
+          style={{ marginBlockEnd: '1rem' /* --cds-spacing-05 */ }}
         >
           Milestone outcomes
         </p>
@@ -301,10 +301,10 @@ export default function SimulationPage({ initialCurrency, initialTheme }: Props)
         />
       </Column>
 
-      <Column sm={4} md={8} lg={16} style={{ marginBlockEnd: 'var(--cds-spacing-07)' }}>
+      <Column sm={4} md={8} lg={16} style={{ marginBlockEnd: '2rem' /* --cds-spacing-07 */ }}>
         <p
           className="cds--type-productive-heading-03"
-          style={{ marginBlockEnd: 'var(--cds-spacing-05)' }}
+          style={{ marginBlockEnd: '1rem' /* --cds-spacing-05 */ }}
         >
           Per-asset breakdown
         </p>
@@ -315,7 +315,7 @@ export default function SimulationPage({ initialCurrency, initialTheme }: Props)
         <Column sm={4} md={8} lg={16}>
           <p
             className="cds--type-productive-heading-03"
-            style={{ marginBlockEnd: 'var(--cds-spacing-03)' }}
+            style={{ marginBlockEnd: '0.5rem' /* --cds-spacing-03 */ }}
           >
             Per-ticker breakdown
           </p>
@@ -323,7 +323,7 @@ export default function SimulationPage({ initialCurrency, initialTheme }: Props)
             className="cds--type-body-compact-01"
             style={{
               color: 'var(--cds-text-secondary)',
-              marginBlockEnd: 'var(--cds-spacing-05)',
+              marginBlockEnd: '1rem' /* --cds-spacing-05 */,
             }}
           >
             Each ticker receives an equal 1/5 share of the 50% stocks allocation.
